@@ -1,6 +1,8 @@
+import { useMemo, useState } from "react";
+
 export default function AccessoriseItDemo() {
-  
-const bikeOptions = [
+  const [selectedBike, setSelectedBike] = useState("BMW R1300GS");
+  const bikeOptions = [
   {
     name: "BMW R1300GS",
     type: "Adventure platform",
@@ -8,6 +10,13 @@ const bikeOptions = [
     image: "/bmw-r1300gs.jpg",
     blurb:
       "The benchmark large-capacity adventure motorcycle with enormous accessory demand and global touring capability.",
+    garageTitle: "Paul's R1300GS Garage",
+    garageSubtitle: "BMW R1300GS · premium adventure profile",
+    installed: ["Crash bars", "Panniers", "Aux lights"],
+    suggested: ["Comfort seat", "Skid plate", "Luggage rack", "Tyres"],
+    heroLabel: "Featured build",
+    buildTotal: "$2,180",
+    featuredAccessory: "Outback Pannier System",
   },
   {
     name: "BMW R1300GSA",
@@ -16,6 +25,13 @@ const bikeOptions = [
     image: "/bmw-r1300gsa.jpg",
     blurb:
       "The long-range expedition version of the GS designed for global travel and serious accessory setups.",
+    garageTitle: "Paul's R1300GSA Garage",
+    garageSubtitle: "BMW R1300GSA · expedition profile",
+    installed: ["Upper crash bars", "Aluminium panniers", "Tank bag"],
+    suggested: ["Driving lights", "Skid plate", "Top box", "Comfort seat"],
+    heroLabel: "Expedition build",
+    buildTotal: "$3,420",
+    featuredAccessory: "Aluminium Adventure Luggage",
   },
   {
     name: "KTM 890 Adventure",
@@ -24,6 +40,13 @@ const bikeOptions = [
     image: "/ktm-890-adventure.jpg",
     blurb:
       "A lightweight performance-oriented adventure bike popular with riders who prioritize aggressive off-road capability.",
+    garageTitle: "KTM 890 Adventure Garage",
+    garageSubtitle: "KTM 890 Adventure · off-road focused profile",
+    installed: ["Bash plate", "Hand guards", "Soft luggage"],
+    suggested: ["Crash bars", "Rally seat", "Aux fuel", "Adventure tyres"],
+    heroLabel: "Performance build",
+    buildTotal: "$1,960",
+    featuredAccessory: "Rally Protection Pack",
   },
   {
     name: "Yamaha Tenere 700",
@@ -32,18 +55,31 @@ const bikeOptions = [
     image: "/yamaha-tenere-700.jpg",
     blurb:
       "One of the world's most popular mid-weight adventure bikes with massive aftermarket support.",
+    garageTitle: "Tenere 700 Garage",
+    garageSubtitle: "Yamaha Tenere 700 · mid-weight ADV profile",
+    installed: ["Crash protection", "Rear rack", "Dual-purpose tyres"],
+    suggested: ["Soft panniers", "Tall screen", "LED lights", "Comfort seat"],
+    heroLabel: "Adventure build",
+    buildTotal: "$1,740",
+    featuredAccessory: "Soft Luggage Touring Kit",
   },
 ];
-  const installed = ["Crash bars", "Panniers", "Aux lights"];
-  const recommended = ["Comfort seat", "Skid plate", "Luggage rack", "Tyres"];
+
+const activeBike = useMemo(
+  () => bikeOptions.find((bike) => bike.name === selectedBike) ?? bikeOptions[0],
+  [selectedBike]
+);
+
+  const installed = activeBike.installed;
+  const recommended = activeBike.suggested;
   const categories = ["Protection", "Luggage", "Comfort", "Lighting", "Off-road", "Touring"];
 
   const accessories = [
-    { name: "Outback Pannier System", category: "Luggage", price: "$1,290", fit: "Exact fit for BMW R1300GS / GSA", featured: true },
-    { name: "Adventure Crash Bars", category: "Protection", price: "$890", fit: "Exact fit for BMW R1300GS / GSA" },
-    { name: "Rally Skid Plate", category: "Off-road", price: "$640", fit: "Exact fit for BMW R1300GS / GSA" },
-    { name: "Touring Comfort Seat", category: "Comfort", price: "$520", fit: "Exact fit for BMW R1300GS / GSA" },
-  ];
+  { name: activeBike.featuredAccessory, category: "Luggage", price: activeBike.name.includes("GSA") ? "$1,690" : "$1,290", fit: `Exact fit for ${activeBike.name}`, featured: true },
+  { name: "Adventure Crash Bars", category: "Protection", price: "$890", fit: `Exact fit for ${activeBike.name}` },
+  { name: "Rally Skid Plate", category: "Off-road", price: "$640", fit: `Exact fit for ${activeBike.name}` },
+  { name: "Touring Comfort Seat", category: "Comfort", price: "$520", fit: `Exact fit for ${activeBike.name}` },
+];
 
   const communityBuilds = [
     {
@@ -67,18 +103,18 @@ const bikeOptions = [
   ];
 
   const marketItems = [
-    { title: "Outback Pannier System", price: "$1,290", cta: "Buy now" },
-    { title: "Adventure Crash Bars", price: "$890", cta: "Find dealer" },
-    { title: "Touring Comfort Seat", price: "$520", cta: "Save to build" },
-  ];
+  { title: activeBike.featuredAccessory, price: activeBike.name.includes("GSA") ? "$1,690" : "$1,290", cta: "Buy now" },
+  { title: "Adventure Crash Bars", price: "$890", cta: "Find dealer" },
+  { title: "Touring Comfort Seat", price: "$520", cta: "Save to build" },
+];
 
   const selectedMods = [
-    { label: "Panniers", active: true, impact: "+ touring" },
-    { label: "Crash Bars", active: true, impact: "+ protection" },
-    { label: "Aux Lights", active: true, impact: "+ visibility" },
-    { label: "Skid Plate", active: false, impact: "+ off-road" },
-    { label: "Comfort Seat", active: false, impact: "+ comfort" },
-  ];
+  { label: installed[0] || "Panniers", active: true, impact: "+ touring" },
+  { label: installed[1] || "Crash Bars", active: true, impact: "+ protection" },
+  { label: installed[2] || "Aux Lights", active: true, impact: "+ visibility" },
+  { label: recommended[0] || "Skid Plate", active: false, impact: "+ off-road" },
+  { label: recommended[1] || "Comfort Seat", active: false, impact: "+ comfort" },
+];
 
   const flowCards = [
     { step: "01", title: "Choose bike", text: "Select your exact model and year." },
@@ -158,7 +194,7 @@ const bikeOptions = [
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-xs uppercase tracking-[0.24em] text-indigo-200">Featured build</div>
-                      <div className="mt-2 text-2xl font-bold">Paul's R1300GSA</div>
+                      <div className="mt-2 text-2xl font-bold">{activeBike.garageTitle.replace(" Garage", "")}</div>
                     </div>
                     <div className="rounded-full bg-emerald-400/20 px-3 py-1 text-xs font-semibold text-emerald-200">
                       Live demo flow
@@ -216,8 +252,15 @@ const bikeOptions = [
             <p className="mt-2 text-slate-500">Start with the rider’s exact machine to unlock fitment confidence.</p>
 
             <div className="mt-5 grid gap-4">
-              {bikeOptions.map((bike, index) => (
-                <div key={bike.name} className={`overflow-hidden rounded-[28px] border ${index === 0 ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-800'}`}>
+              {bikeOptions.map((bike) => {
+                const isSelected = bike.name === activeBike.name;
+                return (
+                <button
+                  type="button"
+                  key={bike.name}
+                  onClick={() => setSelectedBike(bike.name)}
+                  className={`overflow-hidden rounded-[28px] border text-left transition hover:-translate-y-0.5 ${isSelected ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-800'}`}
+                >
                   <div className="grid gap-0 md:grid-cols-[180px_1fr]">
                     <div className="h-[160px] md:h-full">
                       <img src={bike.image} alt={bike.name} className="h-full w-full object-cover" />
@@ -226,18 +269,18 @@ const bikeOptions = [
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div>
                           <div className="text-xl font-bold">{bike.name}</div>
-                          <div className={`mt-1 text-sm ${index === 0 ? 'text-slate-300' : 'text-slate-500'}`}>{bike.type}</div>
+                          <div className={`mt-1 text-sm ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>{bike.type}</div>
                         </div>
-                        <div className={`rounded-full px-3 py-1 text-xs font-semibold ${index === 0 ? 'bg-white text-slate-900' : 'bg-slate-100 text-slate-600'}`}>
-                          {index === 0 ? 'Selected' : 'Choose'}
+                        <div className={`rounded-full px-3 py-1 text-xs font-semibold ${isSelected ? 'bg-white text-slate-900' : 'bg-slate-100 text-slate-600'}`}>
+                          {isSelected ? 'Selected' : 'Choose'}
                         </div>
                       </div>
-                      <div className={`mt-3 text-sm font-semibold ${index === 0 ? 'text-slate-200' : 'text-slate-700'}`}>{bike.price}</div>
-                      <p className={`mt-3 text-sm leading-6 ${index === 0 ? 'text-slate-300' : 'text-slate-500'}`}>{bike.blurb}</p>
+                      <div className={`mt-3 text-sm font-semibold ${isSelected ? 'text-slate-200' : 'text-slate-700'}`}>{bike.price}</div>
+                      <p className={`mt-3 text-sm leading-6 ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>{bike.blurb}</p>
                     </div>
                   </div>
-                </div>
-              ))}
+                </button>
+              )})}
             </div>
           </div>
 
@@ -247,8 +290,8 @@ const bikeOptions = [
             </div>
             <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <h3 className="text-2xl font-bold">Paul's Garage</h3>
-                <p className="mt-1 text-slate-500">BMW R1300GSA · foundation profile</p>
+                <h3 className="text-2xl font-bold">{activeBike.garageTitle}</h3>
+                <p className="mt-1 text-slate-500">{activeBike.garageSubtitle}</p>
               </div>
               <button className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white">Share garage</button>
             </div>
@@ -316,9 +359,9 @@ const bikeOptions = [
             <div className="mt-4 flex items-center justify-between gap-4">
               <div>
                 <h3 className="text-2xl font-bold">Preview your build</h3>
-                <p className="mt-2 text-slate-500">This investor version simulates layered visualisation and exact-fit confidence.</p>
+                <p className="mt-2 text-slate-500">This investor version simulates layered visualisation and exact-fit confidence for {activeBike.name}.</p>
               </div>
-              <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">Build total $2,180</div>
+              <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">Build total {activeBike.buildTotal}</div>
             </div>
 
             <div className="mt-6 rounded-[28px] bg-[linear-gradient(135deg,#0f172a,#1e1b4b,#312e81)] p-5 shadow-inner">
@@ -392,7 +435,7 @@ const bikeOptions = [
                 <div key={item.title} className="flex items-center justify-between rounded-[28px] border border-slate-200 bg-white p-4">
                   <div>
                     <div className="font-bold">{item.title}</div>
-                    <div className="mt-1 text-sm text-slate-500">Fits BMW R1300GS / GSA</div>
+                    <div className="mt-1 text-sm text-slate-500">Fits {activeBike.name}</div>
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-bold">{item.price}</div>
