@@ -1,11 +1,39 @@
 export default function AccessoriseItDemo() {
-  const bikeOptions = [
-    "BMW R1300GSA",
-    "BMW R1250GS",
-    "Yamaha Tenere 700",
-    "KTM 890 Adventure",
-  ];
-
+  
+const bikeOptions = [
+  {
+    name: "BMW R1300GS",
+    type: "Adventure platform",
+    price: "From $26,000",
+    image: "/bmw-r1300gs.jpg",
+    blurb:
+      "The benchmark large-capacity adventure motorcycle with enormous accessory demand and global touring capability.",
+  },
+  {
+    name: "BMW R1300GSA",
+    type: "Adventure platform",
+    price: "From $31,000",
+    image: "/bmw-r1300gsa.jpg",
+    blurb:
+      "The long-range expedition version of the GS designed for global travel and serious accessory setups.",
+  },
+  {
+    name: "KTM 890 Adventure",
+    type: "Adventure platform",
+    price: "From $22,000",
+    image: "/ktm-890-adventure.jpg",
+    blurb:
+      "A lightweight performance-oriented adventure bike popular with riders who prioritize aggressive off-road capability.",
+  },
+  {
+    name: "Yamaha Tenere 700",
+    type: "Adventure platform",
+    price: "From $17,000",
+    image: "/yamaha-tenere-700.jpg",
+    blurb:
+      "One of the world's most popular mid-weight adventure bikes with massive aftermarket support.",
+  },
+];
   const installed = ["Crash bars", "Panniers", "Aux lights"];
   const recommended = ["Comfort seat", "Skid plate", "Luggage rack", "Tyres"];
   const categories = ["Protection", "Luggage", "Comfort", "Lighting", "Off-road", "Touring"];
@@ -187,15 +215,26 @@ export default function AccessoriseItDemo() {
             <h3 className="mt-4 text-2xl font-bold">Bike selection</h3>
             <p className="mt-2 text-slate-500">Start with the rider’s exact machine to unlock fitment confidence.</p>
 
-            <div className="mt-5 space-y-3">
+            <div className="mt-5 grid gap-4">
               {bikeOptions.map((bike, index) => (
-                <div key={bike} className={`flex items-center justify-between rounded-2xl border px-4 py-4 ${index === 0 ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-800'}`}>
-                  <div>
-                    <div className="font-semibold">{bike}</div>
-                    <div className={`text-sm ${index === 0 ? 'text-slate-300' : 'text-slate-500'}`}>Adventure platform</div>
-                  </div>
-                  <div className={`rounded-full px-3 py-1 text-xs font-semibold ${index === 0 ? 'bg-white text-slate-900' : 'bg-slate-100 text-slate-600'}`}>
-                    {index === 0 ? 'Selected' : 'Choose'}
+                <div key={bike.name} className={`overflow-hidden rounded-[28px] border ${index === 0 ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-800'}`}>
+                  <div className="grid gap-0 md:grid-cols-[180px_1fr]">
+                    <div className="h-[160px] md:h-full">
+                      <img src={bike.image} alt={bike.name} className="h-full w-full object-cover" />
+                    </div>
+                    <div className="p-5">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <div className="text-xl font-bold">{bike.name}</div>
+                          <div className={`mt-1 text-sm ${index === 0 ? 'text-slate-300' : 'text-slate-500'}`}>{bike.type}</div>
+                        </div>
+                        <div className={`rounded-full px-3 py-1 text-xs font-semibold ${index === 0 ? 'bg-white text-slate-900' : 'bg-slate-100 text-slate-600'}`}>
+                          {index === 0 ? 'Selected' : 'Choose'}
+                        </div>
+                      </div>
+                      <div className={`mt-3 text-sm font-semibold ${index === 0 ? 'text-slate-200' : 'text-slate-700'}`}>{bike.price}</div>
+                      <p className={`mt-3 text-sm leading-6 ${index === 0 ? 'text-slate-300' : 'text-slate-500'}`}>{bike.blurb}</p>
+                    </div>
                   </div>
                 </div>
               ))}
