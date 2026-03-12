@@ -73,8 +73,20 @@ const activeBike = useMemo(
 
   const installed = activeBike.installed;
   const recommended = activeBike.suggested;
-  const categories = ["Protection", "Luggage", "Comfort", "Lighting", "Off-road", "Touring"];
-
+ 
+const categories = [
+  "Protection",
+  "Luggage",
+  "Comfort",
+  "Lighting",
+  "Navigation",
+  "Performance",
+  "Suspension",
+  "Tyres",
+  "Electronics",
+  "Touring",
+  "Off-road",
+];
   const accessories = [
   { name: activeBike.featuredAccessory, category: "Luggage", price: activeBike.name.includes("GSA") ? "$1,690" : "$1,290", fit: `Exact fit for ${activeBike.name}`, featured: true },
   { name: "Adventure Crash Bars", category: "Protection", price: "$890", fit: `Exact fit for ${activeBike.name}` },
@@ -250,6 +262,23 @@ const activeBike = useMemo(
               Screen 1 · choose your bike
             </div>
             <h3 className="mt-4 text-2xl font-bold">Bike selection</h3>
+            <div className="mt-4">
+  <label className="text-sm font-semibold text-slate-600">
+    Select your bike
+  </label>
+
+  <select
+    value={selectedBike}
+    onChange={(e) => setSelectedBike(e.target.value)}
+    className="mt-2 w-full rounded-xl border border-slate-300 p-3"
+  >
+    {bikeOptions.map((bike) => (
+      <option key={bike.name} value={bike.name}>
+        {bike.name}
+      </option>
+    ))}
+  </select>
+</div>
             <p className="mt-2 text-slate-500">Start with the rider’s exact machine to unlock fitment confidence.</p>
 
             <div className="mt-5 grid gap-4">
