@@ -64,6 +64,21 @@ export default function AccessoriseItDemo() {
     buildTotal: "$1,740",
     featuredAccessory: "Soft Luggage Touring Kit",
   },
+  {
+  name: "Ducati Multistrada V4S",
+  type: "Adventure sport touring",
+  price: "From $33,000",
+  image: "/ducati-multistrada-v4s.jpg",
+  blurb:
+    "A high-performance adventure touring motorcycle combining Ducati superbike technology with long-distance comfort.",
+  garageTitle: "Multistrada V4S Garage",
+  garageSubtitle: "Ducati Multistrada V4S · sport adventure profile",
+  installed: ["Touring screen", "Ducati panniers", "Heated grips"],
+  suggested: ["Engine protection", "Aux lights", "Tank bag", "Comfort seat"],
+  heroLabel: "Sport touring build",
+  buildTotal: "$2,540",
+  featuredAccessory: "Ducati Touring Pannier Set",
+},
 ];
 
 const activeBike = useMemo(
@@ -87,13 +102,22 @@ const categories = [
   "Touring",
   "Off-road",
 ];
-  const accessories = [
+ const [selectedCategory, setSelectedCategory] = useState("Luggage"); 
+const parsePrice = (price) =>
+  Number(price.replace("$", "").replace(/,/g, ""));
+ const accessories = [
   { name: activeBike.featuredAccessory, category: "Luggage", price: activeBike.name.includes("GSA") ? "$1,690" : "$1,290", fit: `Exact fit for ${activeBike.name}`, featured: true },
   { name: "Adventure Crash Bars", category: "Protection", price: "$890", fit: `Exact fit for ${activeBike.name}` },
   { name: "Rally Skid Plate", category: "Off-road", price: "$640", fit: `Exact fit for ${activeBike.name}` },
   { name: "Touring Comfort Seat", category: "Comfort", price: "$520", fit: `Exact fit for ${activeBike.name}` },
 ];
-
+const filteredAccessories = accessories.filter(
+  (item) => item.category === selectedCategory
+);
+const buildValue = filteredAccessories.reduce(
+  (total, item) => total + parsePrice(item.price),
+  0
+);
   const communityBuilds = [
     {
       title: "Outback Touring Setup",
@@ -257,95 +281,126 @@ const categories = [
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-[32px] border border-white/60 bg-white/85 p-7 shadow-[0_20px_60px_rgba(15,23,42,0.10)]">
-            <div className="inline-flex rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-600">
-              Screen 1 · choose your bike
-            </div>
-            <h3 className="mt-4 text-2xl font-bold">Bike selection</h3>
-            <div className="mt-4">
-  <label className="text-sm font-semibold text-slate-600">
-    Select your bike
-  </label>
 
-  <select
-    value={selectedBike}
-    onChange={(e) => setSelectedBike(e.target.value)}
-    className="mt-2 w-full rounded-xl border border-slate-300 p-3"
-  >
-    {bikeOptions.map((bike) => (
-      <option key={bike.name} value={bike.name}>
-        {bike.name}
-      </option>
-    ))}
-  </select>
-</div>
-            <p className="mt-2 text-slate-500">Start with the rider’s exact machine to unlock fitment confidence.</p>
+  <div className="rounded-[32px] border border-white/60 bg-white/85 p-7 shadow-[0_20px_60px_rgba(15,23,42,0.10)]">
 
-            <div className="mt-5 grid gap-4">
-              {bikeOptions.map((bike) => {
-                const isSelected = bike.name === activeBike.name;
-                return (
-                <button
-                  type="button"
-                  key={bike.name}
-                  onClick={() => setSelectedBike(bike.name)}
-                  className={`overflow-hidden rounded-[28px] border text-left transition hover:-translate-y-0.5 ${isSelected ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-800'}`}
-                >
-                  <div className="grid gap-0 md:grid-cols-[180px_1fr]">
-                    <div className="h-[160px] md:h-full">
-                      <img src={bike.image} alt={bike.name} className="h-full w-full object-cover" />
-                    </div>
-                    <div className="p-5">
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div>
-                          <div className="text-xl font-bold">{bike.name}</div>
-                          <div className={`mt-1 text-sm ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>{bike.type}</div>
-                        </div>
-                        <div className={`rounded-full px-3 py-1 text-xs font-semibold ${isSelected ? 'bg-white text-slate-900' : 'bg-slate-100 text-slate-600'}`}>
-                          {isSelected ? 'Selected' : 'Choose'}
-                        </div>
-                      </div>
-                      <div className={`mt-3 text-sm font-semibold ${isSelected ? 'text-slate-200' : 'text-slate-700'}`}>{bike.price}</div>
-                      <p className={`mt-3 text-sm leading-6 ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>{bike.blurb}</p>
-                    </div>
-                  </div>
-                </button>
-              )})}
-            </div>
-          </div>
+    <div className="inline-flex rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-600">
+      Screen 1 · choose your bike
+    </div>
 
-          <div className="rounded-[32px] border border-white/60 bg-white/85 p-7 shadow-[0_20px_60px_rgba(15,23,42,0.10)]">
-            <div className="inline-flex rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-600">
-              Screen 2 · my garage
-            </div>
-            <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <h3 className="text-2xl font-bold">{activeBike.garageTitle}</h3>
-                <p className="mt-1 text-slate-500">{activeBike.garageSubtitle}</p>
-              </div>
-              <button className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white">Share garage</button>
-            </div>
+    <h3 className="mt-4 text-2xl font-bold">Bike selection</h3>
+    <p className="mt-2 text-slate-500">
+      Start with the rider’s exact machine to unlock fitment confidence.
+    </p>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <div className="rounded-3xl bg-slate-50 p-5">
-                <div className="text-sm font-semibold text-slate-700">Installed now</div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {installed.map((item) => (
-                    <span key={item} className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white">{item}</span>
-                  ))}
-                </div>
-              </div>
-              <div className="rounded-3xl bg-slate-50 p-5">
-                <div className="text-sm font-semibold text-slate-700">Suggested next</div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {recommended.map((item) => (
-                    <span key={item} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700">{item}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+    <div className="mt-5">
+      <label className="text-sm font-semibold text-slate-600">
+        Select your bike
+      </label>
+
+      <select
+        value={selectedBike}
+        onChange={(e) => setSelectedBike(e.target.value)}
+        className="mt-2 w-full rounded-xl border border-slate-300 p-3"
+      >
+        {bikeOptions.map((bike) => (
+          <option key={bike.name} value={bike.name}>
+            {bike.name}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-4">
+
+      <div className="text-sm font-semibold text-slate-600">
+        Selected bike
+      </div>
+
+      <div className="mt-3 grid items-center gap-4 md:grid-cols-[420px_1fr]">
+
+        <img
+          src={activeBike.image}
+          alt={activeBike.name}
+          className="w-full rounded-xl object-cover"
+        />
+
+        <div>
+          <div className="text-xl font-bold">{activeBike.name}</div>
+          <div className="mt-1 text-sm text-slate-500">{activeBike.type}</div>
+          <div className="mt-2 text-sm font-semibold">{activeBike.price}</div>
+          <p className="mt-2 text-sm text-slate-500">{activeBike.blurb}</p>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div className="rounded-[32px] border border-white/60 bg-white/85 p-7 shadow-[0_20px_60px_rgba(15,23,42,0.10)]">
+
+    <div className="inline-flex rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-600">
+      Screen 2 · my garage
+    </div>
+
+    <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+
+      <div>
+        <h3 className="text-2xl font-bold">{activeBike.garageTitle}</h3>
+        <p className="mt-1 text-slate-500">{activeBike.garageSubtitle}</p>
+      </div>
+
+      <button className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white">
+        Share garage
+      </button>
+
+    </div>
+
+    <div className="mt-6 grid gap-4 md:grid-cols-2">
+
+      <div className="rounded-3xl bg-slate-50 p-5">
+        <div className="text-sm font-semibold text-slate-700">
+          Installed now
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {installed.map((item) => (
+            <span
+              key={item}
+              className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-3xl bg-slate-50 p-5">
+
+        <div className="text-sm font-semibold text-slate-700">
+          Suggested next
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {recommended.map((item) => (
+            <span
+              key={item}
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
 
         <section className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
           <div className="rounded-[32px] border border-white/60 bg-white/85 p-7 shadow-[0_20px_60px_rgba(15,23,42,0.10)]">
@@ -356,7 +411,15 @@ const categories = [
             <p className="mt-2 text-slate-500">Protection, luggage, comfort, lighting, touring and off-road, all narrowed to exact fit.</p>
             <div className="mt-5 flex flex-wrap gap-2">
               {categories.map((category, index) => (
-                <button key={category} className={`rounded-full px-4 py-2 text-sm font-semibold ${index === 1 ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-700'}`}>
+                <button
+  key={category}
+  onClick={() => setSelectedCategory(category)}
+  className={`rounded-full px-4 py-2 text-sm font-semibold ${
+    selectedCategory === category
+      ? "bg-slate-900 text-white"
+      : "border border-slate-200 bg-white text-slate-700"
+  }`}
+>
                   {category}
                 </button>
               ))}
@@ -364,7 +427,17 @@ const categories = [
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            {accessories.map((item) => (
+           {filteredAccessories.length === 0 && (
+  <div className="col-span-2 rounded-2xl border border-slate-200 bg-white p-6 text-center">
+    <div className="text-lg font-semibold text-slate-800">
+      No accessories in this category yet
+    </div>
+    <div className="mt-2 text-sm text-slate-500">
+      More products coming soon for {selectedCategory}.
+    </div>
+  </div>
+)}
+           {filteredAccessories.map((item) => (
               <div key={item.name} className={`rounded-[28px] border p-5 shadow-[0_12px_35px_rgba(15,23,42,0.06)] ${item.featured ? 'border-indigo-200 bg-gradient-to-br from-white to-indigo-50' : 'border-white/60 bg-white/85'}`}>
                 <div className="flex items-center justify-between">
                   <div className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{item.category}</div>
@@ -391,7 +464,7 @@ const categories = [
                 <h3 className="text-2xl font-bold">Preview your build</h3>
                 <p className="mt-2 text-slate-500">This investor version simulates layered visualisation and exact-fit confidence for {activeBike.name}.</p>
               </div>
-              <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">Build total {activeBike.buildTotal}</div>
+              <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">Build total ${buildValue.toLocaleString()}</div>
             </div>
 
             <div className="mt-6 rounded-[28px] bg-[linear-gradient(135deg,#0f172a,#1e1b4b,#312e81)] p-5 shadow-inner">
