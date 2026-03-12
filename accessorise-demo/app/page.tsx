@@ -103,8 +103,8 @@ const categories = [
   "Off-road",
 ];
  const [selectedCategory, setSelectedCategory] = useState("Luggage"); 
-const parsePrice = (price: number) =>
-  Number(price.replace("$", "").replace(/,/g, ""));
+const parsePrice = (price: string | number) =>
+  Number(String(price).replace("$", "").replace(/,/g, ""));
  const accessories = [
   { name: activeBike.featuredAccessory, category: "Luggage", price: activeBike.name.includes("GSA") ? "$1,690" : "$1,290", fit: `Exact fit for ${activeBike.name}`, featured: true },
   { name: "Adventure Crash Bars", category: "Protection", price: "$890", fit: `Exact fit for ${activeBike.name}` },
