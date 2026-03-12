@@ -103,7 +103,7 @@ const categories = [
   "Off-road",
 ];
  const [selectedCategory, setSelectedCategory] = useState("Luggage"); 
-const parsePrice = (price) =>
+const parsePrice = (price: number) =>
   Number(price.replace("$", "").replace(/,/g, ""));
  const accessories = [
   { name: activeBike.featuredAccessory, category: "Luggage", price: activeBike.name.includes("GSA") ? "$1,690" : "$1,290", fit: `Exact fit for ${activeBike.name}`, featured: true },
@@ -169,7 +169,7 @@ const buildValue = filteredAccessories.reduce(
               <div className="rounded-2xl bg-slate-900 px-3 py-2 text-sm font-bold text-white shadow-lg">AI</div>
               <div>
                 <div className="text-2xl font-bold tracking-tight">Accessorise It</div>
-                <div className="text-sm text-slate-500">Investor demo · motorcycle customisation marketplace</div>
+                <div className="text-sm text-slate-500">Investor demo · motorcycle customisation platform</div>
               </div>
             </div>
           </div>
