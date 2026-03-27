@@ -359,7 +359,7 @@ useEffect(() => {
   loadSavedBuild();
 }, [selectedBikeId]);
   const currentBike = useMemo(() => {
-  return bikes.find((bike) => bike.name === selectedBike) ?? bikes[0] ?? null;
+  return bikes.find((bike) => bike.id === selectedBikeId) ?? bikes[0] ?? null;
 }, [bikes, selectedBike]);
 const addToBuild = (product: Product) => {
   setSelectedProducts((prev) => {
@@ -472,7 +472,7 @@ const addToBuild = (product: Product) => {
 
       try {
         const saved = (await getBuildPhotos()) as SavedPhotoRecord[];
-const filtered = (saved ?? []).filter((photo) => photo.bike_name === selectedBike);
+const filtered = saved ?? [];
 const mapped = mapSavedPhotosToUploaded(filtered);
 setUploadedPhotos(mapped);
 setSelectedPhotoIndex(0);
