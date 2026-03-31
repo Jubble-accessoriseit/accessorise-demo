@@ -1,7 +1,5 @@
 "use client";
-import GarageHeader from "../components/GarageHeader";
-import GaragePhotoGallery from "../components/GaragePhotoGallery";
-import BikeSummary from "../components/BikeSummary";
+
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -9,15 +7,6 @@ import {
   getBuildPhotos,
   uploadBuildPhoto,
 } from "@/lib/build-storage";
-import {
-  bikes,
-  getMakes,
-  getSeriesByMake,
-  getModelsByMakeAndSeries,
-  getYearsByMakeSeriesAndModel,
-  getBikeByDetails,
-} from "@/lib/bikes";
-
 
 type Bike = {
   id: string;
@@ -57,7 +46,36 @@ type SavedPhotoRecord = {
   public_url: string;
 };
 
-
+const bikes: Bike[] = [
+  {
+    id: "bmw-r1300gsa-2025",
+    brand: "BMW",
+    model: "R1300GSA",
+    yearLabel: "2025",
+    heroImage: "/bikes/bmw-r1300gsa.jpg",
+  },
+  {
+    id: "bmw-r1250gsa-2024",
+    brand: "BMW",
+    model: "R1250GSA",
+    yearLabel: "2024",
+    heroImage: "/bikes/bmw-r1250gsa.jpg",
+  },
+  {
+    id: "ktm-1290sar-2024",
+    brand: "KTM",
+    model: "1290 Super Adventure R",
+    yearLabel: "2024",
+    heroImage: "/bikes/ktm-1290sar.jpg",
+  },
+  {
+    id: "yamaha-tenere700-2024",
+    brand: "Yamaha",
+    model: "Ténéré 700",
+    yearLabel: "2024",
+    heroImage: "/bikes/tenere-700.jpg",
+  },
+];
 
 const categories = [
   { id: "all", label: "All" },
@@ -282,20 +300,10 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-type SupabaseBike = {
-  id: string;
-  make: string;
-  model: string;
-  variant: string | null;
-  year: number;
-  category: string | null;
-  engine_cc: number | null;
-};
-
 export default function GaragePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
-  const [selectedBikeId, setSelectedBikeId] = useState("bmw-r-series-r1300gsa-2025");
+  const [selectedBikeId, setSelectedBikeId] = useState("bmw-r1300gsa-2025");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showExactFitOnly, setShowExactFitOnly] = useState(false);
   const [onlyCompatible, setOnlyCompatible] = useState(true);
@@ -307,136 +315,13 @@ export default function GaragePage() {
   const [saveMessage, setSaveMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const [supabaseBikes, setSupabaseBikes] = useState<SupabaseBike[]>([]);
-
-  const [selectedMake, setSelectedMake] = useState("");
-  const [selectedSeries, setSelectedSeries] = useState("");
-  const [selectedModel, setSelectedModel] = useState("");
-  const [selectedYear, setSelectedYear] = useState("");
-
   const [bikeBuilds, setBikeBuilds] = useState<Record<string, Product[]>>({});
   const [dirtyBuilds, setDirtyBuilds] = useState<Record<string, boolean>>({});
   const [loadedBuilds, setLoadedBuilds] = useState<Record<string, boolean>>({});
 
-  const makeOptions = [
-  ...new Set(supabaseBikes.map((b) => b.make)),
-].sort();
-
-const seriesOptions = selectedMake
-  ? [...new Set(
-      supabaseBikes
-        .filter((b) => b.make === selectedMake)
-        .map((b) => b.model)
-    )].sort()
-  : [];
-
-const modelOptions = selectedMake && selectedSeries
-  ? [
-      ...new Set(
-        supabaseBikes
-          .filter(
-            (b) => b.make === selectedMake && b.model === selectedSeries
-          )
-          .map((b) => b.variant || "Base")
-      ),
-    ].sort()
-  : [];
-
-useEffect(() => {
-  if (!selectedMake || !selectedSeries) return;
-  if (modelOptions.length !== 1) return;
-
-  const onlyModel = modelOptions[0];
-
-  if (selectedModel !== onlyModel) {
-    setSelectedModel(onlyModel);
-  }
-}, [selectedMake, selectedSeries, modelOptions, selectedModel]);  
-
-const yearOptions = selectedMake && selectedSeries && selectedModel
-  ? [
-      ...new Set(
-        supabaseBikes
-          .filter(
-            (b) =>
-              b.make === selectedMake &&
-              b.model === selectedSeries &&
-              (b.variant || "Base") === selectedModel
-          )
-          .map((b) => b.year)
-      ),
-    ].sort((a, b) => b - a)
-  : [];
-
   const currentBike = useMemo(() => {
-  return (
-    supabaseBikes.find((bike) => bike.id === selectedBikeId) ??
-    supabaseBikes[0] ??
-    null
-  );
-}, [selectedBikeId, supabaseBikes]);
-
-  useEffect(() => {
-  if (!currentBike) return;
-
-  setSelectedMake(currentBike.make);
-  setSelectedSeries(currentBike.model);
-  setSelectedModel(currentBike.variant || "Base");
-  setSelectedYear(String(currentBike.year));
-}, [currentBike]);
-useEffect(() => {
-  if (!selectedMake || !selectedSeries || !selectedModel) return;
-  if (yearOptions.length !== 1) return;
-
-  const onlyYear = String(yearOptions[0]);
-
-  if (selectedYear !== onlyYear) {
-    setSelectedYear(onlyYear);
-  }
-}, [selectedMake, selectedSeries, selectedModel, yearOptions, selectedYear]);
-useEffect(() => {
-  if (!selectedMake || !selectedSeries || !selectedModel || !selectedYear) return;
-
-  const matchedBike = supabaseBikes.find(
-  (bike) =>
-    bike.make === selectedMake &&
-    bike.model === selectedSeries &&
-    (bike.variant || "Base") === selectedModel &&
-    bike.year === Number(selectedYear)
-);
-
-console.log("MATCH TEST:", selectedMake, selectedSeries, selectedModel, selectedYear, matchedBike);
-
-  if (matchedBike && matchedBike.id !== selectedBikeId) {
-    setSelectedBikeId(matchedBike.id);
-  }
-}, [
-  selectedMake,
-  selectedSeries,
-  selectedModel,
-  selectedYear,
-  selectedBikeId,
-]);
-
-useEffect(() => {
-  const fetchBikes = async () => {
-    const { data, error } = await supabase
-      .from("bikes")
-      .select("*");
-
-    if (error) {
-      console.error("Error fetching bikes:", error);
-      return;
-    }
-
-    if (data) {
-      setSupabaseBikes(data);
-      console.log("Supabase bikes loaded:", data.length);
-    }
-  };
-
-  fetchBikes();
-}, []);
+    return bikes.find((bike) => bike.id === selectedBikeId) ?? bikes[0] ?? null;
+  }, [selectedBikeId]);
 
   const selectedProducts = bikeBuilds[selectedBikeId] ?? [];
   const isBuildDirty = dirtyBuilds[selectedBikeId] ?? false;
@@ -958,19 +843,200 @@ return (
   >
 
     <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-  <GarageHeader
-  isSignedIn={isSignedIn}
-  isUploadingPhotos={isUploadingPhotos}
-  uploadedPhotos={uploadedPhotos}
-  totalPhotoSlotsLeft={totalPhotoSlotsLeft}
-  saveMessage={saveMessage}
-  photoError={photoError}
-  pageError={pageError}
-  handleSignIn={handleSignIn}
-  handleSignOut={handleSignOut}
-  handlePhotoUpload={handlePhotoUpload}
-/>
+  <section
+    style={{
+      background: "#111827",
+      color: "#ffffff",
+      borderRadius: 28,
+      padding: 28,
+      boxShadow: "0 20px 40px rgba(17,24,39,0.18)",
+      marginBottom: 24,
+    }}
+  >
+    <div
+      style={{
+        display: "flex",
+        gap: 20,
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+      }}
+    >
+      <div>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 12,
+            textTransform: "uppercase",
+            letterSpacing: 1.4,
+            color: "#9ca3af",
+          }}
+        >
+          Accessorise It
+        </p>
 
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            margin: "8px 0 10px",
+            flexWrap: "wrap",
+          }}
+        >
+          <h1 style={{ margin: 0, fontSize: 34, lineHeight: 1.1 }}>
+            My Garage
+          </h1>
+
+          <button
+            onClick={() => (window.location.href = "/")}
+            style={{
+              background: "transparent",
+              color: "#9ca3af",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              fontSize: 14,
+            }}
+          >
+            ← Home
+          </button>
+        </div>
+
+        <p
+          style={{
+            margin: 0,
+            maxWidth: 700,
+            color: "#d1d5db",
+            lineHeight: 1.6,
+            fontSize: 15,
+          }}
+        >
+          Upload up to 10 photos of your actual bike build, then scroll through
+          them in your own gallery.
+        </p>
+      </div>
+
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        {isSignedIn ? (
+          <button
+            onClick={handleSignOut}
+            style={{
+              padding: "12px 16px",
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,0.18)",
+              background: "#1f2937",
+              color: "#fff",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Sign out
+          </button>
+        ) : (
+          <button
+            onClick={handleSignIn}
+            style={{
+              padding: "12px 16px",
+              borderRadius: 14,
+              border: "none",
+              background: "#ffffff",
+              color: "#111827",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Sign in
+          </button>
+        )}
+
+        <label
+          htmlFor="bike-photo-upload"
+          style={{
+            padding: "12px 16px",
+            borderRadius: 14,
+            background: isUploadingPhotos ? "#6b7280" : "#2563eb",
+            color: "#ffffff",
+            fontWeight: 700,
+            cursor: isUploadingPhotos ? "default" : "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+          }}
+        >
+          {isUploadingPhotos ? "Uploading..." : "Upload Photos"}
+        </label>
+      </div>
+    </div>
+
+    <input
+      id="bike-photo-upload"
+      type="file"
+      accept="image/*"
+      multiple
+      onChange={handlePhotoUpload}
+      style={{ display: "none" }}
+      disabled={isUploadingPhotos}
+    />
+
+    <div
+      style={{
+        marginTop: 14,
+        fontSize: 14,
+        color: "#cbd5e1",
+      }}
+    >
+      {uploadedPhotos.length}/10 photos uploaded
+      {totalPhotoSlotsLeft > 0 ? ` • ${totalPhotoSlotsLeft} slot(s) left` : ""}
+    </div>
+
+    {saveMessage ? (
+      <div
+        style={{
+          marginTop: 12,
+          padding: "12px 14px",
+          borderRadius: 12,
+          background: "rgba(37,99,235,0.18)",
+          color: "#dbeafe",
+          fontSize: 14,
+        }}
+      >
+        {saveMessage}
+      </div>
+    ) : null}
+
+    {photoError ? (
+      <div
+        style={{
+          marginTop: 12,
+          padding: "12px 14px",
+          borderRadius: 12,
+          background: "rgba(239,68,68,0.16)",
+          color: "#fecaca",
+          fontSize: 14,
+        }}
+      >
+        {photoError}
+      </div>
+    ) : null}
+
+    {pageError ? (
+      <div
+        style={{
+          marginTop: 12,
+          padding: "12px 14px",
+          borderRadius: 12,
+          background: "rgba(239,68,68,0.16)",
+          color: "#fecaca",
+          fontSize: 14,
+        }}
+      >
+        {pageError}
+      </div>
+    ) : null}
+  </section>
+
+          
+        
 
         <section
           style={{
@@ -990,20 +1056,275 @@ return (
               border: "1px solid #e5e7eb",
             }}
           >
-            <GaragePhotoGallery
-  uploadedPhotos={uploadedPhotos}
-  selectedPhotoIndex={selectedPhotoIndex}
-  setSelectedPhotoIndex={setSelectedPhotoIndex}
-  heroImage={heroImage}
-  handleDeletePhoto={handleDeletePhoto}
-/>
+            {uploadedPhotos.length > 0 ? (
+              <>
+                <div
+                  style={{
+                    borderRadius: 20,
+                    overflow: "hidden",
+                    position: "relative",
+                    background: "#f3f4f6",
+                    marginBottom: 16,
+                  }}
+                >
+                  <button
+                    onClick={() =>
+                      setSelectedPhotoIndex((prev) =>
+                        prev > 0 ? prev - 1 : uploadedPhotos.length - 1
+                      )
+                    }
+                    style={{
+                      position: "absolute",
+                      left: 20,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "rgba(0,0,0,0.5)",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "50%",
+                      width: 40,
+                      height: 40,
+                      cursor: "pointer",
+                      fontSize: 18,
+                      zIndex: 1,
+                    }}
+                  >
+                    ‹
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      setSelectedPhotoIndex((prev) =>
+                        prev < uploadedPhotos.length - 1 ? prev + 1 : 0
+                      )
+                    }
+                    style={{
+                      position: "absolute",
+                      right: 20,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "rgba(0,0,0,0.5)",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "50%",
+                      width: 40,
+                      height: 40,
+                      cursor: "pointer",
+                      fontSize: 18,
+                      zIndex: 1,
+                    }}
+                  >
+                    ›
+                  </button>
+
+                  <img
+                    src={heroImage}
+                    alt="Bike"
+                    style={{
+                      width: "100%",
+                      height: 360,
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 16,
+                    scrollBehavior: "smooth",
+                    overflowX: "auto",
+                    whiteSpace: "nowrap",
+                    paddingBottom: 8,
+                  }}
+                >
+                  {uploadedPhotos.map((photo, index) => {
+                    const active = index === selectedPhotoIndex;
+
+                    return (
+                      <div key={photo.id} style={{ minWidth: 150, width: 150 }}>
+                        <button
+                          onClick={() => setSelectedPhotoIndex(index)}
+                          style={{
+                            width: "100%",
+                            border: active ? "3px solid #2563eb" : "1px solid #d1d5db",
+                            padding: 0,
+                            borderRadius: 14,
+                            overflow: "hidden",
+                            background: "#fff",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <img
+                            src={photo.url}
+                            alt={photo.name}
+                            style={{
+                              width: "100%",
+                              height: 90,
+                              objectFit: "cover",
+                              display: "block",
+                              backgroundColor: "#f3f4f6",
+                            }}
+                          />
+                        </button>
+
+                        <button
+                          onClick={() => handleDeletePhoto(photo)}
+                          style={{
+                            marginTop: 8,
+                            width: "100%",
+                            border: "1px solid #e5e7eb",
+                            background: "#fff",
+                            borderRadius: 10,
+                            padding: "8px 10px",
+                            cursor: "pointer",
+                            color: "#b00020",
+                            fontWeight: 700,
+                            fontSize: 12,
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div
+                style={{
+                  position: "relative",
+                  height: 360,
+                  borderRadius: 20,
+                  border: "2px dashed #cbd5e1",
+                  background: "#f8fafc",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
+                  padding: 24,
+                  color: "#64748b",
+                  lineHeight: 1.6,
+                }}
+              >
+                Upload your first bike photo to start your build gallery.
+              </div>
+            )}
           </div>
 
-                    <BikeSummary
-            currentBike={currentBike}
-            heroImage={heroImage}
-            compatibleCount={compatibleCount}
-          />
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: 20,
+              padding: 22,
+              boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+              border: "1px solid #e5e7eb",
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: 12,
+                textTransform: "uppercase",
+                letterSpacing: 1.2,
+                color: "#6b7280",
+              }}
+            >
+              Bike Summary
+            </p>
+
+            <h2 style={{ margin: "10px 0 8px", fontSize: 28 }}>My Motorcycle</h2>
+
+            <p
+              style={{
+                marginTop: 0,
+                color: "#4b5563",
+                lineHeight: 1.6,
+                fontSize: 14,
+              }}
+            >
+              Products are matched against the selected bike and your uploaded build
+              photos become the hero image automatically.
+            </p>
+
+            <div
+              style={{
+                marginTop: 18,
+                height: 220,
+                borderRadius: 18,
+                backgroundImage: `url(${heroImage})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundColor: "#f3f4f6",
+              }}
+            />
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: 12,
+                marginTop: 16,
+              }}
+            >
+              <div
+                style={{
+                  background: "#f9fafb",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 14,
+                  padding: 14,
+                }}
+              >
+                <div style={{ fontSize: 12, color: "#6b7280" }}>Bike</div>
+                <div style={{ fontWeight: 700, marginTop: 4 }}>
+                  {currentBike?.brand || ""}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "#f9fafb",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 14,
+                  padding: 14,
+                }}
+              >
+                <div style={{ fontSize: 12, color: "#6b7280" }}>Model</div>
+                <div style={{ fontWeight: 700, marginTop: 4 }}>
+                  {currentBike?.model || ""}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "#f9fafb",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 14,
+                  padding: 14,
+                }}
+              >
+                <div style={{ fontSize: 12, color: "#6b7280" }}>Year</div>
+                <div style={{ fontWeight: 700, marginTop: 4 }}>
+                  {currentBike?.yearLabel || ""}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "#f9fafb",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 14,
+                  padding: 14,
+                }}
+              >
+                <div style={{ fontSize: 12, color: "#6b7280" }}>Compatible</div>
+                <div style={{ fontWeight: 700, marginTop: 4 }}>
+                  {compatibleCount} items
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section
@@ -1034,280 +1355,117 @@ return (
                 }}
               >
                 <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Search products (e.g. panniers, BMW, lights...)"
+  type="text"
+  value={searchTerm}
+  onChange={(event) => setSearchTerm(event.target.value)}
+  placeholder="Search products (e.g. panniers, BMW, lights...)"
+  style={{
+  width: "100%",
+  maxWidth: 500,
+  padding: "12px 14px",
+  borderRadius: 10,
+  border: "1px solid #d1d5db",
+  fontSize: 14,
+  outline: "none",
+}}
+/>
+
+<div
+  style={{
+    marginTop: 12,
+    display: "flex",
+    justifyContent: "flex-start",
+  }}
+>
+  <label
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 8,
+      cursor: "pointer",
+      fontSize: 14,
+      color: "#374151",
+    }}
+  >
+    <input
+      type="checkbox"
+      checked={showExactFitOnly}
+      onChange={(event) => setShowExactFitOnly(event.target.checked)}
+    />
+    <span>Only show exact fit</span>
+  </label>
+</div>
+
+                <select
+                  value={selectedBikeId}
+                  onChange={(e) => handleBikeChange(e.target.value)}
                   style={{
-                    width: "100%",
-                    maxWidth: 500,
                     padding: "12px 14px",
-                    borderRadius: 10,
+                    borderRadius: 12,
                     border: "1px solid #d1d5db",
+                    background: "#ffffff",
                     fontSize: 14,
                     outline: "none",
                   }}
-                />
-
-                <div
-                  style={{
-                    marginTop: 12,
-                    display: "flex",
-                    justifyContent: "flex-start",
-                  }}
                 >
-                  <label
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 8,
-                      cursor: "pointer",
-                      fontSize: 14,
-                      color: "#374151",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={showExactFitOnly}
-                      onChange={(event) => setShowExactFitOnly(event.target.checked)}
-                    />
-                    <span>Only show exact fit</span>
-                  </label>
-                </div>
+                  {bikes.map((bike) => (
+                    <option key={bike.id} value={bike.id}>
+                      {bike.brand} {bike.model} ({bike.yearLabel})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                    gap: 14,
-                  }}
-                >
-                  <div style={{ display: "grid", gap: 6 }}>
-                    <label
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: "#374151",
-                        letterSpacing: 0.3,
-                      }}
-                    >
-                      Make
-                    </label>
-                    <select
-                      value={selectedMake}
-onChange={(e) => {
-  const value = e.target.value;
-  setSelectedMake(value);
-
-  if (value !== selectedMake) {
-    setSelectedSeries("");
-    setSelectedModel("");
-    setSelectedYear("");
-  }
-}}
-                      style={{
-                        padding: "12px 14px",
-                        borderRadius: 12,
-                        border: "1px solid #d1d5db",
-                        background: "#ffffff",
-                        fontSize: 14,
-                        outline: "none",
-                      }}
-                    >
-                      <option value="">Select Make</option>
-                      {makeOptions.map((make) => (
-                        <option key={make} value={make}>
-                          {make}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={{ display: "grid", gap: 6 }}>
-                    <label
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: "#374151",
-                        letterSpacing: 0.3,
-                      }}
-                    >
-                      Series
-                    </label>
-                    <select
-                      value={selectedSeries}
-onChange={(e) => {
-  const value = e.target.value;
-  setSelectedSeries(value);
-
-  if (value !== selectedSeries) {
-    setSelectedModel("");
-    setSelectedYear("");
-  }
-}}
-                      disabled={!selectedMake}
-                      style={{
-                        padding: "12px 14px",
-                        borderRadius: 12,
-                        border: "1px solid #d1d5db",
-                        background: selectedMake ? "#ffffff" : "#f3f4f6",
-                        fontSize: 14,
-                        outline: "none",
-                        color: selectedMake ? "#111827" : "#9ca3af",
-                      }}
-                    >
-                      <option value="">Select Series</option>
-                      {seriesOptions.map((series) => (
-                        <option key={series} value={series}>
-                          {series}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={{ display: "grid", gap: 6 }}>
-                    <label
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: "#374151",
-                        letterSpacing: 0.3,
-                      }}
-                    >
-                      Model
-                    </label>
-                    <select
-  value={selectedModel}
-  onChange={(e) => {
-    const value = e.target.value;
-    setSelectedModel(value);
-
-    if (value !== selectedModel) {
-      setSelectedYear("");
-    }
-  }}
-  disabled={!selectedSeries || modelOptions.length === 0}
-  style={{
-    padding: "12px 14px",
-    borderRadius: 12,
-    border: "1px solid #d1d5db",
-    background: !selectedSeries || modelOptions.length === 0 ? "#f3f4f6" : "#ffffff",
-    fontSize: 14,
-    outline: "none",
-    color: !selectedSeries || modelOptions.length === 0 ? "#9ca3af" : "#111827",
-  }}
->
-  <option value="">
-    {!selectedSeries
-      ? "Select Series first"
-      : modelOptions.length === 0
-      ? "No models available"
-      : "Select Model"}
-  </option>
-  {modelOptions.map((model) => (
-    <option key={model} value={model}>
-      {model}
-    </option>
-  ))}
-</select>
-                  </div>
-                  <div style={{ display: "grid", gap: 6 }}>
-  <label
-    style={{
-      fontSize: 12,
-      fontWeight: 700,
-      color: "#374151",
-      letterSpacing: 0.3,
-    }}
-  >
-    Year
-  </label>
-
-  <select
-    value={selectedYear}
-    onChange={(e) => {
-      setSelectedYear(e.target.value);
-    }}
-    disabled={!selectedModel || yearOptions.length === 0}
-    style={{
-      padding: "12px 14px",
-      borderRadius: 12,
-      border: "1px solid #d1d5db",
-      background:
-        !selectedModel || yearOptions.length === 0 ? "#f3f4f6" : "#ffffff",
-      fontSize: 14,
-      outline: "none",
-      color:
-        !selectedModel || yearOptions.length === 0 ? "#9ca3af" : "#111827",
-    }}
-  >
-    <option value="">
-      {!selectedModel
-        ? "Select Model first"
-        : yearOptions.length === 0
-        ? "No years available"
-        : "Select Year"}
-    </option>
-    {yearOptions.map((year) => (
-      <option key={year} value={year}>
-        {year}
-      </option>
-    ))}
-  </select>
-</div>
-                </div>
-
-                <div style={{ marginBottom: 14 }}>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "12px 14px",
-                      borderRadius: 12,
-                      border: "1px solid #d1d5db",
-                      background: "#ffffff",
-                      fontSize: 14,
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={onlyCompatible}
-                      onChange={(e) => setOnlyCompatible(e.target.checked)}
-                    />
-                    Only show compatible items
-                  </label>
-                </div>
-
-                <div
+              <div style={{ marginBottom: 14 }}>
+                <label
                   style={{
                     display: "flex",
+                    alignItems: "center",
                     gap: 10,
-                    flexWrap: "wrap",
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    border: "1px solid #d1d5db",
+                    background: "#ffffff",
+                    fontSize: 14,
                   }}
                 >
-                  {categories.map((category) => {
-                    const active = selectedCategory === category.id;
+                  <input
+                    type="checkbox"
+                    checked={onlyCompatible}
+                    onChange={(e) => setOnlyCompatible(e.target.checked)}
+                  />
+                  Only show compatible items
+                </label>
+              </div>
 
-                    return (
-                      <button
-                        key={category.id}
-                        onClick={() => setSelectedCategory(category.id)}
-                        style={{
-                          padding: "10px 14px",
-                          borderRadius: 999,
-                          border: active ? "1px solid #111827" : "1px solid #d1d5db",
-                          background: active ? "#111827" : "#ffffff",
-                          color: active ? "#ffffff" : "#111827",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {category.label}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                {categories.map((category) => {
+                  const active = selectedCategory === category.id;
+
+                  return (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: 999,
+                        border: active ? "1px solid #111827" : "1px solid #d1d5db",
+                        background: active ? "#111827" : "#ffffff",
+                        color: active ? "#ffffff" : "#111827",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {category.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -1333,6 +1491,8 @@ onChange={(e) => {
                       overflow: "hidden",
                       border: "1px solid #e5e7eb",
                       boxShadow: "0 6px 14px rgba(0,0,0,0.05)",
+                      transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                      cursor: "pointer",
                     }}
                   >
                     <div
@@ -1365,34 +1525,29 @@ onChange={(e) => {
                             }}
                           >
                             {product.brand}
-                          </div>
-
-                          <div style={{ marginBottom: 8 }}>
-                            {product.compatibility?.bikeIds?.includes(currentBike?.id) ? (
-                              <span
-                                style={{
-                                  fontSize: 12,
-                                  background: "#d1fae5",
-                                  color: "#065f46",
-                                  padding: "2px 8px",
-                                  borderRadius: 999,
-                                }}
-                              >
-                                Exact fit
-                              </span>
-                            ) : (
-                              <span
-                                style={{
-                                  fontSize: 12,
-                                  background: "#e5e7eb",
-                                  color: "#374151",
-                                  padding: "2px 8px",
-                                  borderRadius: 999,
-                                }}
-                              >
-                                Universal
-                              </span>
-                            )}
+                            <div style={{ marginTop: 6 }}>
+  {product.compatibility?.bikeIds?.includes(currentBike?.id) ? (
+    <span style={{
+      fontSize: 12,
+      background: "#d1fae5",
+      color: "#065f46",
+      padding: "2px 8px",
+      borderRadius: 999
+    }}>
+      Exact fit
+    </span>
+  ) : (
+    <span style={{
+      fontSize: 12,
+      background: "#e5e7eb",
+      color: "#374151",
+      padding: "2px 8px",
+      borderRadius: 999
+    }}>
+      Universal
+    </span>
+  )}
+</div>
                           </div>
 
                           <h3 style={{ margin: 0, fontSize: 20 }}>{product.name}</h3>
@@ -1538,37 +1693,43 @@ onChange={(e) => {
                 {saveMessage}
               </div>
             )}
+<div
+  style={{
+    border: "1px solid #e5e7eb",
+    borderRadius: 16,
+    padding: 16,
+    background: "#ffffff",
+    marginBottom: 20,
+  }}
+>
+  <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 6 }}>
+    Selected bike
+  </div>
 
-            <div
-              style={{
-                border: "1px solid #e5e7eb",
-                borderRadius: 16,
-                padding: 16,
-                background: "#ffffff",
-                marginBottom: 20,
-              }}
-            >
-              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 6 }}>
-                Selected bike
-              </div>
-
-              <div style={{ fontWeight: 800, fontSize: 16 }}>
-                {currentBike
-  ? `${currentBike.make} ${currentBike.model} ${currentBike.variant || "Base"} (${currentBike.year})`
-  : "No bike selected"}
-              </div>
-
-              <div
-                style={{
-                  marginTop: 10,
-                  fontSize: 12,
-                  color: "#6b7280",
-                }}
-              >
-                {compatibleCount} compatible accessories
-              </div>
-            </div>
-
+  <div style={{ fontWeight: 800, fontSize: 16 }}>
+    {currentBike
+      ? `${currentBike.brand} ${currentBike.model} (${currentBike.yearLabel})`
+      : "No bike selected"}
+  </div>
+<div
+  style={{
+    marginTop: 10,
+    fontSize: 12,
+    color: "#6b7280",
+  }}
+>
+  {compatibleCount} compatible accessories
+</div>
+  <div
+    style={{
+      marginTop: 10,
+      fontSize: 12,
+      color: "#6b7280",
+    }}
+  >
+    {compatibleCount} compatible accessories
+  </div>
+</div>
             <h4 style={{ margin: "16px 0 10px" }}>My Build</h4>
 
             {selectedProducts.length > 0 && (
@@ -1616,6 +1777,8 @@ onChange={(e) => {
               </div>
             )}
 
+              
+
             {selectedProducts.length === 0 && recommendedProducts.length === 0 && (
               <p style={{ color: "#6b7280", fontSize: 14 }}>
                 No items selected yet for this bike.
@@ -1623,77 +1786,233 @@ onChange={(e) => {
             )}
 
             {selectedProducts.map((item) => (
+  <div
+    key={item.id}
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      border: "1px solid #e5e7eb",
+      borderRadius: 12,
+      padding: 10,
+      marginBottom: 8,
+      background: "#ffffff",
+    }}
+  >
+    {/* LEFT SIDE */}
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <img
+        src={item.image || "/placeholder-new.jpg"}
+        alt={item.name}
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).src = "/placeholder-new.jpg";
+        }}
+        style={{
+          width: 40,
+          height: 40,
+          objectFit: "cover",
+          borderRadius: 6,
+          background: "#f3f4f6",
+          flexShrink: 0,
+        }}
+      />
+
+      <div>
+        <div style={{ fontWeight: 600 }}>{item.name}</div>
+        <div style={{ fontSize: 12, color: "#6b7280" }}>
+          {item.brand}
+        </div>
+      </div>
+    </div>
+
+    {/* RIGHT SIDE */}
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end",
+        gap: 6,
+      }}
+    >
+      <div style={{ fontWeight: 700 }}>
+        {formatCurrency(item.price)}
+      </div>
+
+      <button
+        onClick={() => removeFromBuild(item.id)}
+        style={{
+          padding: "6px 10px",
+          borderRadius: 8,
+          border: "1px solid #e5e7eb",
+          background: "#ffffff",
+          color: "#dc2626",
+          fontWeight: 700,
+          cursor: "pointer",
+          fontSize: 12,
+        }}
+      >
+        Remove
+      </button>
+    </div>
+  </div>
+))}
+
+            <section style={{ marginBottom: 32 }}>
+  <h2 style={{ fontSize: 20, marginBottom: 12 }}>
+    Recommended for your build
+  </h2>
+
+  <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 10 }}>
+    Recommendation count: {recommendedProducts.length}
+  </div>
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+      gap: 16,
+      alignItems: "stretch",
+    }}
+  >
+    {recommendedProducts.map((product) => (
+      <div
+        key={`recommended-${product.id}`}
+        style={{
+          background: "#fff",
+          borderRadius: 16,
+          padding: 12,
+          border: "1px solid #e5e7eb",
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          minHeight: 320,
+          boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+        }}
+      >
+        <img
+          src={product.image}
+          alt={product.name}
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src = "/placeholder-new.jpg";
+          }}
+          style={{
+            width: "100%",
+            height: 140,
+            objectFit: "cover",
+            borderRadius: 12,
+            marginBottom: 10,
+            background: "#f3f4f6",
+          }}
+        />
+
+        <div
+          style={{
+            display: "inline-block",
+            fontSize: 11,
+            fontWeight: 600,
+            padding: "4px 8px",
+            borderRadius: 999,
+            background: "#eef2ff",
+            color: "#3730a3",
+            marginBottom: 8,
+            alignSelf: "flex-start",
+          }}
+        >
+          {getRecommendationReason(product)}
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+          }}
+        >
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+            {product.name}
+          </div>
+
+          <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 6 }}>
+            {product.brand}
+          </div>
+
+          <div
+            style={{
+              fontSize: 13,
+              color: "#374151",
+              lineHeight: 1.4,
+              marginBottom: 10,
+            }}
+          >
+            {product.description}
+          </div>
+
+          <div style={{ marginTop: "auto" }}>
+  <div style={{ fontWeight: 700, marginBottom: 8 }}>
+    ${product.price}
+  </div>
+
+  <button
+    onClick={() => handleAddProduct(product)}
+    style={{
+      width: "100%",
+      padding: "10px 12px",
+      borderRadius: 10,
+      border: "none",
+      background: "#111827",
+      color: "#fff",
+      fontWeight: 600,
+      cursor: "pointer",
+    }}
+  >
+    Add to build
+  </button>
+</div>
+        </div>
+      </div>
+    ))}
+  </div>
+</section>
+
+            <div
+              style={{
+                display: "grid",
+                gap: 12,
+              }}
+            >
               <div
-                key={item.id}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
                   border: "1px solid #e5e7eb",
-                  borderRadius: 12,
-                  padding: 10,
-                  marginBottom: 8,
-                  background: "#ffffff",
+                  borderRadius: 14,
+                  padding: 14,
+                  background: "#f9fafb",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <img
-                    src={item.image || "/placeholder-new.jpg"}
-                    alt={item.name}
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = "/placeholder-new.jpg";
-                    }}
-                    style={{
-                      width: 40,
-                      height: 40,
-                      objectFit: "cover",
-                      borderRadius: 6,
-                      background: "#f3f4f6",
-                      flexShrink: 0,
-                    }}
-                  />
-
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{item.name}</div>
-                    <div style={{ fontSize: 12, color: "#6b7280" }}>
-                      {item.brand}
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-end",
-                    gap: 6,
-                  }}
-                >
-                  <div style={{ fontWeight: 700 }}>
-                    {formatCurrency(item.price)}
-                  </div>
-
-                  <button
-                    onClick={() => removeFromBuild(item.id)}
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 8,
-                      border: "1px solid #e5e7eb",
-                      background: "#ffffff",
-                      color: "#dc2626",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      fontSize: 12,
-                    }}
-                  >
-                    Remove
-                  </button>
+                <div style={{ fontSize: 12, color: "#6b7280" }}>Garage photos</div>
+                <div style={{ fontWeight: 800, marginTop: 4 }}>
+                  {uploadedPhotos.length}/10
                 </div>
               </div>
-            ))}
+
+</div>
+
+<div
+  style={{
+                marginTop: 18,
+                padding: 16,
+                borderRadius: 16,
+                background: "#eff6ff",
+                color: "#1e3a8a",
+                lineHeight: 1.6,
+                fontSize: 14,
+              }}
+            >
+              Next build step: save the selected bike against the signed-in user, then
+              persist chosen accessories to the build.
+            </div>
           </aside>
         </section>
-          </div>
-        </main>
+      </div>
+    </main>
   );
 }
