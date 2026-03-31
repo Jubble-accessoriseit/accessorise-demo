@@ -957,6 +957,46 @@ return (
     }}
   >
 
+  {/* Step Navigation */}
+<div
+  style={{
+    position: "sticky",
+    top: 0,
+    zIndex: 50,
+    background: "#ffffff",
+    borderBottom: "1px solid #e5e7eb",
+    marginBottom: 24,
+  }}
+>
+  <div
+    style={{
+      maxWidth: 1280,
+      margin: "0 auto",
+      display: "flex",
+      justifyContent: "space-between",
+      padding: "14px 10px",
+    }}
+  >
+    {["Bike", "Build", "Compare", "Save", "Buy"].map((step, index) => (
+      <div
+        key={step}
+        style={{
+          flex: 1,
+          textAlign: "center",
+          fontSize: 13,
+          fontWeight: 600,
+          color: index === 0 ? "#111827" : "#9ca3af",
+background: index === 0 ? "#f3f4f6" : "transparent",
+padding: "10px 0",
+borderRadius: 999,
+        }}
+      >
+        {step}
+      </div>
+    ))}
+  </div>
+</div>  
+
     <div style={{ maxWidth: 1280, margin: "0 auto" }}>
   <GarageHeader
   isSignedIn={isSignedIn}
@@ -982,14 +1022,16 @@ return (
           }}
         >
           <div
-            style={{
-              background: "#ffffff",
-              borderRadius: 24,
-              padding: 20,
-              boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-              border: "1px solid #e5e7eb",
-            }}
-          >
+  id="bike-step"
+  style={{
+    background: "#ffffff",
+    borderRadius: 20,
+    padding: 18,
+    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+    border: "1px solid #e5e7eb",
+    marginBottom: 18,
+  }}
+>
             <GaragePhotoGallery
   uploadedPhotos={uploadedPhotos}
   selectedPhotoIndex={selectedPhotoIndex}
