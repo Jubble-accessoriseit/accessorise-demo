@@ -77,7 +77,7 @@ export default function BikeSummary({
         }}
       >
         <Info label="Make" value={currentBike?.make || ""} />
-        <Info label="Series" value={currentBike?.variant || ""} />
+        <Info label="Series" value={currentBike?.series || ""} />
         <Info label="Model" value={currentBike?.model || ""} />
         <Info label="Year" value={currentBike ? String(currentBike.year) : ""} />
         <Info label="Compatible" value={`${compatibleCount} items`} />
