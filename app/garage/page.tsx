@@ -318,6 +318,8 @@ export default function GaragePage() {
   const [dirtyBuilds, setDirtyBuilds] = useState<Record<string, boolean>>({});
   const [loadedBuilds, setLoadedBuilds] = useState<Record<string, boolean>>({});
 
+  const [activeStep, setActiveStep] = useState<"Bike" | "Build" | "Compare" | "Save" | "Buy">("Bike");
+
   const makeOptions = [
   ...new Set(supabaseBikes.map((b) => b.make)),
 ].sort();
@@ -398,25 +400,27 @@ useEffect(() => {
   if (!selectedMake || !selectedSeries || !selectedModel || !selectedYear) return;
 
   const matchedBike = supabaseBikes.find(
-  (bike) =>
-    bike.make === selectedMake &&
-    bike.model === selectedSeries &&
-    (bike.variant || "Base") === selectedModel &&
-    bike.year === Number(selectedYear)
-);
+    (bike) =>
+      bike.make === selectedMake &&
+      bike.model === selectedSeries &&
+      (bike.variant || "Base") === selectedModel &&
+      bike.year === Number(selectedYear)
+  );
 
-console.log("MATCH TEST:", selectedMake, selectedSeries, selectedModel, selectedYear, matchedBike);
+  console.log(
+    "MATCH TEST:",
+    selectedMake,
+    selectedSeries,
+    selectedModel,
+    selectedYear,
+    matchedBike
+  );
 
   if (matchedBike && matchedBike.id !== selectedBikeId) {
     setSelectedBikeId(matchedBike.id);
+    setActiveStep("Build");
   }
-}, [
-  selectedMake,
-  selectedSeries,
-  selectedModel,
-  selectedYear,
-  selectedBikeId,
-]);
+}, [selectedMake, selectedSeries, selectedModel, selectedYear, selectedBikeId]);
 
 useEffect(() => {
   const fetchBikes = async () => {
@@ -969,34 +973,348 @@ return (
   }}
 >
   <div
-    style={{
-      maxWidth: 1280,
-      margin: "0 auto",
-      display: "flex",
-      justifyContent: "space-between",
-      padding: "14px 10px",
-    }}
-  >
-    {["Bike", "Build", "Compare", "Save", "Buy"].map((step, index) => (
-      <div
+  style={{
+    maxWidth: 1280,
+    margin: "0 auto",
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 8,
+    padding: "14px 10px",
+    flexWrap: "wrap",
+  }}
+>
+  {["Bike", "Build", "Compare", "Save", "Buy"].map((step) => {
+    const isActive = activeStep === step;
+
+    return (
+      <button
         key={step}
+        type="button"
+        onClick={() =>
+          setActiveStep(step as "Bike" | "Build" | "Compare" | "Save" | "Buy")
+        }
         style={{
           flex: 1,
+          minWidth: 110,
           textAlign: "center",
           fontSize: 13,
-          fontWeight: 600,
-          color: index === 0 ? "#111827" : "#9ca3af",
-background: index === 0 ? "#f3f4f6" : "transparent",
-padding: "10px 0",
-borderRadius: 999,
+          fontWeight: 700,
+          color: isActive ? "#111827" : "#6b7280",
+          background: isActive ? "#e5e7eb" : "#ffffff",
+          padding: "10px 14px",
+          borderRadius: 999,
+          border: isActive ? "1px solid #d1d5db" : "1px solid #e5e7eb",
+          cursor: "pointer",
+          transition: "all 0.2s ease",
         }}
       >
         {step}
-      </div>
-    ))}
+      </button>
+    );
+  })}
+</div>
+
+<div
+  style={{
+    maxWidth: 1280,
+    margin: "0 auto",
+    padding: "0 10px 20px",
+  }}
+>
+  <div
+    style={{
+      background: "#ffffff",
+      border: "1px solid #e5e7eb",
+      borderRadius: 16,
+      padding: 16,
+      boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+    }}
+  >
+    <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", marginBottom: 6 }}>
+      GARAGE FLOW
+    </div>
+    <div style={{ fontSize: 22, fontWeight: 800, color: "#111827" }}>
+      {activeStep} step
+    </div>
+    <div style={{ fontSize: 14, color: "#6b7280", marginTop: 6 }}>
+      Choose bike, build it, compare options, save your setup, then buy.
+    </div>
   </div>
+</div>
+
 </div>  
 
+{activeStep === "Compare" && (
+  <section style={{ maxWidth: 1280, margin: "0 auto", padding: "0 10px 32px" }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.2fr)",
+        gap: 24,
+        alignItems: "start",
+      }}
+    >
+      <div
+        style={{
+          background: "#ffffff",
+          border: "1px solid #e5e7eb",
+          borderRadius: 20,
+          padding: 24,
+          boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+        }}
+      >
+        <div
+          style={{
+            fontSize: 12,
+            textTransform: "uppercase",
+            letterSpacing: 1,
+            color: "#6b7280",
+            marginBottom: 8,
+          }}
+        >
+          Your build
+        </div>
+
+        <h2 style={{ marginTop: 0, fontSize: 24, marginBottom: 10 }}>
+          {currentBike
+            ? `${currentBike.make} ${currentBike.model} ${currentBike.variant || "Base"} (${currentBike.year})`
+            : "Your selected bike"}
+        </h2>
+
+        <p style={{ color: "#6b7280", lineHeight: 1.6, marginTop: 0 }}>
+          Compare your current accessory setup against featured expert builds for the same bike.
+        </p>
+
+        <div
+          style={{
+            border: "1px solid #e5e7eb",
+            borderRadius: 16,
+            padding: 16,
+            background: "#f9fafb",
+            marginBottom: 16,
+          }}
+        >
+          <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 6 }}>
+            Current build value
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: "#111827" }}>
+            {formatCurrency(
+              selectedProducts.reduce((total, item) => total + item.price, 0)
+            )}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 12, fontWeight: 700, fontSize: 16 }}>
+          Selected accessories
+        </div>
+
+        {selectedProducts.length === 0 ? (
+          <div
+            style={{
+              border: "1px solid #e5e7eb",
+              borderRadius: 16,
+              padding: 16,
+              background: "#ffffff",
+              color: "#6b7280",
+            }}
+          >
+            No accessories added yet. Go back to Build and add products to compare.
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {selectedProducts.map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 12,
+                  padding: 12,
+                  background: "#ffffff",
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700, color: "#111827" }}>{item.name}</div>
+                  <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                    {item.brand}
+                  </div>
+                </div>
+
+                <div style={{ fontWeight: 700, color: "#111827" }}>
+                  {formatCurrency(item.price)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setActiveStep("Build")}
+          style={{
+            width: "100%",
+            marginTop: 18,
+            padding: "12px 14px",
+            borderRadius: 12,
+            border: "1px solid #d1d5db",
+            background: "#ffffff",
+            color: "#111827",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          Back to Build
+        </button>
+      </div>
+
+      <div style={{ display: "grid", gap: 16 }}>
+        <div
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: 20,
+            padding: 24,
+            boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+              color: "#6b7280",
+              marginBottom: 8,
+            }}
+          >
+            Expert build
+          </div>
+
+          <h3 style={{ margin: "0 0 8px", fontSize: 22 }}>Long Distance Touring</h3>
+
+          <p style={{ color: "#6b7280", lineHeight: 1.6, marginTop: 0 }}>
+            A practical touring setup focused on luggage, comfort and reliability for longer trips.
+          </p>
+
+          <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
+            {[
+              "Alloy side panniers",
+              "Adventure top box",
+              "Touring screen",
+              "Comfort seat",
+              "Auxiliary lights",
+            ].map((item) => (
+              <div
+                key={item}
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 12,
+                  padding: 12,
+                  background: "#f9fafb",
+                  fontWeight: 600,
+                  color: "#111827",
+                }}
+              >
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: 20,
+            padding: 24,
+            boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+              color: "#6b7280",
+              marginBottom: 8,
+            }}
+          >
+            Expert build
+          </div>
+
+          <h3 style={{ margin: "0 0 8px", fontSize: 22 }}>Adventure Protection</h3>
+
+          <p style={{ color: "#6b7280", lineHeight: 1.6, marginTop: 0 }}>
+            A more rugged setup prioritising protection, lighting and off-road durability.
+          </p>
+
+          <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
+            {[
+              "Crash bars",
+              "Skid plate",
+              "Hand guards",
+              "Auxiliary lights",
+              "Navigation mount",
+            ].map((item) => (
+              <div
+                key={item}
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 12,
+                  padding: 12,
+                  background: "#f9fafb",
+                  fontWeight: 600,
+                  color: "#111827",
+                }}
+              >
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+)}
+
+{activeStep === "Save" && (
+  <section style={{ maxWidth: 1280, margin: "0 auto", padding: "0 10px 32px" }}>
+    <div
+      style={{
+        background: "#ffffff",
+        border: "1px solid #e5e7eb",
+        borderRadius: 20,
+        padding: 24,
+      }}
+    >
+      <h2 style={{ marginTop: 0, fontSize: 24 }}>Save build</h2>
+      <p style={{ color: "#6b7280", marginBottom: 0 }}>
+        Next step: save this accessory setup to your garage so you can revisit and edit it later.
+      </p>
+    </div>
+  </section>
+)}
+
+{activeStep === "Buy" && (
+  <section style={{ maxWidth: 1280, margin: "0 auto", padding: "0 10px 32px" }}>
+    <div
+      style={{
+        background: "#ffffff",
+        border: "1px solid #e5e7eb",
+        borderRadius: 20,
+        padding: 24,
+      }}
+    >
+      <h2 style={{ marginTop: 0, fontSize: 24 }}>Buy accessories</h2>
+      <p style={{ color: "#6b7280", marginBottom: 0 }}>
+        Next step: show affiliate purchase links for the products selected in this build.
+      </p>
+    </div>
+  </section>
+)}
+{(activeStep === "Bike" || activeStep === "Build") && (
+  <>
     <div style={{ maxWidth: 1280, margin: "0 auto" }}>
   <GarageHeader
   isSignedIn={isSignedIn}
@@ -1565,6 +1883,26 @@ onChange={(e) => {
               Ready for next phase
             </h3>
 
+            <button
+  type="button"
+  onClick={() => setActiveStep("Compare")}
+  disabled={selectedProducts.length === 0}
+  style={{
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: 12,
+    border: "none",
+    background: selectedProducts.length === 0 ? "#9ca3af" : "#111827",
+    color: "#ffffff",
+    fontWeight: 700,
+    cursor: selectedProducts.length === 0 ? "not-allowed" : "pointer",
+    marginBottom: 16,
+    opacity: selectedProducts.length === 0 ? 0.7 : 1,
+  }}
+>
+  Continue to Compare
+</button>
+
             {saveMessage && (
               <div
                 style={{
@@ -1734,8 +2072,10 @@ onChange={(e) => {
               </div>
             ))}
           </aside>
-        </section>
-          </div>
-        </main>
-  );
+                </section>
+      </div>
+    </>
+  )}
+  </main>
+);
 }
