@@ -2,9 +2,9 @@
 
 type Bike = {
   make: string;
-  series: string;
   model: string;
   year: number;
+  variant?: string | null;
 };
 
 type Props = {
@@ -77,8 +77,8 @@ export default function BikeSummary({
         }}
       >
         <Info label="Make" value={currentBike?.make || ""} />
-        <Info label="Series" value={currentBike?.series || ""} />
-        <Info label="Model" value={currentBike?.model || ""} />
+        <Info label="Series" value={currentBike?.model || ""} />
+        <Info label="Model" value={currentBike?.variant || "Base"} />
         <Info label="Year" value={currentBike ? String(currentBike.year) : ""} />
         <Info label="Compatible" value={`${compatibleCount} items`} />
       </div>

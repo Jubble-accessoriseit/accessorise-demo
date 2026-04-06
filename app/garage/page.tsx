@@ -671,7 +671,7 @@ const uploadedHeroImage =
     : null;
 
 const heroImage =
-  uploadedHeroImage || currentBike?.heroImage || "/placeholder-new.jpg";
+  uploadedHeroImage || "/placeholder-new.jpg";
   const bikeMatchedProducts = products.filter((product) => {
   if (!currentBike) return true;
 
