@@ -65,25 +65,14 @@ export default function GarageHeader({
               flexWrap: "wrap",
             }}
           >
-            <h1 style={{ margin: 0, fontSize: 34 }}>My Garage</h1>
+            <h1 style={{ margin: 0, fontSize: 34 }}>
+  Choose your bike and find your accessories
+</h1>
 
-            <button
-              onClick={() => (window.location.href = "/")}
-              style={{
-                background: "transparent",
-                color: "#9ca3af",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 14,
-              }}
-            >
-              ← Home
-            </button>
+            
           </div>
 
-          <p style={{ margin: 0, color: "#d1d5db", fontSize: 15 }}>
-            Upload up to 10 photos of your actual bike build.
-          </p>
+          
         </div>
 
         <div style={{ display: "flex", gap: 12 }}>
@@ -93,22 +82,11 @@ export default function GarageHeader({
             <button onClick={handleSignIn}>Sign in</button>
           )}
 
-          <label>
-            {isUploadingPhotos ? "Uploading..." : "Upload Photos"}
-            <input
-              type="file"
-              multiple
-              onChange={handlePhotoUpload}
-              style={{ display: "none" }}
-            />
-          </label>
+          
         </div>
       </div>
 
-      <div style={{ marginTop: 14 }}>
-        {uploadedPhotos.length}/10 photos
-      </div>
-
+      
       {saveMessage && <div>{saveMessage}</div>}
       {photoError && <div>{photoError}</div>}
       {pageError && <div>{pageError}</div>}

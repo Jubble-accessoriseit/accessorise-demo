@@ -5,7 +5,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
+      <body
+        style={{
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
         {children}
       </body>
     </html>

@@ -13,7 +13,9 @@ export function getAccessoryPhotos(photos: ExpertBuildPhoto[]) {
 }
 
 export function getAllBuildPhotos(photos: ExpertBuildPhoto[]) {
-  return [...photos].sort((a, b) => a.sort_order - b.sort_order);
+  return [...photos].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+  );
 }
 
 export function getPhotosForAccessory(params: {

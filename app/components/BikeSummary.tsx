@@ -19,15 +19,16 @@ export default function BikeSummary({
   compatibleCount,
 }: Props) {
   return (
-    <div
-      style={{
-        background: "#ffffff",
-        borderRadius: 20,
-        padding: 22,
-        boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-        border: "1px solid #e5e7eb",
-      }}
-    >
+  <div
+    style={{
+      background: "#ffffff",
+      borderRadius: 20,
+      padding: 20,
+      boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+      border: "1px solid #e5e7eb",
+      height: "100%",
+    }}
+  >
       <p
         style={{
           margin: 0,
@@ -56,17 +57,34 @@ export default function BikeSummary({
         photos become the hero image automatically.
       </p>
 
-      <div
-        style={{
-          marginTop: 18,
-          height: 220,
-          borderRadius: 18,
-          backgroundImage: `url(${heroImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundColor: "#f3f4f6",
-        }}
-      />
+      {heroImage ? (
+  <div
+    style={{
+      marginTop: 18,
+      height: 220,
+      borderRadius: 18,
+      backgroundImage: `url(${heroImage})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+    }}
+  />
+) : (
+  <div
+    style={{
+      marginTop: 18,
+      height: 220,
+      borderRadius: 18,
+      background: "#f3f4f6",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "#9ca3af",
+      fontSize: 14,
+    }}
+  >
+    Loading bike image...
+  </div>
+)}
 
       <div
         style={{

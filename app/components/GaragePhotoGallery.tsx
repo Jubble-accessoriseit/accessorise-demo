@@ -95,7 +95,7 @@ export default function GaragePhotoGallery({
               alt="Bike"
               style={{
                 width: "100%",
-                height: 360,
+                height: 300,
                 objectFit: "cover",
                 display: "block",
               }}
@@ -105,7 +105,7 @@ export default function GaragePhotoGallery({
           <div
             style={{
               display: "flex",
-              gap: 16,
+              gap: 12,
               scrollBehavior: "smooth",
               overflowX: "auto",
               whiteSpace: "nowrap",
@@ -116,7 +116,7 @@ export default function GaragePhotoGallery({
               const active = index === selectedPhotoIndex;
 
               return (
-                <div key={photo.id} style={{ minWidth: 150, width: 150 }}>
+                <div key={photo.id} style={{ minWidth: 130, width: 130 }}>
                   <button
                     onClick={() => setSelectedPhotoIndex(index)}
                     style={{
@@ -134,7 +134,7 @@ export default function GaragePhotoGallery({
                       alt={photo.name}
                       style={{
                         width: "100%",
-                        height: 90,
+                        height: 78,
                         objectFit: "cover",
                         display: "block",
                         backgroundColor: "#f3f4f6",

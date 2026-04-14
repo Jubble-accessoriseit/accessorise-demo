@@ -1,0 +1,697 @@
+import type { ExpertBuild, ExpertBuildPhoto } from "../expert-builds/types";
+import { demoAccessoryImages, demoBikeImages } from "./images";
+
+function createPhoto(
+  id: string,
+  imageUrl: string,
+  alt: string,
+  caption: string,
+  angleLabel: string,
+  isPrimary = false
+): ExpertBuildPhoto {
+  return {
+    id,
+    imageUrl,
+    alt,
+    caption,
+    angleLabel,
+    isPrimary,
+  };
+}
+
+const bmwGsTouringPhotos = [
+  createPhoto(
+    "bmw-gs-long-haul-photo-1",
+    demoBikeImages.bmwR1300GS.path,
+    "BMW R 1300 GS long-haul touring build",
+    "Long-haul GS setup with luggage, high navigation placement, and weather-ready protection.",
+    "Hero",
+    true
+  ),
+  createPhoto(
+    "bmw-gs-long-haul-photo-2",
+    demoBikeImages.bmwR1300GS.path,
+    "BMW R 1300 GS cockpit detail",
+    "Cockpit detail focused on GPS, power, and visibility for long days.",
+    "Cockpit"
+  ),
+  createPhoto(
+    "bmw-gs-long-haul-photo-3",
+    demoBikeImages.bmwR1300GS.path,
+    "BMW R 1300 GS luggage detail",
+    "Rear luggage setup prioritising balanced packing and quick camp access.",
+    "Luggage"
+  ),
+];
+
+const bmwGsaExpeditionPhotos = [
+  createPhoto(
+    "bmw-gsa-overland-photo-1",
+    demoBikeImages.bmwR1300GSA.path,
+    "BMW R 1300 GS Adventure overland build",
+    "GS Adventure build focused on load carrying, protection, and visibility.",
+    "Hero",
+    true
+  ),
+  createPhoto(
+    "bmw-gsa-overland-photo-2",
+    demoBikeImages.bmwR1300GSA.path,
+    "BMW R 1300 GS Adventure protection detail",
+    "Protection and underbody coverage tuned for mixed-surface travel.",
+    "Protection"
+  ),
+  createPhoto(
+    "bmw-gsa-overland-photo-3",
+    demoBikeImages.bmwR1300GSA.path,
+    "BMW R 1300 GS Adventure lighting detail",
+    "Auxiliary lighting and rack hardware support poor-weather and remote riding.",
+    "Lighting"
+  ),
+];
+
+const bmwGsCommuterPhotos = [
+  createPhoto(
+    "bmw-gs-urban-tour-photo-1",
+    demoBikeImages.bmwR1300GS.path,
+    "BMW R 1300 GS practical commuter build",
+    "A lighter GS accessory mix for daily use and short weekend escapes.",
+    "Hero",
+    true
+  ),
+  createPhoto(
+    "bmw-gs-urban-tour-photo-2",
+    demoBikeImages.bmwR1300GS.path,
+    "BMW R 1300 GS comfort detail",
+    "Tank bag, risers, and cockpit accessories keep the setup practical without overloading it.",
+    "Detail"
+  ),
+];
+
+const tenereTrailPhotos = [
+  createPhoto(
+    "tenere-red-dirt-photo-1",
+    demoAccessoryImages.tenereBuild.path,
+    "Yamaha Tenere 700 red dirt expert build",
+    "Real supplied build photo used as the anchor image for this Tenere setup.",
+    "Hero",
+    true
+  ),
+  createPhoto(
+    "tenere-red-dirt-photo-2",
+    demoAccessoryImages.tenereBuild.path,
+    "Yamaha Tenere 700 build detail",
+    "Single supplied image currently anchors this build while exact accessory links are curated.",
+    "Build photo"
+  ),
+];
+
+const abikethingR1300GSAPhotos = [
+  createPhoto(
+    "abikething-r1300gsa-tech-touring-photo-1",
+    demoAccessoryImages.abikethingR1300GSABuild.path,
+    "ABikething R1300GSA Tech Touring Build",
+    "Real build photo for ABikething's electronics-heavy R1300GSA touring setup.",
+    "Hero",
+    true
+  ),
+];
+
+export const demoExpertBuildCatalog: ExpertBuild[] = [
+  {
+    id: "r1300gsa-tech-touring-abikething",
+    slug: "r1300gsa-tech-touring-abikething",
+    title: "R1300GSA Tech Touring Build",
+    builderName: "ABikething",
+    builderLocation: "UK",
+    bikeFitment: {
+      make: "BMW",
+      model: "R1300GSA",
+      yearStart: 2024,
+      yearEnd: 2026,
+      family: "bmw-r1300gs",
+    },
+    summary:
+      "A high-tech R1300GSA touring build centred on integrated electronics, conspicuity upgrades, and tidy long-distance cockpit control.",
+    description:
+      "This ABikething build leans into the R1300GSA as a premium long-distance platform. The accessory mix is less about adding bulk and more about integrating power management, navigation, recording, rider awareness, and safety hardware into one coherent touring setup.",
+    primaryPhoto: abikethingR1300GSAPhotos[0],
+    galleryPhotos: abikethingR1300GSAPhotos,
+    accessories: [
+      {
+        id: "abikething-tech-touring-ezcan",
+        productId: 7017,
+        title: "HEX ezCAN",
+        brand: "HEX",
+        categoryId: "electrical",
+        notes:
+          "The central integration piece for powering and controlling the horn, rear light, and other add-on electronics cleanly.",
+        installedPhotoIds: ["abikething-r1300gsa-tech-touring-photo-1"],
+        linkStatus: "seeded",
+      },
+      {
+        id: "abikething-tech-touring-chigee-play",
+        productId: 7018,
+        title: "Chigee Play for BMW",
+        brand: "Chigee",
+        categoryId: "connectivity-navigation",
+        notes:
+          "BMW-specific smart display integration keeps the touring cockpit connected without a cluttered add-on mount stack.",
+        installedPhotoIds: ["abikething-r1300gsa-tech-touring-photo-1"],
+        linkStatus: "seeded",
+      },
+      {
+        id: "abikething-tech-touring-peak-design",
+        productId: 7024,
+        title: "Peak Design Wireless Charger Mount",
+        brand: "Peak Design",
+        categoryId: "connectivity-navigation",
+        notes:
+          "Adds fast-access phone charging and a clean secondary device position for long-haul touring.",
+        installedPhotoIds: ["abikething-r1300gsa-tech-touring-photo-1"],
+        linkStatus: "seeded",
+      },
+      {
+        id: "abikething-tech-touring-tr100",
+        productId: 7019,
+        title: "Chigee TR100",
+        brand: "Chigee",
+        categoryId: "electrical",
+        notes:
+          "Supports the build's tech-heavy touring brief with portable charging and battery-support utility.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "abikething-tech-touring-k7",
+        productId: 7020,
+        title: "Innovv K7 DashCam",
+        brand: "Innovv",
+        categoryId: "rider-tech-recording",
+        notes:
+          "Adds always-on ride recording and incident coverage without compromising the cockpit layout.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "abikething-tech-touring-b6",
+        productId: 7021,
+        title: "Denali B6 Rear Light",
+        brand: "DENALI",
+        categoryId: "safety-visibility",
+        notes:
+          "High-mounted rear light improves conspicuity in traffic and poor weather.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "abikething-tech-touring-soundbomb",
+        productId: 7022,
+        title: "Denali Split Soundbomb",
+        brand: "DENALI",
+        categoryId: "safety-visibility",
+        notes:
+          "A stronger horn choice that fits the build's safety-first road presence focus.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "abikething-tech-touring-weiser",
+        productId: 7023,
+        title: "Weiser Rear Dongles",
+        brand: "Weiser",
+        categoryId: "safety-visibility",
+        notes:
+          "Rear visibility upgrade supporting the build's integration and conspicuity goals.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "abikething-tech-touring-gilles",
+        productId: 7025,
+        title: "Gilles Footpegs",
+        brand: "Gilles",
+        categoryId: "ergonomics",
+        notes:
+          "Premium footpeg upgrade that rounds out the comfort side of this long-distance setup.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "abikething-tech-touring-gys",
+        productId: 7026,
+        title: "GYS Flash Charger",
+        brand: "GYS",
+        categoryId: "power-support",
+        notes:
+          "Battery support is a practical part of keeping a tech-loaded touring bike ready between rides.",
+        linkStatus: "seeded",
+      },
+    ],
+    tags: ["touring", "electronics", "long-distance", "safety"],
+    featured: true,
+    published: true,
+    credibility: {
+      featuredBuild: true,
+      hasRealBuildPhotos: true,
+      installNotesAvailable: true,
+    },
+    dna: {
+      purpose: "touring",
+      ridingStyle: "comfort",
+      terrainFocus: "mixed",
+      loadProfile: "moderate",
+      categoryStrengths: {
+        navigation: 5,
+        electronics: 5,
+        lighting: 3,
+        comfort: 4,
+        performance: 1,
+      },
+    },
+    bike_make: "BMW",
+    bike_model: "R1300GSA",
+    bike_year: 2026,
+  },
+  {
+    id: "bmw-r1300gs-long-haul-reference",
+    slug: "bmw-r1300gs-long-haul-reference",
+    title: "Long Haul GS Reference",
+    builderName: "Alex Mercer",
+    builderLocation: "Melbourne, VIC",
+    bikeFitment: {
+      make: "BMW",
+      model: "R1300GS",
+      yearStart: 2024,
+      yearEnd: 2026,
+      family: "bmw-r1300gs",
+    },
+    summary:
+      "A restrained touring-focused R 1300 GS setup built around luggage stability, cockpit clarity, and all-day comfort.",
+    description:
+      "This build shows a believable premium-touring direction for the standard GS without turning it into a full expedition rig. The choices lean toward navigation visibility, practical luggage, and rider comfort.",
+    primaryPhoto: bmwGsTouringPhotos[0],
+    galleryPhotos: bmwGsTouringPhotos,
+    accessories: [
+      {
+        id: "bmw-gs-long-haul-panniers",
+        productId: 7001,
+        title: "Zega Mundo Pannier System",
+        brand: "Touratech",
+        categoryId: "luggage",
+        notes: "Hard luggage keeps the touring setup balanced and weather-ready.",
+        installedPhotoIds: ["bmw-gs-long-haul-photo-1", "bmw-gs-long-haul-photo-3"],
+        sourceLabel: "Touratech official product page",
+        sourceUrl: "https://touratech-usa.com/store/Zega-Mundo-Pannier-System-BMW%20R1300GS",
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gs-long-haul-racks",
+        productId: 7002,
+        title: "Pannier Racks",
+        brand: "Touratech",
+        categoryId: "luggage",
+        notes: "Rack hardware matched to the pannier system.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gs-long-haul-tank-bag",
+        productId: 7004,
+        title: "NOMAX Tank Bag V3.0",
+        brand: "Mosko Moto",
+        categoryId: "luggage",
+        notes: "Adds daily-access storage without dominating the cockpit.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gs-long-haul-nav",
+        productId: 7011,
+        title: "GPS Mounting Bracket, Above Gauges",
+        brand: "Touratech",
+        categoryId: "navigation",
+        notes: "Keeps navigation in the rider's line of sight above the TFT.",
+        installedPhotoIds: ["bmw-gs-long-haul-photo-2"],
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gs-long-haul-gps",
+        productId: 7010,
+        title: "zumo XT2",
+        brand: "Garmin",
+        categoryId: "navigation",
+        notes: "Dedicated nav for multi-day route planning and offline mapping.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gs-long-haul-risers",
+        productId: 7012,
+        title: "2\" Pivoting Bar Risers for 1 1/8\" Handlebar",
+        brand: "ROX Speed FX",
+        categoryId: "ergonomics",
+        notes: "Improves standing posture and reduces cockpit reach strain.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gs-long-haul-horn",
+        productId: 7013,
+        title: "SoundBomb Mini Electromagnetic Low Tone Horn",
+        brand: "DENALI",
+        categoryId: "safety-visibility",
+        notes: "A practical visibility upgrade for mixed highway use.",
+        linkStatus: "seeded",
+      },
+    ],
+    tags: ["touring", "clean cockpit", "premium daily touring"],
+    featured: true,
+    published: true,
+    credibility: {
+      featuredBuild: true,
+      installNotesAvailable: true,
+    },
+    dna: {
+      purpose: "touring",
+      ridingStyle: "comfort",
+      terrainFocus: "highway",
+      loadProfile: "moderate",
+      categoryStrengths: {
+        luggage: 5,
+        navigation: 4,
+        comfort: 4,
+        protection: 3,
+        lighting: 2,
+      },
+    },
+    bike_make: "BMW",
+    bike_model: "R1300GS",
+    bike_year: 2026,
+  },
+  {
+    id: "bmw-r1300gsa-overland-reference",
+    slug: "bmw-r1300gsa-overland-reference",
+    title: "Overland GSA Packout",
+    builderName: "Chris Holloway",
+    builderLocation: "Orange, NSW",
+    bikeFitment: {
+      make: "BMW",
+      model: "R1300GSA",
+      yearStart: 2024,
+      yearEnd: 2026,
+      family: "bmw-r1300gs",
+    },
+    summary:
+      "A GS Adventure setup with a stronger expedition bias: full luggage, serious protection, and visibility upgrades for remote travel.",
+    description:
+      "This build pushes the larger GS Adventure toward long-range mixed-surface use. It leans harder into protection and lighting than the standard GS touring reference.",
+    primaryPhoto: bmwGsaExpeditionPhotos[0],
+    galleryPhotos: bmwGsaExpeditionPhotos,
+    accessories: [
+      {
+        id: "bmw-gsa-overland-panniers",
+        productId: 7001,
+        title: "Zega Mundo Pannier System",
+        brand: "Touratech",
+        categoryId: "luggage",
+        notes: "Primary hard luggage choice for longer unsupported trips.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gsa-overland-top-rack",
+        productId: 7003,
+        title: "Zega Topcase Rack",
+        brand: "Touratech",
+        categoryId: "luggage",
+        notes: "Adds secure rear storage flexibility.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gsa-overland-crash-bars",
+        productId: 7005,
+        title: "Upper Crash Bars",
+        brand: "Outback Motortek",
+        categoryId: "protection",
+        notes: "Crash protection for a heavily loaded travel setup.",
+        installedPhotoIds: ["bmw-gsa-overland-photo-2"],
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gsa-overland-skid",
+        productId: 7006,
+        title: "Skid Plate",
+        brand: "Outback Motortek",
+        categoryId: "protection",
+        notes: "Underbody coverage for rougher service-road work.",
+        installedPhotoIds: ["bmw-gsa-overland-photo-2"],
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gsa-overland-lights",
+        productId: 7008,
+        title: "D7 PRO Multi-Beam Driving Light Pods",
+        brand: "DENALI",
+        categoryId: "lighting",
+        notes: "High-output lighting for bad weather and after-dark travel.",
+        installedPhotoIds: ["bmw-gsa-overland-photo-3"],
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gsa-overland-light-mount",
+        productId: 7009,
+        title: "Upper Driving Light Mount",
+        brand: "DENALI",
+        categoryId: "lighting",
+        notes: "Model-specific mount to keep the lighting setup clean.",
+        installedPhotoIds: ["bmw-gsa-overland-photo-3"],
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gsa-overland-headlight-guard",
+        productId: 7016,
+        title: "Clear Headlight Guard",
+        brand: "Touratech",
+        categoryId: "protection",
+        notes: "Adds another layer of front-end protection for big-mile travel.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gsa-overland-nav",
+        productId: 7010,
+        title: "zumo XT2",
+        brand: "Garmin",
+        categoryId: "navigation",
+        notes: "Dedicated route and waypoint device for longer trips.",
+        linkStatus: "seeded",
+      },
+    ],
+    tags: ["expedition", "bmw r1300gsa", "remote touring"],
+    featured: true,
+    published: true,
+    credibility: {
+      featuredBuild: true,
+      editorsPick: true,
+    },
+    dna: {
+      purpose: "adventure",
+      ridingStyle: "expedition",
+      terrainFocus: "mixed",
+      loadProfile: "fully-loaded",
+      categoryStrengths: {
+        luggage: 5,
+        protection: 5,
+        lighting: 4,
+        navigation: 4,
+        comfort: 3,
+      },
+    },
+    bike_make: "BMW",
+    bike_model: "R1300GSA",
+    bike_year: 2026,
+  },
+  {
+    id: "bmw-r1300gs-practical-commute",
+    slug: "bmw-r1300gs-practical-commute",
+    title: "Practical GS Daily Pack",
+    builderName: "Nina Wallace",
+    builderLocation: "Sydney, NSW",
+    bikeFitment: {
+      make: "BMW",
+      model: "R1300GS",
+      yearStart: 2024,
+      yearEnd: 2026,
+      family: "bmw-r1300gs",
+    },
+    summary:
+      "A lighter, more practical GS setup aimed at commuting, weekend rides, and fast daily usability rather than full expedition loading.",
+    description:
+      "This reference build intentionally stops short of a full travel packout. It focuses on one-bag convenience, cockpit utility, and small comfort gains.",
+    primaryPhoto: bmwGsCommuterPhotos[0],
+    galleryPhotos: bmwGsCommuterPhotos,
+    accessories: [
+      {
+        id: "bmw-gs-commute-tank-bag",
+        productId: 7004,
+        title: "NOMAX Tank Bag V3.0",
+        brand: "Mosko Moto",
+        categoryId: "luggage",
+        notes: "Daily-use storage without the width of panniers.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gs-commute-gps",
+        productId: 7010,
+        title: "zumo XT2",
+        brand: "Garmin",
+        categoryId: "navigation",
+        notes: "Useful for mixed commuting and weekend route planning.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gs-commute-risers",
+        productId: 7012,
+        title: "2\" Pivoting Bar Risers for 1 1/8\" Handlebar",
+        brand: "ROX Speed FX",
+        categoryId: "ergonomics",
+        notes: "Adds comfort without changing the bike's whole character.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gs-commute-crash-bars",
+        productId: 7007,
+        title: "Upper Crash Bar",
+        brand: "SW-MOTECH",
+        categoryId: "protection",
+        notes: "A simpler protection choice for riders who still want insurance against low-speed drops.",
+        linkStatus: "seeded",
+      },
+      {
+        id: "bmw-gs-commute-horn",
+        productId: 7013,
+        title: "SoundBomb Mini Electromagnetic Low Tone Horn",
+        brand: "DENALI",
+        categoryId: "safety-visibility",
+        notes: "Urban awareness upgrade without adding clutter.",
+        linkStatus: "seeded",
+      },
+    ],
+    tags: ["commuter", "lightweight", "practical"],
+    featured: false,
+    published: true,
+    credibility: {
+      installNotesAvailable: true,
+    },
+    dna: {
+      purpose: "commuter",
+      ridingStyle: "balanced",
+      terrainFocus: "urban",
+      loadProfile: "light",
+      categoryStrengths: {
+        comfort: 4,
+        navigation: 3,
+        luggage: 3,
+        protection: 2,
+      },
+    },
+    bike_make: "BMW",
+    bike_model: "R1300GS",
+    bike_year: 2026,
+  },
+  {
+    id: "yamaha-tenere-red-dirt-reference",
+    slug: "yamaha-tenere-red-dirt-reference",
+    title: "Red Dirt Tenere Reference",
+    builderName: "Accessorise It Demo",
+    builderLocation: "Australia",
+    bikeFitment: {
+      make: "Yamaha",
+      model: "Tenere 700",
+      yearStart: 2024,
+      yearEnd: 2026,
+      family: "yamaha-tenere-700",
+    },
+    summary:
+      "A real-photo Tenere 700 reference build oriented toward lightweight mixed-surface riding, with only the confirmed linked items seeded so far.",
+    description:
+      "This build uses the supplied Tenere image as a genuine build visual. Confirmed accessory links are intentionally limited to products we can support cleanly today; the remaining visible kit is left as pending manual curation instead of being guessed.",
+    primaryPhoto: tenereTrailPhotos[0],
+    galleryPhotos: tenereTrailPhotos,
+    accessories: [
+      {
+        id: "tenere-red-dirt-crash-bars",
+        productId: 7014,
+        title: "Crash Bars Combo",
+        brand: "Outback Motortek",
+        categoryId: "protection",
+        notes: "Real seeded protection option for a Tenere adventure setup.",
+        sourceLabel: "Outback Motortek official product page",
+        sourceUrl: "https://outbackmotortek.com/product/yamaha-tenere-700-crash-bars/",
+        linkStatus: "seeded",
+      },
+      {
+        id: "tenere-red-dirt-skid",
+        productId: 7015,
+        title: "Skid Plate",
+        brand: "Outback Motortek",
+        categoryId: "protection",
+        notes: "Grounded seeded fitment for the Tenere's underbody protection.",
+        sourceLabel: "Outback Motortek official product page",
+        sourceUrl: "https://outbackmotortek.com/product/yamaha-tenere-700-skid-plate/",
+        linkStatus: "seeded",
+      },
+      {
+        id: "tenere-red-dirt-gps",
+        productId: 7010,
+        title: "zumo XT2",
+        brand: "Garmin",
+        categoryId: "navigation",
+        notes: "A believable navigation anchor for an ADV cockpit build.",
+        sourceLabel: "Garmin official product page",
+        sourceUrl: "https://www.garmin.com/en-US/p/1222490",
+        linkStatus: "seeded",
+      },
+      {
+        id: "tenere-red-dirt-luggage-pending",
+        title: "Rear soft luggage setup",
+        brand: "Pending manual curation",
+        categoryId: "luggage",
+        notes:
+          "Visible in the supplied build photo, but the exact rack and luggage kit are not yet linked in the repo.",
+        compatibilityNotes: "Manual confirmation needed before linking a real product.",
+        linkStatus: "pending-manual",
+      },
+      {
+        id: "tenere-red-dirt-cockpit-pending",
+        title: "Cockpit mount hardware",
+        brand: "Pending manual curation",
+        categoryId: "navigation",
+        notes:
+          "Exact mount hardware still needs manual confirmation from the source build details.",
+        compatibilityNotes: "Leave unlinked until manually verified.",
+        linkStatus: "pending-manual",
+      },
+      {
+        id: "tenere-red-dirt-tyres-pending",
+        title: "Adventure tyre choice",
+        brand: "Pending manual curation",
+        categoryId: "tyres",
+        notes:
+          "The current photo suggests a more dirt-biased setup, but the tyre model is not confirmed.",
+        compatibilityNotes: "Tyre callout intentionally left pending rather than guessed.",
+        linkStatus: "pending-manual",
+      },
+    ],
+    tags: ["real photo", "tenere 700", "lightweight adventure"],
+    featured: true,
+    published: true,
+    credibility: {
+      hasRealBuildPhotos: true,
+      featuredBuild: true,
+    },
+    dna: {
+      purpose: "off-road",
+      ridingStyle: "lightweight",
+      terrainFocus: "technical",
+      loadProfile: "light",
+      categoryStrengths: {
+        protection: 5,
+        navigation: 3,
+        luggage: 2,
+        tyres: 4,
+      },
+    },
+    bike_make: "Yamaha",
+    bike_model: "Tenere 700",
+    bike_year: 2026,
+  },
+];

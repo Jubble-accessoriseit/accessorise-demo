@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { sanitizeAuthRedirect } from "@/lib/auth/redirect";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -11,7 +12,11 @@ export default function AuthCallbackPage() {
     const finishLogin = async () => {
       try {
         await supabase.auth.getSession();
-        router.replace("/garage");
+        const nextPath =
+          typeof window === "undefined"
+            ? null
+            : new URLSearchParams(window.location.search).get("next");
+        router.replace(sanitizeAuthRedirect(nextPath));
       } catch (error) {
         console.error("Auth callback error:", error);
         router.replace("/login");
