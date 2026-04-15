@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ProductPurchaseButton } from "../commerce/ProductPurchaseButton";
 import { resolveProductCommerce } from "../../lib/commerce/resolveProductCommerce";
@@ -19,8 +19,10 @@ export function ExpertBuildDetail({
   onCompare,
   onOpenPurchase,
 }: ExpertBuildDetailProps) {
+  const [viewportWidth, setViewportWidth] = useState<number | null>(null);
   const bikeLabel = getExpertBuildBikeLabel(build);
   const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
+  const isPhone = viewportWidth !== null ? viewportWidth < 820 : false;
   const selectedPhoto = useMemo(
     () =>
       build.galleryPhotos.find((photo) => photo.id === selectedPhotoId) ??
@@ -28,13 +30,24 @@ export function ExpertBuildDetail({
     [build.galleryPhotos, build.primaryPhoto, selectedPhotoId]
   );
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleResize = () => setViewportWidth(window.innerWidth);
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <div
       style={{
         display: "grid",
-        gap: 12,
-        padding: 18,
-        borderRadius: 22,
+        gap: isPhone ? 10 : 12,
+        padding: isPhone ? 14 : 18,
+        borderRadius: isPhone ? 20 : 22,
         border: "1px solid #e2e8f0",
         background: "#ffffff",
         boxShadow: "0 12px 28px rgba(15,23,42,0.06)",
@@ -61,10 +74,26 @@ export function ExpertBuildDetail({
           >
             Expert Build
           </div>
-          <h3 style={{ margin: 0, fontSize: 24, lineHeight: 1.08, color: "#0f172a" }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: isPhone ? 21 : 24,
+              lineHeight: 1.08,
+              color: "#0f172a",
+              overflowWrap: "anywhere",
+            }}
+          >
             {build.title}
           </h3>
-          <div style={{ fontSize: 13, color: "#334155", fontWeight: 700 }}>
+          <div
+            style={{
+              fontSize: 13,
+              color: "#334155",
+              fontWeight: 700,
+              lineHeight: 1.45,
+              overflowWrap: "anywhere",
+            }}
+          >
             {[build.builderName, build.builderLocation].filter(Boolean).join(", ")} |{" "}
             {build.fitmentLabel}
           </div>
@@ -78,11 +107,33 @@ export function ExpertBuildDetail({
           )}
         </div>
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <button type="button" onClick={onBack} style={secondaryButtonStyle}>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            justifyContent: isPhone ? "stretch" : "flex-end",
+            width: isPhone ? "100%" : "auto",
+          }}
+        >
+          <button
+            type="button"
+            onClick={onBack}
+            style={{
+              ...secondaryButtonStyle,
+              flex: isPhone ? "1 1 160px" : undefined,
+            }}
+          >
             Back to builds
           </button>
-          <button type="button" onClick={onCompare} style={primaryButtonStyle}>
+          <button
+            type="button"
+            onClick={onCompare}
+            style={{
+              ...primaryButtonStyle,
+              flex: isPhone ? "1 1 160px" : undefined,
+            }}
+          >
             Compare
           </button>
         </div>
@@ -91,23 +142,25 @@ export function ExpertBuildDetail({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(260px, 360px) minmax(0, 1fr)",
-          gap: 14,
+          gridTemplateColumns: isPhone
+            ? "minmax(0, 1fr)"
+            : "minmax(260px, 360px) minmax(0, 1fr)",
+          gap: isPhone ? 12 : 14,
           alignItems: "start",
         }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gap: isPhone ? 8 : 10,
+            position: isPhone ? "static" : "sticky",
+            top: isPhone ? undefined : 96,
+          }}
         >
-          <div
-            style={{
-              display: "grid",
-              gap: 10,
-              position: "sticky",
-              top: 96,
-            }}
-          >
             <div
               style={{
-                minHeight: 220,
-                borderRadius: 18,
+                minHeight: isPhone ? 188 : 220,
+                borderRadius: isPhone ? 16 : 18,
                 backgroundImage: `linear-gradient(180deg, rgba(15,23,42,0.04), rgba(15,23,42,0.38)), url(${selectedPhoto.imageUrl})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
@@ -119,7 +172,9 @@ export function ExpertBuildDetail({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(88px, 1fr))",
+                  gridTemplateColumns: isPhone
+                    ? "repeat(3, minmax(0, 1fr))"
+                    : "repeat(auto-fit, minmax(88px, 1fr))",
                   gap: 8,
                 }}
               >
@@ -132,7 +187,7 @@ export function ExpertBuildDetail({
                       type="button"
                       onClick={() => setSelectedPhotoId(photo.id)}
                       style={{
-                        minHeight: 74,
+                        minHeight: isPhone ? 68 : 74,
                         borderRadius: 12,
                         border: isSelected ? "2px solid #2563eb" : "1px solid #dbe3ee",
                         padding: 0,
@@ -154,52 +209,61 @@ export function ExpertBuildDetail({
             <div
               style={{
                 display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
-              gap: 8,
-            }}
-          >
-            <StatCard label="Accessories" value={String(build.accessoryCount)} />
-            <StatCard label="Photos" value={String(build.galleryCount)} />
-            <StatCard label="Match" value={`${build.matchSummary.matchScore}%`} />
-            <StatCard
-              label="Missing"
-              value={String(build.matchSummary.missingCategories.length)}
-            />
+                gridTemplateColumns: isPhone
+                  ? "repeat(2, minmax(0, 1fr))"
+                  : "repeat(auto-fit, minmax(110px, 1fr))",
+                gap: 8,
+              }}
+            >
+              <StatCard label="Accessories" value={String(build.accessoryCount)} />
+              <StatCard label="Photos" value={String(build.galleryCount)} />
+              <StatCard label="Match" value={`${build.matchSummary.matchScore}%`} />
+              <StatCard
+                label="Missing"
+                value={String(build.matchSummary.missingCategories.length)}
+              />
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                flexWrap: "wrap",
+              }}
+            >
+              {build.credibilityBadges.map((badge) => (
+                <span
+                  key={`${build.id}-${badge}`}
+                  style={{
+                    display: "inline-flex",
+                    padding: "5px 8px",
+                    borderRadius: 999,
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    color: "#334155",
+                    fontSize: 11,
+                    fontWeight: 800,
+                  }}
+                >
+                  {badge}
+                </span>
+              ))}
+            </div>
           </div>
 
           <div
             style={{
-              display: "flex",
-              gap: 6,
-              flexWrap: "wrap",
+              display: "grid",
+              gap: 12,
+              alignContent: "start",
+              minWidth: 0,
             }}
           >
-            {build.credibilityBadges.map((badge) => (
-              <span
-                key={`${build.id}-${badge}`}
-                style={{
-                  display: "inline-flex",
-                  padding: "5px 8px",
-                  borderRadius: 999,
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                  color: "#334155",
-                  fontSize: 11,
-                  fontWeight: 800,
-                }}
-              >
-                {badge}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
           <div
             style={{
               display: "grid",
               gap: 10,
-              padding: 14,
+              padding: isPhone ? 12 : 14,
               borderRadius: 18,
               border: "1px solid #e2e8f0",
               background: "#fbfdff",
@@ -211,7 +275,9 @@ export function ExpertBuildDetail({
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gridTemplateColumns: isPhone
+                  ? "minmax(0, 1fr)"
+                  : "repeat(auto-fit, minmax(180px, 1fr))",
                 gap: 10,
               }}
             >
@@ -229,7 +295,7 @@ export function ExpertBuildDetail({
                 style={{
                   display: "grid",
                   gap: 10,
-                  padding: 14,
+                  padding: isPhone ? 12 : 14,
                   borderRadius: 18,
                   border: "1px solid #e2e8f0",
                   background: "#ffffff",
@@ -259,7 +325,7 @@ export function ExpertBuildDetail({
                       style={{
                         display: "grid",
                         gap: 8,
-                        padding: 12,
+                        padding: isPhone ? 11 : 12,
                         borderRadius: 14,
                         border: "1px solid #e2e8f0",
                         background: "#f8fafc",
@@ -313,7 +379,12 @@ export function ExpertBuildDetail({
                         </div>
                       )}
 
-                      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: isPhone ? "stretch" : "flex-end",
+                        }}
+                      >
                         <ProductPurchaseButton
                           commerce={resolveProductCommerce({
                             product: accessory.product,

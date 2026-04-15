@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ExpertBuildCard } from "./ExpertBuildCard";
 import { ExpertBuildDetail } from "./ExpertBuildDetail";
 import type {
@@ -43,11 +43,24 @@ export function ExpertBuildsStep({
   selectedExpertBuild,
   selectedProducts,
 }: ExpertBuildsStepProps) {
+  const [viewportWidth, setViewportWidth] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<ExpertViewMode>("grid");
+  const isPhone = viewportWidth !== null ? viewportWidth < 820 : false;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleResize = () => setViewportWidth(window.innerWidth);
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   if (!currentBike) {
     return (
-      <section style={{ maxWidth: 1600, margin: "0 auto", padding: "0 10px 32px" }}>
+      <section style={{ maxWidth: 1600, margin: "0 auto", padding: isPhone ? "0 0 28px" : "0 10px 32px" }}>
         <div
           style={{
             display: "grid",
@@ -70,13 +83,13 @@ export function ExpertBuildsStep({
   }
 
   return (
-    <section style={{ maxWidth: 1600, margin: "0 auto", padding: "0 10px 32px" }}>
+    <section style={{ maxWidth: 1600, margin: "0 auto", padding: isPhone ? "0 0 28px" : "0 10px 32px" }}>
       <div style={{ display: "grid", gap: 14 }}>
         <div
           style={{
             display: "grid",
             gap: 12,
-            padding: 18,
+            padding: isPhone ? 14 : 18,
             borderRadius: 20,
             border: "1px solid #e5e7eb",
             background: "#ffffff",
@@ -88,7 +101,7 @@ export function ExpertBuildsStep({
               <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase", color: "#64748b" }}>
                 Expert Builds
               </div>
-              <h3 style={{ margin: 0, fontSize: 22, color: "#0f172a", lineHeight: 1.1 }}>
+              <h3 style={{ margin: 0, fontSize: isPhone ? 20 : 22, color: "#0f172a", lineHeight: 1.1 }}>
                 Expert Builds for {currentBike.make} {currentBike.model}
               </h3>
               <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
@@ -254,6 +267,7 @@ export function ExpertBuildsStep({
                   <ExpertBuildListRow
                     key={build.id}
                     build={build}
+                    isPhone={isPhone}
                     onCompare={() => onCompareExpertBuild(build.id)}
                     onOpen={() => onSelectExpertBuild(build.id)}
                   />
@@ -289,10 +303,12 @@ function SummaryPill({ label }: { label: string }) {
 
 function ExpertBuildListRow({
   build,
+  isPhone,
   onCompare,
   onOpen,
 }: {
   build: ResolvedExpertBuild;
+  isPhone: boolean;
   onCompare: () => void;
   onOpen: () => void;
 }) {
@@ -309,10 +325,10 @@ function ExpertBuildListRow({
       }}
       style={{
         display: "grid",
-        gridTemplateColumns: "88px minmax(0, 1fr)",
-        gap: 14,
+        gridTemplateColumns: isPhone ? "minmax(0, 1fr)" : "88px minmax(0, 1fr)",
+        gap: isPhone ? 12 : 14,
         alignItems: "start",
-        padding: 14,
+        padding: isPhone ? 12 : 14,
         borderRadius: 20,
         border: "1px solid #e2e8f0",
         background: "#ffffff",
@@ -322,9 +338,9 @@ function ExpertBuildListRow({
     >
       <div
         style={{
-          width: 88,
-          height: 88,
-          borderRadius: 16,
+          width: isPhone ? "100%" : 88,
+          height: isPhone ? 176 : 88,
+          borderRadius: isPhone ? 18 : 16,
           backgroundImage: `linear-gradient(180deg, rgba(15,23,42,0.06), rgba(15,23,42,0.3)), url(${build.primaryPhoto.imageUrl})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
@@ -382,7 +398,14 @@ function ExpertBuildListRow({
             </div>
           </div>
 
-          <div style={{ display: "grid", gap: 8, minWidth: "min(100%, 210px)", flex: "0 1 230px" }}>
+          <div
+            style={{
+              display: "grid",
+              gap: 8,
+              minWidth: isPhone ? "100%" : "min(100%, 210px)",
+              flex: isPhone ? "1 1 100%" : "0 1 230px",
+            }}
+          >
             <div
               style={{
                 display: "grid",
@@ -405,7 +428,7 @@ function ExpertBuildListRow({
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  minHeight: 36,
+                  minHeight: isPhone ? 40 : 36,
                   padding: "8px 12px",
                   borderRadius: 12,
                   border: "none",
@@ -428,7 +451,7 @@ function ExpertBuildListRow({
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  minHeight: 36,
+                  minHeight: isPhone ? 40 : 36,
                   padding: "8px 12px",
                   borderRadius: 12,
                   border: "1px solid #cbd5e1",
