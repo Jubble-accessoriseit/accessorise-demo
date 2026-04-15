@@ -158,6 +158,7 @@ export function GarageStepNav({
               gap: 8,
               flexWrap: "wrap",
               minWidth: 0,
+              width: isPhone ? "100%" : "auto",
             }}
           >
             <button
@@ -179,8 +180,14 @@ export function GarageStepNav({
                 color: "#475569",
                 fontSize: isPhone ? 11 : 12,
                 fontWeight: 700,
-                maxWidth: isPhone ? "100%" : isCompactGarageShell ? "100%" : 240,
+                flex: isPhone ? "1 1 180px" : "0 1 auto",
+                width: isPhone ? "auto" : undefined,
+                minWidth: 0,
+                maxWidth: isPhone ? "calc(100% - 92px)" : isCompactGarageShell ? "100%" : 240,
                 minHeight: isPhone ? 34 : 36,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
               title={signedInUserEmail || undefined}
             >
