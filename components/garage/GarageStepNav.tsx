@@ -220,11 +220,13 @@ export function GarageStepNav({
 
         <div
           style={{
-            display: "flex",
+            display: isPhone ? "grid" : "flex",
+            gridTemplateColumns: isPhone ? "repeat(3, minmax(0, 1fr))" : undefined,
             gap: isPhone ? 6 : 8,
-            overflowX: "auto",
+            overflowX: isPhone ? "visible" : "auto",
             paddingBottom: isPhone ? 0 : 2,
             scrollbarWidth: "none",
+            minWidth: 0,
           }}
         >
           {garageSteps.map((step, index) => {
@@ -245,9 +247,9 @@ export function GarageStepNav({
                 }}
                 style={{
                   flex: "0 0 auto",
-                  minWidth: isPhone ? "auto" : isCompactGarageShell ? 104 : 118,
+                  minWidth: isPhone ? 0 : isCompactGarageShell ? 104 : 118,
                   minHeight: isPhone ? 34 : isCompactGarageShell ? 48 : 50,
-                  padding: isPhone ? "7px 12px" : isCompactGarageShell ? "8px 12px" : "9px 14px",
+                  padding: isPhone ? "7px 6px" : isCompactGarageShell ? "8px 12px" : "9px 14px",
                   borderRadius: isPhone ? 999 : 18,
                   border: isActive ? "1px solid #0f172a" : "1px solid #dbe3ee",
                   background: isActive
@@ -268,6 +270,7 @@ export function GarageStepNav({
                   gap: isPhone ? 0 : 3,
                   alignItems: "center",
                   justifyContent: "center",
+                  width: isPhone ? "100%" : undefined,
                 }}
               >
                 {!isPhone ? (
@@ -285,9 +288,10 @@ export function GarageStepNav({
                 ) : null}
                 <span
                   style={{
-                    fontSize: isPhone ? 12 : isCompactGarageShell ? 13 : 14,
+                    fontSize: isPhone ? 11 : isCompactGarageShell ? 13 : 14,
                     fontWeight: 800,
                     lineHeight: 1.1,
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {isCompactGarageShell ? step.shortLabel : step.label}

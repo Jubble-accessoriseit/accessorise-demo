@@ -188,6 +188,9 @@ export function GarageBikeStep({
                   background: "#ffffff",
                   fontSize: 14,
                   color: "#0f172a",
+                  width: "100%",
+                  maxWidth: "100%",
+                  minWidth: 0,
                 }}
               >
                 <option value="">

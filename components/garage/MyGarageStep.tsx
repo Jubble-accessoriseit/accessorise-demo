@@ -212,20 +212,21 @@ function BuildActionRow({
   if (isPhone && !isDetailView) {
     const mobileSecondaryActionStyle = {
       ...secondaryButtonStyle,
-      minHeight: 34,
-      padding: "7px 10px",
+      minHeight: 33,
+      padding: "6px 9px",
       width: "100%",
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: 700,
       lineHeight: 1.1,
+      letterSpacing: 0.1,
     } satisfies CSSProperties;
 
     const mobilePrimaryActionStyle = {
       ...primaryButtonStyle,
-      minHeight: 36,
-      padding: "8px 12px",
+      minHeight: 34,
+      padding: "7px 11px",
       width: "100%",
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: 700,
       lineHeight: 1.1,
       boxShadow: "0 8px 18px rgba(15,23,42,0.12)",
@@ -269,6 +270,8 @@ function BuildActionRow({
               border: isOpenInWorkspace ? "1px solid #bfdbfe" : secondaryButtonStyle.border,
               background: isOpenInWorkspace ? "#eff6ff" : secondaryButtonStyle.background,
               color: isOpenInWorkspace ? "#1d4ed8" : secondaryButtonStyle.color,
+              fontSize: 9.5,
+              letterSpacing: 0,
             }}
           >
             Return to Build
@@ -279,13 +282,15 @@ function BuildActionRow({
           type="button"
           onClick={() => onCompareBuild(build.id)}
           disabled={!canCompareBuild}
-          style={{
-            ...mobilePrimaryActionStyle,
-            background: canCompareBuild ? "#1f2937" : "#94a3b8",
-            cursor: canCompareBuild ? "pointer" : "not-allowed",
-            opacity: canCompareBuild ? 1 : 0.8,
-          }}
-        >
+            style={{
+              ...mobilePrimaryActionStyle,
+              background: canCompareBuild ? "#1f2937" : "#94a3b8",
+              cursor: canCompareBuild ? "pointer" : "not-allowed",
+              opacity: canCompareBuild ? 1 : 0.8,
+              fontSize: 10,
+              fontWeight: 700,
+            }}
+          >
           Compare Builds
         </button>
 
