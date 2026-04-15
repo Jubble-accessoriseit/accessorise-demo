@@ -4805,6 +4805,7 @@ return (
   activeStep={activeStep}
   isCheckingSession={isCheckingSession}
   isCompactGarageShell={isCompactGarageShell}
+  isPhone={isPhone}
   isSignedIn={isSignedIn}
   onBackHome={() => router.push("/")}
   onSignIn={handleSignIn}
@@ -5748,6 +5749,7 @@ return (
           </div>
         )}
         <MyGarageStep
+          isPhone={isPhone}
           view={myGarageView}
           bikes={myGarageBikes}
           selectedBike={selectedGarageBike}

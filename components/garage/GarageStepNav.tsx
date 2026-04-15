@@ -7,6 +7,7 @@ type GarageStepNavProps = {
   activeShellCopy: { title: string; subtitle: string };
   isCheckingSession: boolean;
   isCompactGarageShell: boolean;
+  isPhone: boolean;
   isSignedIn: boolean;
   onBackHome: () => void;
   onSignIn: () => void;
@@ -34,6 +35,7 @@ export function GarageStepNav({
   activeShellCopy,
   isCheckingSession,
   isCompactGarageShell,
+  isPhone,
   isSignedIn,
   onBackHome,
   onSignIn,
@@ -52,7 +54,7 @@ export function GarageStepNav({
         top: 0,
         zIndex: 30,
         marginBottom: isCompactGarageShell ? 16 : 24,
-        padding: isCompactGarageShell ? "10px 0 12px" : "16px 0 18px",
+        padding: isPhone ? "8px 0 10px" : isCompactGarageShell ? "10px 0 12px" : "16px 0 18px",
         backdropFilter: "blur(16px)",
         background: "rgba(248,250,252,0.92)",
         borderBottom: "1px solid rgba(226,232,240,0.88)",
@@ -64,9 +66,9 @@ export function GarageStepNav({
           maxWidth: 1360,
           marginLeft: "auto",
           marginRight: "auto",
-          padding: isCompactGarageShell ? "0 12px" : "0 20px",
+          padding: isPhone ? "0 12px" : isCompactGarageShell ? "0 12px" : "0 20px",
           display: "grid",
-          gap: isCompactGarageShell ? 10 : 14,
+          gap: isPhone ? 8 : isCompactGarageShell ? 10 : 14,
         }}
       >
         <div
@@ -78,7 +80,7 @@ export function GarageStepNav({
             flexWrap: "wrap",
           }}
         >
-          <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
+          <div style={{ display: "grid", gap: isPhone ? 4 : 6, minWidth: 0 }}>
             <div
               style={{
                 display: "flex",
@@ -91,11 +93,11 @@ export function GarageStepNav({
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  padding: "5px 9px",
+                  padding: isPhone ? "4px 8px" : "5px 9px",
                   borderRadius: 999,
                   background: "#ffffff",
                   border: "1px solid #dbe3ee",
-                  fontSize: 11,
+                  fontSize: isPhone ? 10 : 11,
                   fontWeight: 800,
                   letterSpacing: 0.5,
                   textTransform: "uppercase",
@@ -108,11 +110,11 @@ export function GarageStepNav({
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  padding: "5px 9px",
+                  padding: isPhone ? "4px 8px" : "5px 9px",
                   borderRadius: 999,
                   background: "#0f172a",
                   color: "#ffffff",
-                  fontSize: 11,
+                  fontSize: isPhone ? 10 : 11,
                   fontWeight: 800,
                 }}
               >
@@ -120,12 +122,12 @@ export function GarageStepNav({
               </span>
             </div>
 
-            <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ display: "grid", gap: isPhone ? 3 : 4 }}>
               <h1
                 style={{
                   margin: 0,
-                  fontSize: isCompactGarageShell ? 28 : 34,
-                  lineHeight: 1.02,
+                  fontSize: isPhone ? 24 : isCompactGarageShell ? 28 : 34,
+                  lineHeight: isPhone ? 1.04 : 1.02,
                   fontWeight: 900,
                   letterSpacing: -0.6,
                   color: "#0f172a",
@@ -137,8 +139,8 @@ export function GarageStepNav({
               <p
                 style={{
                   margin: 0,
-                  fontSize: isCompactGarageShell ? 13 : 14,
-                  lineHeight: 1.5,
+                  fontSize: isPhone ? 12 : isCompactGarageShell ? 13 : 14,
+                  lineHeight: isPhone ? 1.45 : 1.5,
                   color: "#64748b",
                   maxWidth: 680,
                 }}
@@ -161,7 +163,7 @@ export function GarageStepNav({
             <button
               type="button"
               onClick={onBackHome}
-              style={actionButtonStyle(isCompactGarageShell)}
+              style={actionButtonStyle(isCompactGarageShell, isPhone)}
             >
               Home
             </button>
@@ -170,15 +172,15 @@ export function GarageStepNav({
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                padding: isCompactGarageShell ? "8px 11px" : "9px 12px",
-                borderRadius: 14,
+                padding: isPhone ? "7px 10px" : isCompactGarageShell ? "8px 11px" : "9px 12px",
+                borderRadius: isPhone ? 12 : 14,
                 border: "1px solid #dbe3ee",
                 background: "#ffffff",
                 color: "#475569",
-                fontSize: 12,
+                fontSize: isPhone ? 11 : 12,
                 fontWeight: 700,
-                maxWidth: isCompactGarageShell ? "100%" : 240,
-                minHeight: 36,
+                maxWidth: isPhone ? "100%" : isCompactGarageShell ? "100%" : 240,
+                minHeight: isPhone ? 34 : 36,
               }}
               title={signedInUserEmail || undefined}
             >
@@ -193,7 +195,7 @@ export function GarageStepNav({
               <button
                 type="button"
                 onClick={onSignOut}
-                style={actionButtonStyle(isCompactGarageShell)}
+                style={actionButtonStyle(isCompactGarageShell, isPhone)}
               >
                 Sign out
               </button>
@@ -201,7 +203,7 @@ export function GarageStepNav({
               <button
                 type="button"
                 onClick={onSignIn}
-                style={actionButtonStyle(isCompactGarageShell, true)}
+                style={actionButtonStyle(isCompactGarageShell, isPhone, true)}
               >
                 Sign in
               </button>
@@ -212,9 +214,9 @@ export function GarageStepNav({
         <div
           style={{
             display: "flex",
-            gap: 8,
+            gap: isPhone ? 6 : 8,
             overflowX: "auto",
-            paddingBottom: 2,
+            paddingBottom: isPhone ? 0 : 2,
             scrollbarWidth: "none",
           }}
         >
@@ -236,39 +238,47 @@ export function GarageStepNav({
                 }}
                 style={{
                   flex: "0 0 auto",
-                  minWidth: isCompactGarageShell ? 104 : 118,
-                  minHeight: isCompactGarageShell ? 48 : 50,
-                  padding: isCompactGarageShell ? "8px 12px" : "9px 14px",
-                  borderRadius: 18,
+                  minWidth: isPhone ? "auto" : isCompactGarageShell ? 104 : 118,
+                  minHeight: isPhone ? 34 : isCompactGarageShell ? 48 : 50,
+                  padding: isPhone ? "7px 12px" : isCompactGarageShell ? "8px 12px" : "9px 14px",
+                  borderRadius: isPhone ? 999 : 18,
                   border: isActive ? "1px solid #0f172a" : "1px solid #dbe3ee",
                   background: isActive
                     ? "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)"
                     : "#ffffff",
                   color: isActive ? "#ffffff" : "#0f172a",
-                  textAlign: "left",
+                  textAlign: isPhone ? "center" : "left",
                   opacity: isBuildDisabled ? 0.52 : 1,
                   cursor: isBuildDisabled ? "not-allowed" : "pointer",
                   boxShadow: isActive
-                    ? "0 14px 24px rgba(15,23,42,0.18)"
+                    ? isPhone
+                      ? "0 8px 16px rgba(15,23,42,0.14)"
+                      : "0 14px 24px rgba(15,23,42,0.18)"
+                    : isPhone
+                    ? "0 1px 3px rgba(15,23,42,0.05)"
                     : "0 4px 12px rgba(15,23,42,0.04)",
-                  display: "grid",
-                  gap: 3,
+                  display: isPhone ? "inline-flex" : "grid",
+                  gap: isPhone ? 0 : 3,
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
+                {!isPhone ? (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      letterSpacing: 0.5,
+                      textTransform: "uppercase",
+                      color: isActive ? "rgba(255,255,255,0.72)" : "#94a3b8",
+                    }}
+                  >
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                ) : null}
                 <span
                   style={{
-                    fontSize: 10,
-                    fontWeight: 800,
-                    letterSpacing: 0.5,
-                    textTransform: "uppercase",
-                    color: isActive ? "rgba(255,255,255,0.72)" : "#94a3b8",
-                  }}
-                >
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <span
-                  style={{
-                    fontSize: isCompactGarageShell ? 13 : 14,
+                    fontSize: isPhone ? 12 : isCompactGarageShell ? 13 : 14,
                     fontWeight: 800,
                     lineHeight: 1.1,
                   }}
@@ -284,16 +294,16 @@ export function GarageStepNav({
   );
 }
 
-function actionButtonStyle(isCompactGarageShell: boolean, isPrimary = false) {
+function actionButtonStyle(isCompactGarageShell: boolean, isPhone: boolean, isPrimary = false) {
   return {
     flex: "0 0 auto",
-    minHeight: 36,
-    padding: isCompactGarageShell ? "8px 12px" : "9px 13px",
-    borderRadius: 14,
+    minHeight: isPhone ? 34 : 36,
+    padding: isPhone ? "7px 10px" : isCompactGarageShell ? "8px 12px" : "9px 13px",
+    borderRadius: isPhone ? 12 : 14,
     border: isPrimary ? "none" : "1px solid #d1d5db",
     background: isPrimary ? "#0f172a" : "#ffffff",
     color: isPrimary ? "#ffffff" : "#111827",
-    fontSize: 12,
+    fontSize: isPhone ? 11 : 12,
     fontWeight: 800,
     cursor: "pointer",
     boxShadow: isPrimary

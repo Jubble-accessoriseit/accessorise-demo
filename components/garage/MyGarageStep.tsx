@@ -10,6 +10,7 @@ import {
 import { formatGaragePriceDisplay } from "@/lib/garage/price-display";
 
 type MyGarageStepProps = {
+  isPhone: boolean;
   view: MyGarageView;
   bikes: GarageBikeRecord[];
   selectedBike: GarageBikeRecord | null;
@@ -135,10 +136,12 @@ function getBuildDetailItems(build: GarageBuildRecord, bike: GarageBikeRecord) {
 
 function BuildThumbnail({
   build,
+  fullWidth = false,
   width = 128,
   height = 80,
 }: {
   build: GarageBuildRecord;
+  fullWidth?: boolean;
   width?: number;
   height?: number;
 }) {
@@ -148,8 +151,8 @@ function BuildThumbnail({
     return (
       <div
         style={{
-          width,
-          minWidth: width,
+          width: fullWidth ? "100%" : width,
+          minWidth: fullWidth ? 0 : width,
           height,
           borderRadius: 14,
           overflow: "hidden",
@@ -163,8 +166,8 @@ function BuildThumbnail({
   return (
     <div
       style={{
-        width,
-        minWidth: width,
+        width: fullWidth ? "100%" : width,
+        minWidth: fullWidth ? 0 : width,
         height,
         borderRadius: 14,
         overflow: "hidden",
@@ -180,6 +183,7 @@ function BuildThumbnail({
 function BuildActionRow({
   build,
   bikeId,
+  isPhone,
   isDetailView,
   isOpenInSavedBuilds,
   isOpenInWorkspace,
@@ -193,6 +197,7 @@ function BuildActionRow({
 }: {
   build: GarageBuildRecord;
   bikeId: string;
+  isPhone: boolean;
   isDetailView: boolean;
   isOpenInSavedBuilds: boolean;
   isOpenInWorkspace: boolean;
@@ -209,17 +214,19 @@ function BuildActionRow({
       style={{
         display: "grid",
         gap: 8,
-        justifyItems: isDetailView ? "start" : "stretch",
+        justifyItems: isPhone || isDetailView ? "stretch" : "stretch",
         minWidth: 0,
+        width: "100%",
       }}
     >
       <div
         style={{
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: isPhone ? "minmax(0, 1fr)" : "repeat(auto-fit, minmax(140px, max-content))",
           gap: 6,
-          flexWrap: "wrap",
           justifyContent: isDetailView ? "flex-start" : "flex-end",
-          alignItems: "center",
+          alignItems: "stretch",
+          width: "100%",
         }}
       >
         {!isDetailView && (
@@ -229,6 +236,7 @@ function BuildActionRow({
             disabled={isOpenInSavedBuilds}
             style={{
               ...secondaryButtonStyle,
+              width: "100%",
               border: isOpenInSavedBuilds ? "1px solid #bfdbfe" : secondaryButtonStyle.border,
               background: isOpenInSavedBuilds ? "#eff6ff" : secondaryButtonStyle.background,
               color: isOpenInSavedBuilds ? "#1d4ed8" : secondaryButtonStyle.color,
@@ -243,6 +251,7 @@ function BuildActionRow({
           onClick={() => onOpenInBuild(build.id)}
           style={{
             ...secondaryButtonStyle,
+            width: "100%",
             border: isOpenInWorkspace ? "1px solid #bfdbfe" : secondaryButtonStyle.border,
             background: isOpenInWorkspace ? "#eff6ff" : secondaryButtonStyle.background,
             color: isOpenInWorkspace ? "#1d4ed8" : secondaryButtonStyle.color,
@@ -256,6 +265,7 @@ function BuildActionRow({
           disabled={!canCompareBuild}
           style={{
             ...primaryButtonStyle,
+            width: "100%",
             background: canCompareBuild ? primaryButtonStyle.background : "#94a3b8",
             cursor: canCompareBuild ? "pointer" : "not-allowed",
             opacity: canCompareBuild ? 1 : 0.8,
@@ -266,17 +276,18 @@ function BuildActionRow({
       </div>
       <div
         style={{
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: isPhone ? "repeat(2, minmax(0, 1fr))" : "repeat(auto-fit, minmax(120px, max-content))",
           gap: 6,
-          flexWrap: "wrap",
           justifyContent: isDetailView ? "flex-start" : "flex-end",
-          alignItems: "center",
+          alignItems: "stretch",
+          width: "100%",
         }}
       >
         <button
           type="button"
           onClick={() => onRenameBuild(build.id)}
-          style={secondaryButtonStyle}
+          style={{ ...secondaryButtonStyle, width: "100%" }}
         >
           Rename
         </button>
@@ -285,6 +296,7 @@ function BuildActionRow({
           onClick={() => onArchiveBuild(build.id)}
           style={{
             ...secondaryButtonStyle,
+            width: "100%",
             border: "1px solid #fecaca",
             background: "#fff1f2",
             color: "#b91c1c",
@@ -297,9 +309,10 @@ function BuildActionRow({
         <div
           style={{
             ...subtleHintStyle,
-            textAlign: isDetailView ? "left" : "right",
-            maxWidth: isDetailView ? 420 : 360,
-            justifySelf: isDetailView ? "start" : "end",
+            textAlign: "left",
+            maxWidth: isPhone ? "100%" : isDetailView ? 420 : 360,
+            justifySelf: "stretch",
+            width: "100%",
           }}
         >
           {compareGuidance}
@@ -591,6 +604,7 @@ function SavedBuildListCard({
   activeWorkspaceBuildId,
   bike,
   build,
+  isPhone,
   onArchiveBuild,
   onCompareBuild,
   onOpenBuild,
@@ -601,6 +615,7 @@ function SavedBuildListCard({
   activeWorkspaceBuildId: string | null;
   bike: GarageBikeRecord;
   build: GarageBuildRecord;
+  isPhone: boolean;
   onArchiveBuild: (buildId: string) => void;
   onCompareBuild: (buildId: string) => void;
   onOpenBuild: (bikeId: string, buildId: string) => void;
@@ -628,7 +643,7 @@ function SavedBuildListCard({
         boxShadow: isOpenInWorkspace
           ? "0 16px 28px rgba(37,99,235,0.08)"
           : shellCardStyle.boxShadow,
-        padding: "12px 14px",
+        padding: isPhone ? 12 : "12px 14px",
         display: "grid",
         gap: 8,
       }}
@@ -636,19 +651,19 @@ function SavedBuildListCard({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(112px, 136px) minmax(0, 1fr)",
+          gridTemplateColumns: isPhone ? "minmax(0, 1fr)" : "minmax(112px, 136px) minmax(0, 1fr)",
           gap: 14,
           alignItems: "start",
         }}
       >
-        <div style={{ width: "100%", minWidth: 0, maxWidth: 136 }}>
-          <BuildThumbnail build={build} width={136} height={84} />
+        <div style={{ width: isPhone ? "100%" : "100%", minWidth: 0, maxWidth: isPhone ? "100%" : 136 }}>
+          <BuildThumbnail build={build} fullWidth={isPhone} width={136} height={isPhone ? 176 : 84} />
         </div>
         <div
           style={{
             display: "flex",
             flexWrap: "wrap",
-            gap: 14,
+            gap: isPhone ? 10 : 14,
             alignItems: "start",
             minWidth: 0,
           }}
@@ -701,10 +716,11 @@ function SavedBuildListCard({
               </div>
             )}
           </div>
-          <div style={{ marginLeft: "auto", minWidth: 0, flex: "0 1 340px" }}>
+          <div style={{ marginLeft: isPhone ? 0 : "auto", minWidth: 0, flex: isPhone ? "1 1 100%" : "0 1 340px", width: isPhone ? "100%" : undefined }}>
             <BuildActionRow
               build={build}
               bikeId={bike.id}
+              isPhone={isPhone}
               isDetailView={false}
               isOpenInSavedBuilds={isOpenInSavedBuilds}
               isOpenInWorkspace={isOpenInWorkspace}
@@ -724,6 +740,7 @@ function SavedBuildListCard({
 }
 
 export function MyGarageStep({
+  isPhone,
   view,
   bikes,
   selectedBike,
@@ -816,6 +833,7 @@ export function MyGarageStep({
                   activeWorkspaceBuildId={activeWorkspaceBuildId}
                   bike={bike}
                   build={build}
+                  isPhone={isPhone}
                   onArchiveBuild={onArchiveBuild}
                   onCompareBuild={onCompareBuild}
                   onOpenBuild={onOpenBuild}
@@ -861,6 +879,7 @@ export function MyGarageStep({
             <BuildActionRow
               build={selectedBuild}
               bikeId={selectedBike.id}
+              isPhone={isPhone}
               isDetailView
               isOpenInSavedBuilds
               isOpenInWorkspace={activeWorkspaceBuildId === selectedBuild.id}
@@ -892,7 +911,7 @@ export function MyGarageStep({
                     alignItems: "start",
                   }}
                 >
-                  <BuildThumbnail build={selectedBuild} width={152} height={100} />
+                  <BuildThumbnail build={selectedBuild} fullWidth={isPhone} width={152} height={isPhone ? 188 : 100} />
                   <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
                     <div style={sectionEyebrowStyle}>
                       Saved build
