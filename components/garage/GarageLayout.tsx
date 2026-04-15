@@ -36,7 +36,7 @@ export function GarageStepShell({
         maxWidth,
         margin: "0 auto",
         padding: isPhone
-          ? `0 12px ${Math.max(24, paddingBottom - 4)}px`
+          ? `0 14px ${Math.max(24, paddingBottom - 4)}px`
           : `0 16px ${paddingBottom}px`,
       }}
     >

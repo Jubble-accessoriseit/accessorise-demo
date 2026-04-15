@@ -98,8 +98,7 @@ export type CompareFilter =
   | "missing"
   | "different"
   | "matches"
-  | "yours-only"
-  | "selected";
+  | "yours-only";
 
 export type CompareCategoryRow = {
   key: string;

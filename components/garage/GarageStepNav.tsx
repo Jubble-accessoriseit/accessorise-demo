@@ -66,7 +66,7 @@ export function GarageStepNav({
           maxWidth: 1360,
           marginLeft: "auto",
           marginRight: "auto",
-          padding: isPhone ? "0 12px" : isCompactGarageShell ? "0 12px" : "0 20px",
+          padding: isPhone ? "0 14px" : isCompactGarageShell ? "0 12px" : "0 20px",
           display: "grid",
           gap: isPhone ? 8 : isCompactGarageShell ? 10 : 14,
         }}

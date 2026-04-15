@@ -9,27 +9,6 @@ import type {
 } from "../../types/garage";
 import type { ResolvedExpertBuild } from "../expert-builds/types";
 
-export function getCompareNeededProducts(
-  selectedExpertBuild: ResolvedExpertBuild | null,
-  selectedProducts: Product[]
-) {
-  if (!selectedExpertBuild) return [];
-
-  const yourIds = new Set(selectedProducts.map((product) => product.id));
-  return selectedExpertBuild.items.filter((product) => !yourIds.has(product.id));
-}
-
-export function getSelectedCompareProducts(
-  selectedExpertBuild: ResolvedExpertBuild | null,
-  selectedCompareProductIds: number[]
-) {
-  if (!selectedExpertBuild) return [];
-
-  return selectedExpertBuild.items.filter((product) =>
-    selectedCompareProductIds.includes(product.id)
-  );
-}
-
 export function getCompareSummary(
   selectedExpertBuild: ResolvedExpertBuild | null,
   selectedProducts: Product[]
@@ -159,8 +138,7 @@ export function getCompareCategorySections(
 }
 
 export function getCompareFilterCounts(
-  compareCategorySections: CompareCategorySection[],
-  selectedCompareProductIds: number[]
+  compareCategorySections: CompareCategorySection[]
 ) {
   const allRows = compareCategorySections.flatMap((section) => section.rows);
 
@@ -172,18 +150,12 @@ export function getCompareFilterCounts(
     matches: allRows.filter((row) => row.status === "Match").length,
     "yours-only": allRows.filter((row) => row.status === "Only in your build")
       .length,
-    selected: allRows.filter(
-      (row) =>
-        !!row.actionProduct &&
-        selectedCompareProductIds.includes(row.actionProduct.id)
-    ).length,
   };
 }
 
 export function getFilteredCompareCategorySections(
   compareCategorySections: CompareCategorySection[],
-  activeCompareFilter: CompareFilter,
-  selectedCompareProductIds: number[]
+  activeCompareFilter: CompareFilter
 ): CompareCategorySection[] {
   const matchesFilter = (row: CompareCategoryRow) => {
     switch (activeCompareFilter) {
@@ -195,11 +167,6 @@ export function getFilteredCompareCategorySections(
         return row.status === "Match";
       case "yours-only":
         return row.status === "Only in your build";
-      case "selected":
-        return (
-          !!row.actionProduct &&
-          selectedCompareProductIds.includes(row.actionProduct.id)
-        );
       case "all":
       default:
         return true;
@@ -245,13 +212,6 @@ export function getCompareFilterMeta(
         emptyTitle: "No user-only items",
         emptyBody:
           "Everything in your build is also represented in the selected expert build.",
-      };
-    case "selected":
-      return {
-        title: "Showing items selected for bulk add",
-        emptyTitle: "No items selected for bulk add",
-        emptyBody:
-          "Choose missing or alternative expert items below to queue them for a single bulk-add action.",
       };
     case "all":
     default:

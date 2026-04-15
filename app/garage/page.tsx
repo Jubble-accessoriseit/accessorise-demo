@@ -25,10 +25,8 @@ import {
   getCompareCategorySections,
   getCompareFilterCounts,
   getCompareFilterMeta,
-  getCompareNeededProducts,
   getCompareSummary,
   getFilteredCompareCategorySections,
-  getSelectedCompareProducts,
 } from "../../lib/garage/compare";
 import {
   applyGarageBuildMetadata,
@@ -497,19 +495,6 @@ function normalizeOwnershipStatus(value: string | null): GarageOwnershipStatus |
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-function areNumberArraysEqual(left: number[], right: number[]) {
-  if (left === right) return true;
-  if (left.length !== right.length) return false;
-
-  for (let index = 0; index < left.length; index += 1) {
-    if (left[index] !== right[index]) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 function getPersistedMergeDraftDecisionSummary(
@@ -1191,7 +1176,6 @@ const [requestedGarageStep, setRequestedGarageStep] = useState<GarageStepId | nu
   const [lastPreMergeSnapshotByBike, setLastPreMergeSnapshotByBike] = useState<
     Record<string, ExpertBuildMergeRestorePoint>
   >({});
-  const [selectedCompareProductIds, setSelectedCompareProductIds] = useState<number[]>([]);
   const [activeCompareFilter, setActiveCompareFilter] = useState<CompareFilter>("all");
   const [buildSortOption, setBuildSortOption] = useState<"price-low" | "price-high" | "supplier">("supplier");
   const [buildViewMode, setBuildViewMode] = useState<"card" | "list">("list");
@@ -2398,23 +2382,6 @@ useEffect(() => {
   });
 }, [isEditingSavedGarageBuild, activeWorkingGarageSourceBuild?.id]);
 
-const compareNeededProducts = useMemo(
-  () => getCompareNeededProducts(selectedExpertBuild, selectedProducts),
-  [selectedExpertBuild, selectedProducts]
-);
-
-const selectedCompareProducts = useMemo(
-  () => getSelectedCompareProducts(selectedExpertBuild, selectedCompareProductIds),
-  [selectedExpertBuild, selectedCompareProductIds]
-);
-
-useEffect(() => {
-  const nextIds = compareNeededProducts.map((product) => product.id);
-  setSelectedCompareProductIds((prev) =>
-    areNumberArraysEqual(prev, nextIds) ? prev : nextIds
-  );
-}, [compareNeededProducts]);
-
 const compareSummary = useMemo(
   () => getCompareSummary(selectedExpertBuild, selectedProducts),
   [selectedExpertBuild, selectedProducts]
@@ -2426,18 +2393,13 @@ const compareCategorySections = useMemo<CompareCategorySection[]>(
 );
 
 const compareFilterCounts = useMemo(
-  () => getCompareFilterCounts(compareCategorySections, selectedCompareProductIds),
-  [compareCategorySections, selectedCompareProductIds]
+  () => getCompareFilterCounts(compareCategorySections),
+  [compareCategorySections]
 );
 
 const filteredCompareCategorySections = useMemo<CompareCategorySection[]>(
-  () =>
-    getFilteredCompareCategorySections(
-      compareCategorySections,
-      activeCompareFilter,
-      selectedCompareProductIds
-    ),
-  [activeCompareFilter, compareCategorySections, selectedCompareProductIds]
+  () => getFilteredCompareCategorySections(compareCategorySections, activeCompareFilter),
+  [activeCompareFilter, compareCategorySections]
 );
 
 const activeCompareFilterMeta = useMemo(
@@ -2527,14 +2489,6 @@ useEffect(() => {
   const removeFromBuild = (productId: number) => {
     removeProductFromBikeBuild(activeBuildBikeId, productId);
   };
-
-const toggleCompareProductSelection = (productId: number) => {
-  setSelectedCompareProductIds((prev) =>
-    prev.includes(productId)
-      ? prev.filter((id) => id !== productId)
-      : [...prev, productId]
-  );
-};
 
 const handleOpenProductPurchase = (input: {
   accessory?: ResolvedExpertBuildAccessory | null;
@@ -3130,19 +3084,6 @@ const handleSaveExpertBuildToGarage = async (expertBuildId: string) => {
   }
 };
 
-  const addSelectedCompareItemsToBuild = () => {
-    if (!selectedExpertBuild) return;
-
-    const selectedCompareProducts = selectedExpertBuild.items.filter((product) =>
-      selectedCompareProductIds.includes(product.id)
-    );
-
-    if (selectedCompareProducts.length === 0) return;
-
-    selectedCompareProducts.forEach((product) => addToBuild(product));
-    setSaveMessage(`${selectedCompareProducts.length} expert build item${selectedCompareProducts.length === 1 ? "" : "s"} added to your build.`);
-  };
-
 const compatibleCount = useMemo(() => {
   return products.filter((product) =>
     isProductCompatible(product, activeCompatibilityBikeId)
@@ -3305,7 +3246,6 @@ const isSelectedBikeSavedGarageBike = !!selectedBike && myGarageBikes.some((bike
     setHasEditedGarageBikeName(false);
     setGarageBuildCompareReferenceId(null);
     setSelectedExpertBuildId("");
-    setSelectedCompareProductIds([]);
     setActiveCompareFilter("all");
     setMyGarageView({ level: "overview" });
     setSaveMessage("");
@@ -4797,7 +4737,7 @@ return (
       minHeight: "100vh",
       background:
         "linear-gradient(180deg, rgba(248,250,252,1) 0%, rgba(243,244,246,1) 100%)",
-      padding: "0 20px 48px",
+      padding: isPhone ? "0 0 40px" : "0 20px 48px",
     }}
   >
 <GarageStepNav
@@ -5013,7 +4953,6 @@ return (
   <CompareBuildsStep
     activeCompareFilter={activeCompareFilter}
     activeCompareFilterMeta={activeCompareFilterMeta}
-    addSelectedCompareItemsToBuild={addSelectedCompareItemsToBuild}
     addToBuild={addToBuild}
     compareCategorySections={compareCategorySections}
     compareFilterCounts={compareFilterCounts}
@@ -5026,11 +4965,8 @@ return (
     onChangeExpertBuild={() => setActiveStep("Expert")}
     onFilterChange={setActiveCompareFilter}
     onSaveBuild={handleSaveBuild}
-    selectedCompareProductIds={selectedCompareProductIds}
-    selectedCompareProducts={selectedCompareProducts}
     selectedExpertBuild={selectedExpertBuild}
     selectedProducts={selectedProducts}
-    toggleCompareProductSelection={toggleCompareProductSelection}
   />
 )}
 

@@ -326,6 +326,7 @@ export function GarageBuildStep({
 
     return (
       <BuildProductRow
+        key={product.id}
         categories={categories}
         fitLabel={fitLabel}
         fitStyle={fitStyle}

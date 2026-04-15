@@ -305,11 +305,11 @@ export function GarageShopStep({
       <div style={{ display: "grid", gap: 16 }}>
         <GarageSummaryCard
           eyebrow="Shop accessories"
-          title="Shop accessories for a saved bike"
+          title="Shop for your chosen accessories"
           description={
             buySelectedBike
               ? `${buySelectedBikeLabel} is driving fit and supplier context below.`
-              : "Choose a saved bike to browse compatible accessories without losing your place."
+              : "Choose a bike context to browse compatible accessories without losing your place."
           }
         >
           <div

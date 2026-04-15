@@ -209,6 +209,122 @@ function BuildActionRow({
   onRenameBuild: (buildId: string) => void;
   onArchiveBuild: (buildId: string) => void;
 }) {
+  if (isPhone && !isDetailView) {
+    return (
+      <div
+        style={{
+          display: "grid",
+          gap: 6,
+          width: "100%",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: 6,
+            width: "100%",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => onOpenBuild(bikeId, build.id)}
+            disabled={isOpenInSavedBuilds}
+            style={{
+              ...secondaryButtonStyle,
+              minHeight: 36,
+              padding: "8px 10px",
+              width: "100%",
+              border: isOpenInSavedBuilds ? "1px solid #bfdbfe" : secondaryButtonStyle.border,
+              background: isOpenInSavedBuilds ? "#eff6ff" : secondaryButtonStyle.background,
+              color: isOpenInSavedBuilds ? "#1d4ed8" : secondaryButtonStyle.color,
+              cursor: isOpenInSavedBuilds ? "default" : "pointer",
+            }}
+          >
+            View Details
+          </button>
+          <button
+            type="button"
+            onClick={() => onOpenInBuild(build.id)}
+            style={{
+              ...secondaryButtonStyle,
+              minHeight: 36,
+              padding: "8px 10px",
+              width: "100%",
+              border: isOpenInWorkspace ? "1px solid #bfdbfe" : secondaryButtonStyle.border,
+              background: isOpenInWorkspace ? "#eff6ff" : secondaryButtonStyle.background,
+              color: isOpenInWorkspace ? "#1d4ed8" : secondaryButtonStyle.color,
+            }}
+          >
+            Return to Build
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onCompareBuild(build.id)}
+          disabled={!canCompareBuild}
+          style={{
+            ...primaryButtonStyle,
+            minHeight: 38,
+            padding: "9px 12px",
+            width: "100%",
+            background: canCompareBuild ? primaryButtonStyle.background : "#94a3b8",
+            cursor: canCompareBuild ? "pointer" : "not-allowed",
+            opacity: canCompareBuild ? 1 : 0.8,
+          }}
+        >
+          Compare Builds
+        </button>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: 6,
+            width: "100%",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => onRenameBuild(build.id)}
+            style={{ ...secondaryButtonStyle, minHeight: 34, padding: "7px 10px", width: "100%" }}
+          >
+            Rename
+          </button>
+          <button
+            type="button"
+            onClick={() => onArchiveBuild(build.id)}
+            style={{
+              ...secondaryButtonStyle,
+              minHeight: 34,
+              padding: "7px 10px",
+              width: "100%",
+              border: "1px solid #fecaca",
+              background: "#fff1f2",
+              color: "#b91c1c",
+            }}
+          >
+            Delete
+          </button>
+        </div>
+
+        {!canCompareBuild && compareGuidance ? (
+          <div
+            style={{
+              ...subtleHintStyle,
+              textAlign: "left",
+              width: "100%",
+              marginTop: 2,
+            }}
+          >
+            {compareGuidance}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -643,45 +759,45 @@ function SavedBuildListCard({
         boxShadow: isOpenInWorkspace
           ? "0 16px 28px rgba(37,99,235,0.08)"
           : shellCardStyle.boxShadow,
-        padding: isPhone ? 12 : "12px 14px",
+        padding: isPhone ? "10px 10px 11px" : "12px 14px",
         display: "grid",
-        gap: 8,
+        gap: isPhone ? 6 : 8,
       }}
     >
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: isPhone ? "minmax(0, 1fr)" : "minmax(112px, 136px) minmax(0, 1fr)",
-          gap: 14,
+          gridTemplateColumns: isPhone ? "88px minmax(0, 1fr)" : "minmax(112px, 136px) minmax(0, 1fr)",
+          gap: isPhone ? 10 : 14,
           alignItems: "start",
         }}
       >
-        <div style={{ width: isPhone ? "100%" : "100%", minWidth: 0, maxWidth: isPhone ? "100%" : 136 }}>
-          <BuildThumbnail build={build} fullWidth={isPhone} width={136} height={isPhone ? 176 : 84} />
+        <div style={{ width: isPhone ? 88 : "100%", minWidth: 0, maxWidth: isPhone ? 88 : 136 }}>
+          <BuildThumbnail build={build} fullWidth={false} width={isPhone ? 88 : 136} height={isPhone ? 88 : 84} />
         </div>
         <div
           style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: isPhone ? 10 : 14,
+            display: "grid",
+            gap: isPhone ? 6 : 14,
             alignItems: "start",
             minWidth: 0,
+            width: "100%",
           }}
         >
-          <div style={{ display: "grid", gap: 4, minWidth: 0, flex: "1 1 280px" }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", lineHeight: 1.2, overflowWrap: "anywhere" }}>
+          <div style={{ display: "grid", gap: isPhone ? 3 : 4, minWidth: 0 }}>
+            <div style={{ fontSize: isPhone ? 15 : 17, fontWeight: 800, color: "#0f172a", lineHeight: isPhone ? 1.18 : 1.2, overflowWrap: "anywhere" }}>
               {build.name}
             </div>
-            <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.35, overflowWrap: "anywhere" }}>
+            <div style={{ fontSize: isPhone ? 12 : 13, color: "#475569", lineHeight: 1.3, overflowWrap: "anywhere" }}>
               {bikeSummary.primaryName}
               {bikeSummary.secondaryName !== bikeSummary.primaryName ? ` - ${bikeSummary.secondaryName}` : ""}
             </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.35 }}>
+            <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.3 }}>
                 Updated {formatBuildUpdatedAt(build.updatedAt)}
               </span>
               <span style={{ width: 4, height: 4, borderRadius: 999, background: "#cbd5e1" }} />
-              <span style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.35 }}>
+              <span style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.3 }}>
                 {build.accessoryCount} accessories
               </span>
             </div>
@@ -693,7 +809,7 @@ function SavedBuildListCard({
                       ...metaPillStyle,
                       background: "#eff6ff",
                       color: "#1d4ed8",
-                      padding: "3px 8px",
+                      padding: isPhone ? "2px 7px" : "3px 8px",
                       fontSize: 10,
                     }}
                   >
@@ -706,7 +822,7 @@ function SavedBuildListCard({
                       ...metaPillStyle,
                       background: "#ecfdf5",
                       color: "#047857",
-                      padding: "3px 8px",
+                      padding: isPhone ? "2px 7px" : "3px 8px",
                       fontSize: 10,
                     }}
                   >
@@ -716,7 +832,7 @@ function SavedBuildListCard({
               </div>
             )}
           </div>
-          <div style={{ marginLeft: isPhone ? 0 : "auto", minWidth: 0, flex: isPhone ? "1 1 100%" : "0 1 340px", width: isPhone ? "100%" : undefined }}>
+          <div style={{ marginLeft: isPhone ? 0 : "auto", minWidth: 0, width: "100%" }}>
             <BuildActionRow
               build={build}
               bikeId={bike.id}
