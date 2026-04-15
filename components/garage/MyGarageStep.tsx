@@ -210,11 +210,32 @@ function BuildActionRow({
   onArchiveBuild: (buildId: string) => void;
 }) {
   if (isPhone && !isDetailView) {
+    const mobileSecondaryActionStyle = {
+      ...secondaryButtonStyle,
+      minHeight: 34,
+      padding: "7px 10px",
+      width: "100%",
+      fontSize: 11,
+      fontWeight: 700,
+      lineHeight: 1.1,
+    } satisfies CSSProperties;
+
+    const mobilePrimaryActionStyle = {
+      ...primaryButtonStyle,
+      minHeight: 36,
+      padding: "8px 12px",
+      width: "100%",
+      fontSize: 11,
+      fontWeight: 700,
+      lineHeight: 1.1,
+      boxShadow: "0 8px 18px rgba(15,23,42,0.12)",
+    } satisfies CSSProperties;
+
     return (
       <div
         style={{
           display: "grid",
-          gap: 6,
+          gap: 5,
           width: "100%",
         }}
       >
@@ -231,10 +252,7 @@ function BuildActionRow({
             onClick={() => onOpenBuild(bikeId, build.id)}
             disabled={isOpenInSavedBuilds}
             style={{
-              ...secondaryButtonStyle,
-              minHeight: 36,
-              padding: "8px 10px",
-              width: "100%",
+              ...mobileSecondaryActionStyle,
               border: isOpenInSavedBuilds ? "1px solid #bfdbfe" : secondaryButtonStyle.border,
               background: isOpenInSavedBuilds ? "#eff6ff" : secondaryButtonStyle.background,
               color: isOpenInSavedBuilds ? "#1d4ed8" : secondaryButtonStyle.color,
@@ -247,10 +265,7 @@ function BuildActionRow({
             type="button"
             onClick={() => onOpenInBuild(build.id)}
             style={{
-              ...secondaryButtonStyle,
-              minHeight: 36,
-              padding: "8px 10px",
-              width: "100%",
+              ...mobileSecondaryActionStyle,
               border: isOpenInWorkspace ? "1px solid #bfdbfe" : secondaryButtonStyle.border,
               background: isOpenInWorkspace ? "#eff6ff" : secondaryButtonStyle.background,
               color: isOpenInWorkspace ? "#1d4ed8" : secondaryButtonStyle.color,
@@ -265,11 +280,8 @@ function BuildActionRow({
           onClick={() => onCompareBuild(build.id)}
           disabled={!canCompareBuild}
           style={{
-            ...primaryButtonStyle,
-            minHeight: 38,
-            padding: "9px 12px",
-            width: "100%",
-            background: canCompareBuild ? primaryButtonStyle.background : "#94a3b8",
+            ...mobilePrimaryActionStyle,
+            background: canCompareBuild ? "#1f2937" : "#94a3b8",
             cursor: canCompareBuild ? "pointer" : "not-allowed",
             opacity: canCompareBuild ? 1 : 0.8,
           }}
@@ -288,7 +300,7 @@ function BuildActionRow({
           <button
             type="button"
             onClick={() => onRenameBuild(build.id)}
-            style={{ ...secondaryButtonStyle, minHeight: 34, padding: "7px 10px", width: "100%" }}
+            style={mobileSecondaryActionStyle}
           >
             Rename
           </button>
@@ -296,10 +308,7 @@ function BuildActionRow({
             type="button"
             onClick={() => onArchiveBuild(build.id)}
             style={{
-              ...secondaryButtonStyle,
-              minHeight: 34,
-              padding: "7px 10px",
-              width: "100%",
+              ...mobileSecondaryActionStyle,
               border: "1px solid #fecaca",
               background: "#fff1f2",
               color: "#b91c1c",
