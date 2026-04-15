@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProductPurchaseOptions } from "../../components/commerce/ProductPurchaseOptions";
 import { CompareBuildsStep } from "../../components/garage/CompareBuildsStep";
@@ -1223,7 +1223,9 @@ const [requestedGarageStep, setRequestedGarageStep] = useState<GarageStepId | nu
 
   const [activeStep, setActiveStep] = useState<GarageStepId>("Bike");
   const [myGarageView, setMyGarageView] = useState<MyGarageView>({ level: "overview" });
-  const [viewportWidth, setViewportWidth] = useState<number | null>(null);
+  const [viewportWidth, setViewportWidth] = useState<number | null>(() =>
+    typeof window === "undefined" ? null : window.innerWidth
+  );
   const previousActiveStepRef = useRef<GarageStepId>("Bike");
   const previousStepForSelectorResetRef = useRef<GarageStepId>("Bike");
   const hasInitializedBuildSessionRef = useRef(false);
@@ -1237,7 +1239,7 @@ useEffect(() => {
   setRequestedGarageStep(getGarageStepFromParam(stepParam));
 }, []);
 
-useEffect(() => {
+useLayoutEffect(() => {
   if (typeof window === "undefined") return;
 
   const handleResize = () => {
@@ -4725,9 +4727,10 @@ const garageStepShellCopy: Record<GarageStepId, { title: string; subtitle: strin
 };
 
 const activeShellCopy = garageStepShellCopy[activeStep];
-const isPhone = viewportWidth !== null ? viewportWidth < 768 : false;
-const isTablet = viewportWidth !== null ? viewportWidth >= 768 && viewportWidth < 1100 : false;
-const isDesktop = viewportWidth !== null ? viewportWidth >= 1100 : true;
+const isPhone = viewportWidth !== null ? viewportWidth < 768 : true;
+const isTablet =
+  viewportWidth !== null ? viewportWidth >= 768 && viewportWidth < 1100 : false;
+const isDesktop = viewportWidth !== null ? viewportWidth >= 1100 : false;
 const isCompactGarageShell = !isDesktop;
 const buildViewModeResolved = isPhone ? "list" : buildViewMode;
 
