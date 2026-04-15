@@ -16,13 +16,17 @@ type GarageStepNavProps = {
   signedInUserEmail: string;
 };
 
-const garageSteps: Array<{ id: GarageStepId; label: string }> = [
-  { id: "Bike", label: "Choose Bike" },
-  { id: "Build", label: "Build" },
-  { id: "Expert", label: "Expert Builds" },
-  { id: "Compare", label: "Compare Builds" },
-  { id: "Save", label: "Saved Builds" },
-  { id: "Buy", label: "Buy Accessories" },
+const garageSteps: Array<{
+  id: GarageStepId;
+  label: string;
+  shortLabel: string;
+}> = [
+  { id: "Bike", label: "Bike", shortLabel: "Bike" },
+  { id: "Build", label: "Build", shortLabel: "Build" },
+  { id: "Expert", label: "Expert", shortLabel: "Expert" },
+  { id: "Compare", label: "Compare", shortLabel: "Compare" },
+  { id: "Save", label: "Saved", shortLabel: "Saved" },
+  { id: "Buy", label: "Shop", shortLabel: "Shop" },
 ];
 
 export function GarageStepNav({
@@ -47,79 +51,100 @@ export function GarageStepNav({
         position: "sticky",
         top: 0,
         zIndex: 30,
-        marginBottom: isCompactGarageShell ? 14 : 24,
-        padding: isCompactGarageShell ? "12px 0 10px" : "24px 0 16px",
-        background: "#f8fafc",
-        borderBottom: "1px solid rgba(226,232,240,0.95)",
-        boxShadow: "0 8px 20px rgba(15,23,42,0.05)",
+        marginBottom: isCompactGarageShell ? 16 : 24,
+        padding: isCompactGarageShell ? "10px 0 12px" : "16px 0 18px",
+        backdropFilter: "blur(16px)",
+        background: "rgba(248,250,252,0.92)",
+        borderBottom: "1px solid rgba(226,232,240,0.88)",
+        boxShadow: "0 12px 28px rgba(15,23,42,0.05)",
       }}
     >
       <div
         style={{
-          maxWidth: 1600,
+          maxWidth: 1360,
           marginLeft: "auto",
           marginRight: "auto",
-          padding: "0 10px",
+          padding: isCompactGarageShell ? "0 12px" : "0 20px",
+          display: "grid",
+          gap: isCompactGarageShell ? 10 : 14,
         }}
       >
         <div
           style={{
-            paddingTop: isCompactGarageShell ? 0 : 4,
-            paddingBottom: isCompactGarageShell ? 10 : 18,
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1fr) minmax(280px, auto) minmax(0, 1fr)",
-            alignItems: "start",
-            gap: isCompactGarageShell ? 12 : 16,
+            display: "flex",
+            alignItems: isCompactGarageShell ? "stretch" : "center",
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
           }}
         >
-          <div style={{ minWidth: 0 }}>
-            <h1
-              style={{
-                margin: 0,
-                fontSize: 26,
-                lineHeight: 1.1,
-                fontWeight: 800,
-                color: "#111827",
-              }}
-            >
-              {activeShellCopy.title}
-            </h1>
-
-            <p
-              style={{
-                margin: isCompactGarageShell ? "4px 0 0 0" : "10px 0 0 0",
-                fontSize: isCompactGarageShell ? 13 : 14,
-                color: "#6b7280",
-                maxWidth: 760,
-              }}
-            >
-              {activeShellCopy.subtitle}
-            </p>
-          </div>
-
-          <div
-            style={{
-              minWidth: 0,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              alignSelf: isCompactGarageShell ? "center" : "start",
-              textAlign: "center",
-              paddingTop: isCompactGarageShell ? 2 : 4,
-            }}
-          >
+          <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
             <div
               style={{
-                fontSize: isCompactGarageShell ? 16 : 18,
-                lineHeight: 1.15,
-                fontWeight: 800,
-                letterSpacing: -0.2,
-                color: "#0f172a",
-                whiteSpace: isCompactGarageShell ? "normal" : "nowrap",
-                maxWidth: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
               }}
             >
-              Exact Fit and Universal Accessories
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "5px 9px",
+                  borderRadius: 999,
+                  background: "#ffffff",
+                  border: "1px solid #dbe3ee",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                  color: "#475569",
+                }}
+              >
+                Garage workspace
+              </span>
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "5px 9px",
+                  borderRadius: 999,
+                  background: "#0f172a",
+                  color: "#ffffff",
+                  fontSize: 11,
+                  fontWeight: 800,
+                }}
+              >
+                Step {activeStepIndex} of {garageSteps.length}
+              </span>
+            </div>
+
+            <div style={{ display: "grid", gap: 4 }}>
+              <h1
+                style={{
+                  margin: 0,
+                  fontSize: isCompactGarageShell ? 28 : 34,
+                  lineHeight: 1.02,
+                  fontWeight: 900,
+                  letterSpacing: -0.6,
+                  color: "#0f172a",
+                }}
+              >
+                {activeShellCopy.title}
+              </h1>
+
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: isCompactGarageShell ? 13 : 14,
+                  lineHeight: 1.5,
+                  color: "#64748b",
+                  maxWidth: 680,
+                }}
+              >
+                {activeShellCopy.subtitle}
+              </p>
             </div>
           </div>
 
@@ -127,8 +152,8 @@ export function GarageStepNav({
             style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "flex-end",
-              gap: 10,
+              justifyContent: isCompactGarageShell ? "stretch" : "flex-end",
+              gap: 8,
               flexWrap: "wrap",
               minWidth: 0,
             }}
@@ -137,69 +162,38 @@ export function GarageStepNav({
               type="button"
               onClick={onBackHome}
               style={actionButtonStyle(isCompactGarageShell)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#f8fafc";
-                e.currentTarget.style.borderColor = "#94a3b8";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#ffffff";
-                e.currentTarget.style.borderColor = "#d1d5db";
-              }}
             >
-              Back to Home
+              Home
             </button>
 
             <div
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                padding: isCompactGarageShell ? "7px 11px" : "8px 12px",
-                borderRadius: 999,
-                border: "1px solid #e5e7eb",
+                padding: isCompactGarageShell ? "8px 11px" : "9px 12px",
+                borderRadius: 14,
+                border: "1px solid #dbe3ee",
                 background: "#ffffff",
                 color: "#475569",
-                fontSize: isCompactGarageShell ? 11 : 12,
+                fontSize: 12,
                 fontWeight: 700,
-                whiteSpace: "nowrap",
+                maxWidth: isCompactGarageShell ? "100%" : 240,
+                minHeight: 36,
               }}
+              title={signedInUserEmail || undefined}
             >
               {isCheckingSession
                 ? "Checking sign-in..."
                 : isSignedIn
-                ? "Signed in"
+                ? signedInUserEmail || "Signed in"
                 : "Signed out"}
             </div>
-
-            {!isCheckingSession && isSignedIn && signedInUserEmail && (
-              <div
-                title={signedInUserEmail}
-                style={{
-                  flex: "0 1 220px",
-                  minWidth: 0,
-                  fontSize: 13,
-                  color: "#64748b",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {signedInUserEmail}
-              </div>
-            )}
 
             {isCheckingSession ? null : isSignedIn ? (
               <button
                 type="button"
                 onClick={onSignOut}
                 style={actionButtonStyle(isCompactGarageShell)}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#f8fafc";
-                  e.currentTarget.style.borderColor = "#94a3b8";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#ffffff";
-                  e.currentTarget.style.borderColor = "#d1d5db";
-                }}
               >
                 Sign out
               </button>
@@ -207,15 +201,7 @@ export function GarageStepNav({
               <button
                 type="button"
                 onClick={onSignIn}
-                style={actionButtonStyle(isCompactGarageShell)}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#f8fafc";
-                  e.currentTarget.style.borderColor = "#94a3b8";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#ffffff";
-                  e.currentTarget.style.borderColor = "#d1d5db";
-                }}
+                style={actionButtonStyle(isCompactGarageShell, true)}
               >
                 Sign in
               </button>
@@ -226,95 +212,93 @@ export function GarageStepNav({
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: isCompactGarageShell ? 8 : 10,
-            justifyContent: "space-between",
-            flexWrap: "wrap",
+            gap: 8,
+            overflowX: "auto",
+            paddingBottom: 2,
+            scrollbarWidth: "none",
           }}
         >
-          <div
-            style={{
-              fontSize: 11,
-              fontWeight: 800,
-              letterSpacing: 0.7,
-              textTransform: "uppercase",
-              color: "#64748b",
-            }}
-          >
-            Garage workflow | Step {activeStepIndex} of {garageSteps.length}
-          </div>
-          <div
-            style={{
-              display: "flex",
-              gap: isCompactGarageShell ? 6 : 8,
-              flexWrap: "wrap",
-              maxWidth: 900,
-              width: "100%",
-            }}
-          >
-            {garageSteps.map((step) => {
-              const isActive = activeStep === step.id;
-              const isBuildStep = step.id === "Build";
-              const isBuildDisabled = isBuildStep && !selectedBikeId;
+          {garageSteps.map((step, index) => {
+            const isActive = activeStep === step.id;
+            const isBuildDisabled = step.id === "Build" && !selectedBikeId;
 
-              return (
-                <button
-                  key={step.id}
-                  type="button"
-                  onClick={() => {
-                    if (isBuildDisabled) {
-                      setActiveStep("Bike");
-                      return;
-                    }
+            return (
+              <button
+                key={step.id}
+                type="button"
+                onClick={() => {
+                  if (isBuildDisabled) {
+                    setActiveStep("Bike");
+                    return;
+                  }
 
-                    setActiveStep(step.id);
-                  }}
+                  setActiveStep(step.id);
+                }}
+                style={{
+                  flex: "0 0 auto",
+                  minWidth: isCompactGarageShell ? 104 : 118,
+                  minHeight: isCompactGarageShell ? 48 : 50,
+                  padding: isCompactGarageShell ? "8px 12px" : "9px 14px",
+                  borderRadius: 18,
+                  border: isActive ? "1px solid #0f172a" : "1px solid #dbe3ee",
+                  background: isActive
+                    ? "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)"
+                    : "#ffffff",
+                  color: isActive ? "#ffffff" : "#0f172a",
+                  textAlign: "left",
+                  opacity: isBuildDisabled ? 0.52 : 1,
+                  cursor: isBuildDisabled ? "not-allowed" : "pointer",
+                  boxShadow: isActive
+                    ? "0 14px 24px rgba(15,23,42,0.18)"
+                    : "0 4px 12px rgba(15,23,42,0.04)",
+                  display: "grid",
+                  gap: 3,
+                }}
+              >
+                <span
                   style={{
-                    flex: "0 0 auto",
-                    minWidth: 110,
-                    minHeight: isCompactGarageShell ? 34 : 36,
-                    textAlign: "center",
-                    fontSize: isCompactGarageShell ? 12 : 13,
-                    fontWeight: 700,
-                    color: isActive ? "#ffffff" : "#6b7280",
-                    background: isActive ? "#0f172a" : "#ffffff",
-                    padding: isCompactGarageShell ? "7px 11px" : "8px 12px",
-                    borderRadius: 999,
-                    border: isActive
-                      ? "1px solid #0f172a"
-                      : "1px solid #e5e7eb",
-                    cursor: isBuildDisabled ? "not-allowed" : "pointer",
-                    opacity: isBuildDisabled ? 0.55 : 1,
-                    transition: "all 0.2s ease",
-                    boxShadow: isActive
-                      ? "0 8px 18px rgba(15,23,42,0.12)"
-                      : "0 1px 2px rgba(15,23,42,0.04)",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: 0.5,
+                    textTransform: "uppercase",
+                    color: isActive ? "rgba(255,255,255,0.72)" : "#94a3b8",
                   }}
                 >
-                  {step.label}
-                </button>
-              );
-            })}
-          </div>
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span
+                  style={{
+                    fontSize: isCompactGarageShell ? 13 : 14,
+                    fontWeight: 800,
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {isCompactGarageShell ? step.shortLabel : step.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
 
-function actionButtonStyle(isCompactGarageShell: boolean) {
+function actionButtonStyle(isCompactGarageShell: boolean, isPrimary = false) {
   return {
     flex: "0 0 auto",
-    minHeight: isCompactGarageShell ? 34 : 36,
-    padding: isCompactGarageShell ? "7px 12px" : "8px 13px",
-    borderRadius: 999,
-    border: "1px solid #d1d5db",
-    background: "#ffffff",
-    color: "#111827",
-    fontSize: isCompactGarageShell ? 12 : 13,
-    fontWeight: 700,
+    minHeight: 36,
+    padding: isCompactGarageShell ? "8px 12px" : "9px 13px",
+    borderRadius: 14,
+    border: isPrimary ? "none" : "1px solid #d1d5db",
+    background: isPrimary ? "#0f172a" : "#ffffff",
+    color: isPrimary ? "#ffffff" : "#111827",
+    fontSize: 12,
+    fontWeight: 800,
     cursor: "pointer",
-    boxShadow: "0 1px 2px rgba(15,23,42,0.05)",
+    boxShadow: isPrimary
+      ? "0 10px 20px rgba(15,23,42,0.16)"
+      : "0 1px 2px rgba(15,23,42,0.05)",
     transition: "all 0.2s ease",
   } as const;
 }

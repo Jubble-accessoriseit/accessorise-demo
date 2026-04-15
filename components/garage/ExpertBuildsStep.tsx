@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ExpertBuildCard } from "./ExpertBuildCard";
 import { ExpertBuildDetail } from "./ExpertBuildDetail";
 import type {
@@ -19,6 +20,8 @@ type ExpertBuildsStepProps = {
   selectedExpertBuild: ResolvedExpertBuild | null;
   selectedProducts: Product[];
 };
+
+type ExpertViewMode = "grid" | "list";
 
 const purposeOptions: Array<{ id: ExpertBuildPurpose | "all"; label: string }> = [
   { id: "all", label: "All builds" },
@@ -40,6 +43,8 @@ export function ExpertBuildsStep({
   selectedExpertBuild,
   selectedProducts,
 }: ExpertBuildsStepProps) {
+  const [viewMode, setViewMode] = useState<ExpertViewMode>("grid");
+
   if (!currentBike) {
     return (
       <section style={{ maxWidth: 1600, margin: "0 auto", padding: "0 10px 32px" }}>
@@ -130,6 +135,62 @@ export function ExpertBuildsStep({
               );
             })}
           </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+              alignItems: "center",
+              flexWrap: "wrap",
+              paddingTop: 2,
+            }}
+          >
+            <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+              {viewMode === "grid"
+                ? "Grid keeps every expert build at a consistent catalogue width."
+                : "List condenses the same builds into a faster scan view."}
+            </div>
+            <div
+              style={{
+                display: "inline-flex",
+                gap: 6,
+                padding: 4,
+                borderRadius: 999,
+                border: "1px solid #e2e8f0",
+                background: "#f8fafc",
+              }}
+            >
+              {(["grid", "list"] as const).map((mode) => {
+                const isActive = viewMode === mode;
+
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setViewMode(mode)}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      minHeight: 32,
+                      padding: "7px 12px",
+                      borderRadius: 999,
+                      border: isActive ? "1px solid #bfdbfe" : "1px solid transparent",
+                      background: isActive ? "#ffffff" : "transparent",
+                      color: isActive ? "#0f172a" : "#64748b",
+                      fontSize: 11,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      boxShadow: isActive ? "0 1px 2px rgba(15,23,42,0.05)" : "none",
+                    }}
+                  >
+                    {mode === "grid" ? "Grid" : "List"}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {expertBuilds.length === 0 ? (
@@ -159,24 +220,46 @@ export function ExpertBuildsStep({
           />
         ) : (
           <>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(285px, 1fr))",
-                gap: 12,
-                alignItems: "start",
-              }}
-            >
-              {expertBuilds.map((build) => (
-                <ExpertBuildCard
-                  key={build.id}
-                  build={build}
-                  isSelected={false}
-                  onCompare={() => onCompareExpertBuild(build.id)}
-                  onOpen={() => onSelectExpertBuild(build.id)}
-                />
-              ))}
-            </div>
+            {viewMode === "grid" ? (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 12,
+                  alignItems: "stretch",
+                  justifyContent: "flex-start",
+                }}
+              >
+                {expertBuilds.map((build) => (
+                  <div
+                    key={build.id}
+                    style={{
+                      flex: "1 1 285px",
+                      width: "min(100%, 320px)",
+                      maxWidth: 320,
+                    }}
+                  >
+                    <ExpertBuildCard
+                      build={build}
+                      isSelected={false}
+                      onCompare={() => onCompareExpertBuild(build.id)}
+                      onOpen={() => onSelectExpertBuild(build.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                {expertBuilds.map((build) => (
+                  <ExpertBuildListRow
+                    key={build.id}
+                    build={build}
+                    onCompare={() => onCompareExpertBuild(build.id)}
+                    onOpen={() => onSelectExpertBuild(build.id)}
+                  />
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -201,5 +284,215 @@ function SummaryPill({ label }: { label: string }) {
     >
       {label}
     </span>
+  );
+}
+
+function ExpertBuildListRow({
+  build,
+  onCompare,
+  onOpen,
+}: {
+  build: ResolvedExpertBuild;
+  onCompare: () => void;
+  onOpen: () => void;
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "88px minmax(0, 1fr)",
+        gap: 14,
+        alignItems: "start",
+        padding: 14,
+        borderRadius: 20,
+        border: "1px solid #e2e8f0",
+        background: "#ffffff",
+        boxShadow: "0 10px 22px rgba(15,23,42,0.05)",
+        cursor: "pointer",
+      }}
+    >
+      <div
+        style={{
+          width: 88,
+          height: 88,
+          borderRadius: 16,
+          backgroundImage: `linear-gradient(180deg, rgba(15,23,42,0.06), rgba(15,23,42,0.3)), url(${build.primaryPhoto.imageUrl})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundColor: "#e2e8f0",
+        }}
+      />
+
+      <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "start" }}>
+          <div style={{ display: "grid", gap: 5, minWidth: 0, flex: "1 1 320px" }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+              <span
+                style={{
+                  display: "inline-flex",
+                  padding: "4px 8px",
+                  borderRadius: 999,
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  color: "#334155",
+                  fontSize: 10,
+                  fontWeight: 800,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.4,
+                }}
+              >
+                Expert build
+              </span>
+              {build.credibilityBadges[0] ? (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    padding: "4px 8px",
+                    borderRadius: 999,
+                    background: "#eff6ff",
+                    color: "#1d4ed8",
+                    fontSize: 10,
+                    fontWeight: 800,
+                  }}
+                >
+                  {build.credibilityBadges[0]}
+                </span>
+              ) : null}
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.15, color: "#0f172a", overflowWrap: "anywhere" }}>
+              {build.title}
+            </div>
+            <div style={{ fontSize: 12, color: "#334155", fontWeight: 700, lineHeight: 1.45 }}>
+              {build.fitmentLabel}
+            </div>
+            <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
+              {[build.builderName, build.builderLocation].filter(Boolean).join(", ")}
+            </div>
+            <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.55 }}>
+              {build.summary}
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gap: 8, minWidth: "min(100%, 210px)", flex: "0 1 230px" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: 6,
+              }}
+            >
+              <SummaryMetric value={String(build.accessoryCount)} label="Accessories" />
+              <SummaryMetric value={String(build.galleryCount)} label="Photos" />
+              <SummaryMetric value={`${build.matchSummary.matchScore}%`} label="Match" />
+            </div>
+            <div style={{ display: "grid", gap: 8 }}>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onOpen();
+                }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: 36,
+                  padding: "8px 12px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: "#0f172a",
+                  color: "#ffffff",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                View details
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onCompare();
+                }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: 36,
+                  padding: "8px 12px",
+                  borderRadius: 12,
+                  border: "1px solid #cbd5e1",
+                  background: "#ffffff",
+                  color: "#0f172a",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                Compare
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {[build.dna.purpose, build.dna.ridingStyle, build.dna.terrainFocus].map((tag) => (
+            <span
+              key={`${build.id}-${tag}`}
+              style={{
+                display: "inline-flex",
+                padding: "4px 8px",
+                borderRadius: 999,
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                color: "#475569",
+                fontSize: 11,
+                fontWeight: 700,
+              }}
+            >
+              {tag.replace("-", " ")}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gap: 3,
+        padding: "8px 9px",
+        borderRadius: 12,
+        border: "1px solid #e2e8f0",
+        background: "#f8fafc",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: 0.5,
+          textTransform: "uppercase",
+          color: "#94a3b8",
+        }}
+      >
+        {label}
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>{value}</div>
+    </div>
   );
 }

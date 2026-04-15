@@ -769,6 +769,78 @@ export async function uploadGarageBuildPhoto(input: {
   return mapBuildPhotoRow(data as GarageBuildPhotoRow);
 }
 
+export async function deleteGarageBuildPhoto(input: {
+  buildId: string;
+  photoId: string;
+}) {
+  const userId = await getCurrentUserId();
+
+  if (!userId) {
+    throw new Error("You need to sign in before deleting build photos.");
+  }
+
+  const { data: photo, error: photoError } = await supabase
+    .from("garage_build_photos")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("build_id", input.buildId)
+    .eq("id", input.photoId)
+    .single();
+
+  if (photoError) throw photoError;
+
+  const row = photo as GarageBuildPhotoRow;
+
+  const { error: deleteError } = await supabase
+    .from("garage_build_photos")
+    .delete()
+    .eq("user_id", userId)
+    .eq("build_id", input.buildId)
+    .eq("id", input.photoId);
+
+  if (deleteError) throw deleteError;
+
+  if (row.storage_path) {
+    await supabase.storage.from(GARAGE_BUILD_PHOTO_BUCKET).remove([row.storage_path]);
+  }
+
+  if (!row.is_cover) {
+    return;
+  }
+
+  const { data: nextPhoto, error: nextPhotoError } = await supabase
+    .from("garage_build_photos")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("build_id", input.buildId)
+    .order("sort_order", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (nextPhotoError) throw nextPhotoError;
+
+  if (!nextPhoto) {
+    return;
+  }
+
+  const { error: clearCoverError } = await supabase
+    .from("garage_build_photos")
+    .update({ is_cover: false })
+    .eq("user_id", userId)
+    .eq("build_id", input.buildId);
+
+  if (clearCoverError) throw clearCoverError;
+
+  const { error: setCoverError } = await supabase
+    .from("garage_build_photos")
+    .update({ is_cover: true })
+    .eq("user_id", userId)
+    .eq("build_id", input.buildId)
+    .eq("id", (nextPhoto as GarageBuildPhotoRow).id);
+
+  if (setCoverError) throw setCoverError;
+}
+
 export async function deleteGarageBuild(buildId: string) {
   const userId = await getCurrentUserId();
 
