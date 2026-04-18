@@ -39,7 +39,7 @@ function getPriceLabel(productId?: number | null): string {
   if (!productId) return '—'
   const product = demoGarageProducts.find(p => p.id === productId)
   if (!product || product.price <= 0) return '—'
-  return `£${product.price}`
+  return `$${product.price}`
 }
 
 function countBuildsUsing(accId: string): number {

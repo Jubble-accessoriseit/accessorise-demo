@@ -146,7 +146,7 @@ function BestPriceCard({ supplier, savings }: { supplier: SupplierRow; savings: 
         </span>
         {savings > 0 && (
           <span style={{ fontSize: 11, fontWeight: 500, color: '#639922' }}>
-            ↓ £{savings} cheaper
+            ↓ ${savings} cheaper
           </span>
         )}
       </div>
@@ -171,7 +171,7 @@ function BestPriceCard({ supplier, savings }: { supplier: SupplierRow; savings: 
             fontWeight: 900, fontSize: 22, color: '#F5F3EE', flexShrink: 0,
           }}
         >
-          £{supplier.price}
+          ${supplier.price}
         </span>
       </div>
 
@@ -239,7 +239,7 @@ function StandardSupplierCard({ supplier }: { supplier: SupplierRow }) {
             fontWeight: 900, fontSize: 22, color: '#F5F3EE', flexShrink: 0,
           }}
         >
-          £{supplier.price}
+          ${supplier.price}
         </span>
       </div>
 
@@ -376,7 +376,7 @@ export default function ShopPage() {
 
           <div style={{ display: 'flex', gap: 12 }}>
             <span style={{ fontSize: 11, color: '#6A6860' }}>
-              From £{suppliers[0]?.price ?? '—'}
+              From ${suppliers[0]?.price ?? '—'}
             </span>
             <span style={{ fontSize: 11, color: '#6A6860' }}>
               {suppliers.length} suppliers

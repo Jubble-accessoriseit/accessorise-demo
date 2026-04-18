@@ -9,6 +9,7 @@ const bmwR1300GSAFamily = [
 const bmwR1300GSFamily = ["bmw-r1300gs-2026", ...bmwR1300GSAFamily];
 const yamahaTenereFamily = ["yamaha-tenere-700-2026"];
 
+// In production, currency symbol and formatting will be determined by the supplier's location.
 export const demoGarageProducts: Product[] = [
   {
     id: 7001,

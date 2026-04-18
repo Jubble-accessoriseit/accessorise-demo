@@ -423,7 +423,7 @@ function Step2Details({
           }}>
             {[
               { label: 'Bought at', value: boughtAt, onChange: setBoughtAt, placeholder: 'e.g. Wunderlich', type: 'text' },
-              { label: 'Price paid', value: pricePaid, onChange: setPricePaid, placeholder: '£0.00', type: 'text' },
+              { label: 'Price paid', value: pricePaid, onChange: setPricePaid, placeholder: '$0.00', type: 'text' },
               { label: 'Date', value: datePurchased, onChange: setDatePurchased, placeholder: '', type: 'date' },
             ].map(({ label, value, onChange, placeholder, type }, i) => (
               <div key={label} style={{ marginBottom: i < 2 ? 12 : 0 }}>
