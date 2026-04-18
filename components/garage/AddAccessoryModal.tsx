@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { demoGarageProducts } from '@/lib/demo-content/products'
 import { garageCategories } from '@/types/garage'
 import type { Product } from '@/types/garage'
@@ -115,6 +115,80 @@ function FitBadge({ label = 'Guaranteed fit' }: { label?: string }) {
   )
 }
 
+// ── Category pills row with scroll arrows ─────────────────────────────────────
+
+function CategoryPillsRow({
+  categoryIds, activeCategoryId, onSelect,
+}: {
+  categoryIds: string[]
+  activeCategoryId: string
+  onSelect: (id: string) => void
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  function scroll(dir: 'left' | 'right') {
+    if (!scrollRef.current) return
+    scrollRef.current.scrollBy({ left: dir === 'right' ? 120 : -120, behavior: 'smooth' })
+  }
+
+  const arrowStyle: React.CSSProperties = {
+    flexShrink: 0,
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '0 6px',
+    color: '#5A5852',
+    display: 'flex',
+    alignItems: 'center',
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px 12px', gap: 0 }}>
+      <button type="button" onClick={() => scroll('left')} style={arrowStyle} aria-label="Scroll left">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+      </button>
+
+      <div
+        ref={scrollRef}
+        style={{
+          flex: 1, display: 'flex', gap: 8,
+          overflowX: 'auto', scrollbarWidth: 'none',
+        }}
+      >
+        {categoryIds.map(catId => {
+          const active = activeCategoryId === catId
+          return (
+            <button
+              type="button"
+              key={catId}
+              onClick={() => onSelect(catId)}
+              style={{
+                flexShrink: 0, borderRadius: 20, padding: '6px 13px',
+                fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap', cursor: 'pointer',
+                border: active ? '1px solid rgba(232,132,26,0.22)' : '1px solid rgba(255,255,255,0.07)',
+                backgroundColor: active ? 'rgba(232,132,26,0.1)' : '#141414',
+                color: active ? '#E8841A' : '#5A5852',
+              }}
+            >
+              {catId === 'all' ? 'All' : getCategoryLabel(catId)}
+            </button>
+          )
+        })}
+      </div>
+
+      <button type="button" onClick={() => scroll('right')} style={arrowStyle} aria-label="Scroll right">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
 // ── Step 1 ────────────────────────────────────────────────────────────────────
 
 function Step1Search({
@@ -187,24 +261,12 @@ function Step1Search({
         </div>
       </div>
 
-      {/* Category pills */}
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 20px 12px', scrollbarWidth: 'none' }}>
-        {['all', ...availableCategoryIds].map(catId => {
-          const active = activeCategoryId === catId
-          return (
-            <button type="button" key={catId} onClick={() => setActiveCategoryId(catId)}
-              style={{
-                flexShrink: 0, borderRadius: 20, padding: '6px 13px',
-                fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap', cursor: 'pointer',
-                border: active ? '1px solid rgba(232,132,26,0.22)' : '1px solid rgba(255,255,255,0.07)',
-                backgroundColor: active ? 'rgba(232,132,26,0.1)' : '#141414',
-                color: active ? '#E8841A' : '#5A5852',
-              }}>
-              {catId === 'all' ? 'All' : getCategoryLabel(catId)}
-            </button>
-          )
-        })}
-      </div>
+      {/* Category pills with scroll arrows */}
+      <CategoryPillsRow
+        categoryIds={['all', ...availableCategoryIds]}
+        activeCategoryId={activeCategoryId}
+        onSelect={setActiveCategoryId}
+      />
 
       {/* Results */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 20px', paddingBottom: 24 }}>
