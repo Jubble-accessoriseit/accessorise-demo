@@ -28,34 +28,37 @@ type MyGarageStepProps = {
 
 const shellCardStyle = {
   background: "#ffffff",
-  border: "1px solid #e5e7eb",
-  borderRadius: 18,
-  boxShadow: "0 10px 24px rgba(15,23,42,0.05)",
+  border: "1px solid #e2e8f0",
+  borderRadius: 20,
+  boxShadow: "0 10px 22px rgba(15,23,42,0.05)",
 } satisfies CSSProperties;
 
 const sectionEyebrowStyle = {
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 800,
-  letterSpacing: 0.65,
+  letterSpacing: 0.6,
   textTransform: "uppercase",
   color: "#64748b",
 } satisfies CSSProperties;
 
 const metaPillStyle = {
   borderRadius: 999,
-  padding: "5px 9px",
-  fontSize: 11,
-  fontWeight: 700,
+  padding: "4px 8px",
+  fontSize: 10,
+  fontWeight: 800,
+  border: "1px solid #e2e8f0",
+  background: "#f8fafc",
+  color: "#334155",
 } satisfies CSSProperties;
 
 const secondaryButtonStyle = {
-  minHeight: 34,
-  padding: "7px 11px",
-  borderRadius: 10,
+  minHeight: 36,
+  padding: "8px 12px",
+  borderRadius: 12,
   border: "1px solid #cbd5e1",
   background: "#ffffff",
   color: "#0f172a",
-  fontWeight: 700,
+  fontWeight: 800,
   cursor: "pointer",
   whiteSpace: "nowrap",
   fontSize: 12,
@@ -70,8 +73,8 @@ const primaryButtonStyle = {
 } satisfies CSSProperties;
 
 const subtleHintStyle = {
-  fontSize: 12,
-  lineHeight: 1.45,
+  fontSize: 11,
+  lineHeight: 1.4,
   color: "#64748b",
 } satisfies CSSProperties;
 
@@ -189,6 +192,7 @@ function BuildActionRow({
   isOpenInWorkspace,
   canCompareBuild,
   compareGuidance,
+  showCompareGuidance = true,
   onOpenBuild,
   onOpenInBuild,
   onCompareBuild,
@@ -203,6 +207,7 @@ function BuildActionRow({
   isOpenInWorkspace: boolean;
   canCompareBuild: boolean;
   compareGuidance?: string | null;
+  showCompareGuidance?: boolean;
   onOpenBuild: (bikeId: string, buildId: string) => void;
   onOpenInBuild: (buildId: string) => void;
   onCompareBuild: (buildId: string) => void;
@@ -323,7 +328,7 @@ function BuildActionRow({
           </button>
         </div>
 
-        {!canCompareBuild && compareGuidance ? (
+        {!canCompareBuild && compareGuidance && showCompareGuidance ? (
           <div
             style={{
               ...subtleHintStyle,
@@ -435,7 +440,7 @@ function BuildActionRow({
           Delete
         </button>
       </div>
-      {!canCompareBuild && compareGuidance ? (
+      {!canCompareBuild && compareGuidance && showCompareGuidance ? (
         <div
           style={{
             ...subtleHintStyle,
@@ -460,12 +465,12 @@ function SavedBuildDetailFacts({
   bike: GarageBikeRecord;
 }) {
   return (
-    <div style={{ ...shellCardStyle, padding: 16, display: "grid", gap: 10 }}>
+    <div style={{ ...shellCardStyle, padding: 14, display: "grid", gap: 10 }}>
       <div style={sectionEyebrowStyle}>Bike details</div>
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
           gap: 8,
         }}
       >
@@ -482,11 +487,11 @@ function SavedBuildDetailFacts({
           >
             <div
               style={{
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: 0.5,
-                color: "#94a3b8",
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+              color: "#94a3b8",
               }}
             >
               {item.label}
@@ -510,7 +515,7 @@ function SavedBuildDetailFacts({
 
 function SavedBuildAccessoriesSection({ build }: { build: GarageBuildRecord }) {
   return (
-    <div style={{ ...shellCardStyle, padding: 16, display: "grid", gap: 10 }}>
+    <div style={{ ...shellCardStyle, padding: 14, display: "grid", gap: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <div style={sectionEyebrowStyle}>Saved accessories</div>
         {build.productGroups.length > 0 ? (
@@ -539,7 +544,7 @@ function SavedBuildAccessoriesSection({ build }: { build: GarageBuildRecord }) {
             <div
               key={group.categoryId}
               style={{
-                borderRadius: 14,
+                borderRadius: 18,
                 border: "1px solid #e2e8f0",
                 background: "#ffffff",
                 padding: 12,
@@ -547,8 +552,13 @@ function SavedBuildAccessoriesSection({ build }: { build: GarageBuildRecord }) {
                 gap: 8,
               }}
             >
-              <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>
-                {group.categoryLabel}
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a" }}>
+                  {group.categoryLabel}
+                </div>
+                <span style={metaPillStyle}>
+                  {group.items.length} item{group.items.length === 1 ? "" : "s"}
+                </span>
               </div>
               <div style={{ display: "grid", gap: 6 }}>
                 {group.items.map((item) => (
@@ -559,9 +569,10 @@ function SavedBuildAccessoriesSection({ build }: { build: GarageBuildRecord }) {
                       justifyContent: "space-between",
                       alignItems: "center",
                       gap: 10,
-                      padding: "9px 11px",
-                      borderRadius: 10,
+                      padding: "10px 12px",
+                      borderRadius: 12,
                       background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
                     }}
                   >
                     <div style={{ display: "grid", gap: 2 }}>
@@ -607,7 +618,7 @@ function SavedBuildPhotosPanel({
   selectedDetailPhoto: SavedBuildPhoto | null;
 }) {
   return (
-    <div style={{ ...shellCardStyle, padding: 14, display: "grid", gap: 12 }}>
+    <div style={{ ...shellCardStyle, padding: 14, display: "grid", gap: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ display: "grid", gap: 2 }}>
           <div style={sectionEyebrowStyle}>Build Photos</div>
@@ -674,7 +685,7 @@ function SavedBuildPhotosPanel({
           <div
             style={{
               minHeight: 248,
-              borderRadius: 16,
+              borderRadius: 18,
               border: "1px solid #e2e8f0",
               background: `linear-gradient(180deg, rgba(15,23,42,0.04), rgba(15,23,42,0.18)), url(${selectedDetailPhoto.imageUrl}) center/cover`,
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)",
@@ -773,9 +784,9 @@ function SavedBuildListCard({
         boxShadow: isOpenInWorkspace
           ? "0 16px 28px rgba(37,99,235,0.08)"
           : shellCardStyle.boxShadow,
-        padding: isPhone ? "10px 10px 11px" : "12px 14px",
+        padding: isPhone ? "12px" : "14px",
         display: "grid",
-        gap: isPhone ? 6 : 8,
+        gap: isPhone ? 8 : 10,
       }}
     >
       <div
@@ -785,46 +796,38 @@ function SavedBuildListCard({
           gap: isPhone ? 10 : 14,
           alignItems: "start",
         }}
-      >
-        <div style={{ width: isPhone ? 88 : "100%", minWidth: 0, maxWidth: isPhone ? 88 : 136 }}>
-          <BuildThumbnail build={build} fullWidth={false} width={isPhone ? 88 : 136} height={isPhone ? 88 : 84} />
-        </div>
-        <div
-          style={{
-            display: "grid",
-            gap: isPhone ? 6 : 14,
-            alignItems: "start",
-            minWidth: 0,
-            width: "100%",
-          }}
         >
-          <div style={{ display: "grid", gap: isPhone ? 3 : 4, minWidth: 0 }}>
-            <div style={{ fontSize: isPhone ? 15 : 17, fontWeight: 800, color: "#0f172a", lineHeight: isPhone ? 1.18 : 1.2, overflowWrap: "anywhere" }}>
-              {build.name}
-            </div>
-            <div style={{ fontSize: isPhone ? 12 : 13, color: "#475569", lineHeight: 1.3, overflowWrap: "anywhere" }}>
-              {bikeSummary.primaryName}
-              {bikeSummary.secondaryName !== bikeSummary.primaryName ? ` - ${bikeSummary.secondaryName}` : ""}
-            </div>
-            <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.3 }}>
-                Updated {formatBuildUpdatedAt(build.updatedAt)}
-              </span>
-              <span style={{ width: 4, height: 4, borderRadius: 999, background: "#cbd5e1" }} />
-              <span style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.3 }}>
-                {build.accessoryCount} accessories
-              </span>
-            </div>
-            {(isOpenInSavedBuilds || isOpenInWorkspace) && (
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <div style={{ width: isPhone ? 88 : "100%", minWidth: 0, maxWidth: isPhone ? 88 : 136 }}>
+            <BuildThumbnail build={build} fullWidth={false} width={isPhone ? 88 : 136} height={isPhone ? 88 : 84} />
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gap: isPhone ? 8 : 10,
+              alignItems: "start",
+              minWidth: 0,
+              width: "100%",
+            }}
+          >
+            <div style={{ display: "grid", gap: isPhone ? 3 : 4, minWidth: 0 }}>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <span
+                  style={{
+                    ...metaPillStyle,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.4,
+                  }}
+                >
+                  Saved build
+                </span>
+                {(isOpenInSavedBuilds || isOpenInWorkspace) && (
+                  <>
                 {isOpenInSavedBuilds ? (
                   <div
                     style={{
                       ...metaPillStyle,
                       background: "#eff6ff",
                       color: "#1d4ed8",
-                      padding: isPhone ? "2px 7px" : "3px 8px",
-                      fontSize: 10,
                     }}
                   >
                     Opened here
@@ -836,17 +839,32 @@ function SavedBuildListCard({
                       ...metaPillStyle,
                       background: "#ecfdf5",
                       color: "#047857",
-                      padding: isPhone ? "2px 7px" : "3px 8px",
-                      fontSize: 10,
                     }}
                   >
                     Active in Build
                   </div>
                 ) : null}
+                  </>
+                )}
               </div>
-            )}
-          </div>
-          <div style={{ marginLeft: isPhone ? 0 : "auto", minWidth: 0, width: "100%" }}>
+              <div style={{ fontSize: isPhone ? 16 : 18, fontWeight: 800, color: "#0f172a", lineHeight: 1.16, overflowWrap: "anywhere" }}>
+                {build.name}
+              </div>
+              <div style={{ fontSize: isPhone ? 12 : 13, color: "#334155", lineHeight: 1.4, fontWeight: 700, overflowWrap: "anywhere" }}>
+                {bikeSummary.primaryName}
+              </div>
+              {bikeSummary.secondaryName !== bikeSummary.primaryName ? (
+                <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.4, overflowWrap: "anywhere" }}>
+                  {bikeSummary.secondaryName}
+                </div>
+              ) : null}
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <span style={metaPillStyle}>Updated {formatBuildUpdatedAt(build.updatedAt)}</span>
+                <span style={metaPillStyle}>{build.accessoryCount} accessories</span>
+                <span style={metaPillStyle}>{build.buildType}</span>
+              </div>
+            </div>
+          <div style={{ minWidth: 0, width: "100%" }}>
             <BuildActionRow
               build={build}
               bikeId={bike.id}
@@ -856,6 +874,7 @@ function SavedBuildListCard({
               isOpenInWorkspace={isOpenInWorkspace}
               canCompareBuild={canCompareBuild}
               compareGuidance={compareGuidance}
+              showCompareGuidance={false}
               onOpenBuild={onOpenBuild}
               onOpenInBuild={onOpenInBuild}
               onCompareBuild={onCompareBuild}
@@ -904,6 +923,13 @@ export function MyGarageStep({
 
       return right.build.updatedAt.localeCompare(left.build.updatedAt);
     });
+  const needsSharedCompareGuidance = savedBuildEntries.some(
+    ({ build }) =>
+      !(
+        build.lineage?.parentBuildId ||
+        (activeWorkspaceBuildId && activeWorkspaceBuildId !== build.id)
+      )
+  );
 
   const detailPhotos = useMemo(() => selectedBuild?.photos ?? [], [selectedBuild]);
   const [selectedDetailPhotoState, setSelectedDetailPhotoState] = useState<{
@@ -932,23 +958,37 @@ export function MyGarageStep({
 
   if (view.level !== "build" || !selectedBike || !selectedBuild) {
     return (
-      <section style={{ maxWidth: 1600, margin: "0 auto", padding: "0 10px 32px" }}>
-        <div style={{ ...shellCardStyle, padding: 18, display: "grid", gap: 14 }}>
-          <div style={{ display: "grid", gap: 4 }}>
-            <div style={sectionEyebrowStyle}>Saved builds</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>Saved Builds</div>
-            <div style={{ color: "#64748b", fontSize: 14, maxWidth: 760, lineHeight: 1.45 }}>
-              Open a saved build to manage its gallery, return it to the Build tab, or compare it against another setup.
+      <section style={{ maxWidth: 1600, margin: "0 auto", padding: "0 10px 24px" }}>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div
+            style={{
+              ...shellCardStyle,
+              padding: isPhone ? 12 : 14,
+              display: "grid",
+              gap: 8,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "end" }}>
+              <div style={{ display: "grid", gap: 3 }}>
+                <div style={sectionEyebrowStyle}>Saved builds</div>
+                <div style={{ fontSize: isPhone ? 18 : 20, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>
+                  Your saved build library
+                </div>
+              </div>
+              <div style={{ display: "inline-flex", gap: 6, flexWrap: "wrap" }}>
+                <span style={metaPillStyle}>{savedBuildEntries.length} saved build{savedBuildEntries.length === 1 ? "" : "s"}</span>
+                {activeWorkspaceBuildId ? <span style={metaPillStyle}>1 active in Build</span> : null}
+              </div>
             </div>
           </div>
 
           {savedBuildEntries.length === 0 ? (
             <div
               style={{
-                borderRadius: 16,
+                borderRadius: 22,
                 border: "1px dashed #cbd5e1",
                 background: "#f8fafc",
-                padding: 18,
+                padding: 22,
                 color: "#64748b",
                 lineHeight: 1.6,
               }}
@@ -957,21 +997,55 @@ export function MyGarageStep({
             </div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
-              {savedBuildEntries.map(({ bike, build }) => (
-                <SavedBuildListCard
-                  key={build.id}
-                  activeWorkspaceBuildId={activeWorkspaceBuildId}
-                  bike={bike}
-                  build={build}
-                  isPhone={isPhone}
-                  onArchiveBuild={onArchiveBuild}
-                  onCompareBuild={onCompareBuild}
-                  onOpenBuild={onOpenBuild}
-                  onOpenInBuild={onOpenInBuild}
-                  onRenameBuild={onRenameBuild}
-                  selectedBuildId={view.level === "build" ? selectedBuild?.id ?? null : null}
-                />
-              ))}
+              {needsSharedCompareGuidance ? (
+                <div
+                  style={{
+                    ...shellCardStyle,
+                    padding: "10px 12px",
+                    display: "grid",
+                    gap: 4,
+                    background: "#f8fafc",
+                  }}
+                >
+                  <div style={sectionEyebrowStyle}>Compare guidance</div>
+                  <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
+                    To compare a saved build, return one build to Build first, then compare against it here. Versioned builds can still compare against their earlier saved version directly.
+                  </div>
+                </div>
+              ) : null}
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 12,
+                  alignItems: "stretch",
+                  justifyContent: "flex-start",
+                }}
+              >
+                {savedBuildEntries.map(({ bike, build }) => (
+                  <div
+                    key={build.id}
+                    style={{
+                      flex: isPhone ? "1 1 100%" : "1 1 285px",
+                      width: isPhone ? "100%" : "min(100%, 320px)",
+                      maxWidth: isPhone ? "100%" : 320,
+                    }}
+                  >
+                    <SavedBuildListCard
+                      activeWorkspaceBuildId={activeWorkspaceBuildId}
+                      bike={bike}
+                      build={build}
+                      isPhone={isPhone}
+                      onArchiveBuild={onArchiveBuild}
+                      onCompareBuild={onCompareBuild}
+                      onOpenBuild={onOpenBuild}
+                      onOpenInBuild={onOpenInBuild}
+                      onRenameBuild={onRenameBuild}
+                      selectedBuildId={view.level === "build" ? selectedBuild?.id ?? null : null}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -987,9 +1061,9 @@ export function MyGarageStep({
   const selectedBuildCompareGuidance = getCompareGuidance(selectedBuild, activeWorkspaceBuildId);
 
   return (
-    <section style={{ maxWidth: 1600, margin: "0 auto", padding: "0 10px 32px" }}>
-      <div style={{ display: "grid", gap: 12 }}>
-        <div style={{ ...shellCardStyle, padding: 18, display: "grid", gap: 16 }}>
+      <section style={{ maxWidth: 1600, margin: "0 auto", padding: "0 10px 24px" }}>
+      <div style={{ display: "grid", gap: 10 }}>
+        <div style={{ display: "grid", gap: 10 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
             <button
               type="button"
@@ -1027,16 +1101,16 @@ export function MyGarageStep({
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-              gap: 18,
+              gap: 14,
               alignItems: "start",
             }}
           >
             <div style={{ display: "grid", gap: 12, minWidth: 0 }}>
-              <div style={{ ...shellCardStyle, padding: 16, display: "grid", gap: 12 }}>
+              <div style={{ ...shellCardStyle, padding: isPhone ? 12 : 14, display: "grid", gap: 12 }}>
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "152px minmax(0, 1fr)",
+                    gridTemplateColumns: isPhone ? "minmax(0, 1fr)" : "152px minmax(0, 1fr)",
                     gap: 14,
                     alignItems: "start",
                   }}
@@ -1046,11 +1120,15 @@ export function MyGarageStep({
                     <div style={sectionEyebrowStyle}>
                       Saved build
                     </div>
-                    <div style={{ fontSize: 24, fontWeight: 800, color: "#0f172a", lineHeight: 1.12, overflowWrap: "anywhere" }}>{selectedBuild.name}</div>
-                    <div style={{ fontSize: 14, color: "#475569", lineHeight: 1.4, overflowWrap: "anywhere" }}>
+                    <div style={{ fontSize: isPhone ? 20 : 22, fontWeight: 800, color: "#0f172a", lineHeight: 1.08, overflowWrap: "anywhere" }}>{selectedBuild.name}</div>
+                    <div style={{ fontSize: 13, color: "#334155", fontWeight: 700, lineHeight: 1.45, overflowWrap: "anywhere" }}>
                       {bikeSummary.primaryName}
-                      {bikeSummary.secondaryName !== bikeSummary.primaryName ? ` - ${bikeSummary.secondaryName}` : ""}
                     </div>
+                    {bikeSummary.secondaryName !== bikeSummary.primaryName ? (
+                      <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.45, overflowWrap: "anywhere" }}>
+                        {bikeSummary.secondaryName}
+                      </div>
+                    ) : null}
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {activeWorkspaceBuildId === selectedBuild.id && (
                         <div style={{ ...metaPillStyle, background: "#ecfdf5", color: "#047857" }}>
@@ -1079,8 +1157,8 @@ export function MyGarageStep({
               style={{
                 display: "grid",
                 gap: 12,
-                position: "sticky",
-                top: 88,
+                position: isPhone ? "static" : "sticky",
+                top: isPhone ? undefined : 88,
                 alignSelf: "start",
                 minWidth: 0,
                 width: "100%",

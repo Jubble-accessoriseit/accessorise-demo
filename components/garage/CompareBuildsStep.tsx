@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ProductPurchaseButton } from "../commerce/ProductPurchaseButton";
+import { resolveProductCommerce } from "../../lib/commerce/resolveProductCommerce";
+import type { CommerceSourceContext } from "../../lib/commerce/types";
 import { GarageStepShell } from "./GarageLayout";
 
 import type {
+  CompareCategoryRow,
   CompareCategorySection,
   CompareFilter,
   CompareFilterMeta,
@@ -22,13 +25,27 @@ type CompareBuildsStepProps = {
   filteredCompareCategorySections: CompareCategorySection[];
   formatCurrency: (value: number) => string;
   getProductSupplierName: (product: Product) => string;
-  heroImage: string;
   isBuildDirty: boolean;
   onChangeExpertBuild: () => void;
   onFilterChange: (filter: CompareFilter) => void;
+  onOpenProductDetail: (product: Product) => void;
+  onOpenProductPurchase: (state: {
+    product: Product;
+    sourceContext: CommerceSourceContext;
+  }) => void;
   onSaveBuild: () => void;
   selectedExpertBuild: ResolvedExpertBuild | null;
   selectedProducts: Product[];
+};
+
+type CompareTableRow = {
+  key: string;
+  accessoryType: string;
+  yourProduct: Product | null;
+  expertProduct: Product | null;
+  actionProduct?: Product | null;
+  status: CompareCategoryRow["status"];
+  summary: string;
 };
 
 const compareFilterOptions: Array<{ id: CompareFilter; label: string }> = [
@@ -38,6 +55,97 @@ const compareFilterOptions: Array<{ id: CompareFilter; label: string }> = [
   { id: "matches", label: "Matches" },
   { id: "yours-only", label: "Only in your build" },
 ];
+
+function buildCompareTableRows(
+  filteredCompareCategorySections: CompareCategorySection[]
+): CompareTableRow[] {
+  return filteredCompareCategorySections.flatMap((section) =>
+    section.rows.map((row) => ({
+      key: row.key,
+      accessoryType: section.categoryLabel,
+      yourProduct: row.yourProduct,
+      expertProduct: row.expertProduct,
+      actionProduct: row.actionProduct ?? null,
+      status: row.status,
+      summary:
+        row.status === "Missing from your build"
+          ? "Expert build includes this and your current build does not."
+          : row.status === "Different item"
+          ? "Both builds cover this accessory type with different products."
+          : row.status === "Only in your build"
+          ? "This accessory is unique to your current build."
+          : "Both builds currently match for this accessory type.",
+    }))
+  );
+}
+
+function getCompareStatusTone(status: CompareCategoryRow["status"]) {
+  if (status === "Match") {
+    return {
+      pillBackground: "#dcfce7",
+      pillColor: "#166534",
+      rowAccent: "#22c55e",
+      rowBackground: "#f8fffb",
+      border: "#bbf7d0",
+    };
+  }
+
+  if (status === "Missing from your build") {
+    return {
+      pillBackground: "#fee2e2",
+      pillColor: "#b91c1c",
+      rowAccent: "#ef4444",
+      rowBackground: "#fff8f8",
+      border: "#fecaca",
+    };
+  }
+
+  if (status === "Different item") {
+    return {
+      pillBackground: "#fef3c7",
+      pillColor: "#b45309",
+      rowAccent: "#f59e0b",
+      rowBackground: "#fffcf4",
+      border: "#fde68a",
+    };
+  }
+
+  return {
+    pillBackground: "#e2e8f0",
+    pillColor: "#475569",
+    rowAccent: "#94a3b8",
+    rowBackground: "#fbfdff",
+    border: "#e2e8f0",
+  };
+}
+
+function getCompactCompareStatusCopy(status: CompareCategoryRow["status"]) {
+  if (status === "Match") {
+    return {
+      shortLabel: "Matched",
+      comparisonLabel: "Aligned",
+    };
+  }
+
+  if (status === "Missing from your build") {
+    return {
+      shortLabel: "Missing",
+      comparisonLabel: "Needs add",
+    };
+  }
+
+  if (status === "Different item") {
+    return {
+      shortLabel: "Different",
+      comparisonLabel: "Swap option",
+    };
+  }
+
+  return {
+    shortLabel: "Yours only",
+    comparisonLabel: "Custom pick",
+  };
+}
 
 export function CompareBuildsStep({
   activeCompareFilter,
@@ -52,40 +160,27 @@ export function CompareBuildsStep({
   isBuildDirty,
   onChangeExpertBuild,
   onFilterChange,
+  onOpenProductDetail,
+  onOpenProductPurchase,
   onSaveBuild,
   selectedExpertBuild,
   selectedProducts,
 }: CompareBuildsStepProps) {
-  const [viewportWidth, setViewportWidth] = useState<number | null>(null);
-  const visibleRowCount = filteredCompareCategorySections.reduce(
-    (total, section) => total + section.rows.length,
-    0
-  );
-  const isPhone = viewportWidth !== null ? viewportWidth < 820 : false;
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const handleResize = () => setViewportWidth(window.innerWidth);
-
-    handleResize();
-    window.addEventListener("resize", handleResize);
-
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  const compareTableRows = buildCompareTableRows(filteredCompareCategorySections);
+  const visibleRowCount = compareTableRows.length;
 
   return (
-    <GarageStepShell isPhone={isPhone}>
-      <div style={{ display: "grid", gap: 16 }}>
+    <GarageStepShell isPhone={false}>
+      <div style={{ display: "grid", gap: 12 }}>
         <div
           style={{
             background: "#ffffff",
             border: "1px solid #e5e7eb",
-            borderRadius: 20,
-            padding: 16,
-            boxShadow: "0 12px 28px rgba(15,23,42,0.05)",
+            borderRadius: 18,
+            padding: 14,
+            boxShadow: "0 8px 18px rgba(15,23,42,0.04)",
             display: "grid",
-            gap: 14,
+            gap: 10,
           }}
         >
           <div
@@ -97,7 +192,7 @@ export function CompareBuildsStep({
               flexWrap: "wrap",
             }}
           >
-            <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
               <div
                 style={{
                   fontSize: 11,
@@ -107,31 +202,22 @@ export function CompareBuildsStep({
                   color: "#64748b",
                 }}
               >
-                Comparison target
+                Compare
               </div>
-              <h3
+              <h2
                 style={{
                   margin: 0,
-                  fontSize: 20,
+                  fontSize: 24,
                   color: "#0f172a",
-                  lineHeight: 1.15,
+                  lineHeight: 1.08,
                 }}
               >
+                Compare
+              </h2>
+              <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.45, maxWidth: 760 }}>
                 {selectedExpertBuild
-                  ? selectedExpertBuild.name
-                  : "Choose an expert build to compare"}
-              </h3>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: "#64748b",
-                  lineHeight: 1.45,
-                  maxWidth: 820,
-                }}
-              >
-                {selectedExpertBuild
-                  ? "Your current build is being compared against the selected expert build. Filter the rows, review differences, and save an updated build from here."
-                  : "Browse matched expert builds first, then return here for the full side-by-side comparison flow."}
+                  ? "Compare your current build against the selected expert build in one continuous table."
+                  : "Choose an expert build first, then compare the two setups here."}
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -180,13 +266,7 @@ export function CompareBuildsStep({
             </div>
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-              gap: 10,
-            }}
-          >
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
             <ContextPill
               label="Your bike"
               value={
@@ -201,10 +281,6 @@ export function CompareBuildsStep({
               label="Expert build"
               value={selectedExpertBuild ? selectedExpertBuild.name : "Not selected yet"}
             />
-            <ContextPill
-              label="Builder"
-              value={selectedExpertBuild?.builderLabel || "Expert source"}
-            />
           </div>
 
           {selectedExpertBuild ? (
@@ -212,8 +288,8 @@ export function CompareBuildsStep({
               style={{
                 display: "grid",
                 gap: 10,
-                padding: 12,
-                borderRadius: 18,
+                padding: 10,
+                borderRadius: 16,
                 border: "1px solid #e2e8f0",
                 background: "#fbfdff",
               }}
@@ -231,7 +307,7 @@ export function CompareBuildsStep({
                   {activeCompareFilterMeta.title}
                 </div>
                 <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                  {activeCompareFilterMeta.emptyBody}
+                  {visibleRowCount} visible row{visibleRowCount === 1 ? "" : "s"}
                 </div>
               </div>
 
@@ -289,117 +365,366 @@ export function CompareBuildsStep({
         </div>
 
         {!selectedExpertBuild ? (
-          <div
-            style={{
-              background: "#ffffff",
-              border: "1px dashed #cbd5e1",
-              borderRadius: 20,
-              padding: 18,
-              display: "grid",
-              gap: 10,
-            }}
-          >
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
-              Select an expert build first
-            </div>
-            <div
-              style={{
-                fontSize: 14,
-                color: "#64748b",
-                lineHeight: 1.55,
-                maxWidth: 720,
-              }}
-            >
-              Expert Builds now lives in its own tab so you can browse matched builds without
-              cluttering the comparison workspace.
-            </div>
-            <div>
-              <button
-                type="button"
-                onClick={onChangeExpertBuild}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  minHeight: 36,
-                  padding: "8px 12px",
-                  borderRadius: 12,
-                  border: "none",
-                  background: "#0f172a",
-                  color: "#ffffff",
-                  fontWeight: 800,
-                  cursor: "pointer",
-                }}
-              >
-                Browse Expert Builds
-              </button>
-            </div>
-          </div>
+          <EmptyCompareState
+            title="Select an expert build first"
+            body="Expert Builds now lives in its own tab so you can browse matched builds without cluttering the comparison workspace."
+            actionLabel="Browse Expert Builds"
+            onAction={onChangeExpertBuild}
+          />
         ) : compareCategorySections.length === 0 ? (
-          <div
-            style={{
-              border: "1px dashed #cbd5e1",
-              borderRadius: 18,
-              padding: 20,
-              background: "#f8fafc",
-              color: "#64748b",
-              lineHeight: 1.6,
-            }}
-          >
-            Select an expert build to start comparing category recommendations for this bike.
-          </div>
+          <EmptyCompareMessage body="Select an expert build to start comparing category recommendations for this bike." />
         ) : filteredCompareCategorySections.length === 0 ? (
+          <EmptyCompareState
+            title={activeCompareFilterMeta.emptyTitle}
+            body={activeCompareFilterMeta.emptyBody}
+          />
+        ) : (
           <div
             style={{
-              border: "1px dashed #cbd5e1",
-              borderRadius: 18,
-              padding: 22,
-              background: "#f8fafc",
-              color: "#64748b",
-              display: "grid",
-              gap: 10,
+              border: "1px solid #e5e7eb",
+              borderRadius: 20,
+              overflow: "hidden",
+              background: "#ffffff",
+              boxShadow: "0 8px 22px rgba(15,23,42,0.04)",
             }}
           >
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
-              {activeCompareFilterMeta.emptyTitle}
-            </div>
-            <div style={{ fontSize: 14, lineHeight: 1.6 }}>{activeCompareFilterMeta.emptyBody}</div>
-          </div>
-        ) : (
-          <div style={{ display: "grid", gap: 10 }}>
             <div
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 12,
-                alignItems: "center",
-                flexWrap: "wrap",
+                overflowX: "auto",
+                overflowY: "hidden",
+                WebkitOverflowScrolling: "touch",
+                overscrollBehaviorX: "contain",
+                paddingBottom: 2,
+                scrollbarGutter: "stable both-edges",
               }}
             >
-              <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>
-                Comparison results
+              <div style={{ minWidth: 980 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "minmax(140px, 0.56fr) minmax(250px, 1fr) minmax(250px, 1fr) minmax(130px, 0.42fr) minmax(180px, 0.56fr)",
+                    gap: 0,
+                    background: "linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%)",
+                    borderBottom: "1px solid #e5e7eb",
+                  }}
+                >
+                  <TableHeaderCell
+                    title="Accessory Type"
+                    subtitle="Category / slot"
+                  />
+                  <TableHeaderCell
+                    title="Your Build"
+                    subtitle={`${selectedProducts.length} selected item${selectedProducts.length === 1 ? "" : "s"}`}
+                  />
+                  <TableHeaderCell
+                    title="Expert Build"
+                    subtitle={selectedExpertBuild.name}
+                  />
+                  <TableHeaderCell
+                    title="Comparison"
+                    subtitle="Colour-coded state"
+                  />
+                  <TableHeaderCell
+                    title="Actions"
+                    subtitle="Apply and inspect"
+                  />
+                </div>
+
+                <div style={{ display: "grid" }}>
+                  {compareTableRows.map((row, index) => (
+                    <CompareTableDataRow
+                      key={row.key}
+                      addToBuild={addToBuild}
+                      formatCurrency={formatCurrency}
+                      getProductSupplierName={getProductSupplierName}
+                      index={index}
+                      onOpenProductDetail={onOpenProductDetail}
+                      onOpenProductPurchase={onOpenProductPurchase}
+                      row={row}
+                      selectedProducts={selectedProducts}
+                    />
+                  ))}
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: "#64748b" }}>
-                {visibleRowCount} visible row{visibleRowCount === 1 ? "" : "s"}
-              </div>
-            </div>
-            <div style={{ display: "grid", gap: 18 }}>
-              {filteredCompareCategorySections.map((section) => (
-                <CompareSectionCard
-                  key={section.categoryId}
-                  addToBuild={addToBuild}
-                  formatCurrency={formatCurrency}
-                  getProductSupplierName={getProductSupplierName}
-                  isPhone={isPhone}
-                  section={section}
-                  selectedProducts={selectedProducts}
-                />
-              ))}
             </div>
           </div>
         )}
       </div>
     </GarageStepShell>
+  );
+}
+
+function CompareTableDataRow({
+  addToBuild,
+  formatCurrency,
+  getProductSupplierName,
+  index,
+  onOpenProductDetail,
+  onOpenProductPurchase,
+  row,
+  selectedProducts,
+}: {
+  addToBuild: (product: Product) => void;
+  formatCurrency: (value: number) => string;
+  getProductSupplierName: (product: Product) => string;
+  index: number;
+  onOpenProductDetail: (product: Product) => void;
+  onOpenProductPurchase: (state: {
+    product: Product;
+    sourceContext: CommerceSourceContext;
+  }) => void;
+  row: CompareTableRow;
+  selectedProducts: Product[];
+}) {
+  const tone = getCompareStatusTone(row.status);
+  const statusCopy = getCompactCompareStatusCopy(row.status);
+  const canAddProduct =
+    !!row.actionProduct &&
+    !selectedProducts.some((product) => product.id === row.actionProduct?.id);
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns:
+          "minmax(140px, 0.56fr) minmax(250px, 1fr) minmax(250px, 1fr) minmax(130px, 0.42fr) minmax(180px, 0.56fr)",
+        borderTop: index === 0 ? "none" : "1px solid #eef2f7",
+        background: row.status === "Match" ? "#ffffff" : tone.rowBackground,
+      }}
+    >
+      <div
+        style={{
+          padding: "9px 12px",
+          borderLeft: `4px solid ${tone.rowAccent}`,
+          minWidth: 0,
+          display: "grid",
+          gap: 2,
+        }}
+      >
+        <div style={{ fontSize: 12, fontWeight: 800, color: "#0f172a", lineHeight: 1.25 }}>
+          {row.accessoryType}
+        </div>
+        <div style={{ fontSize: 10, color: "#64748b", lineHeight: 1.2 }}>{statusCopy.shortLabel}</div>
+      </div>
+
+      <CompareProductCell
+        emptyLabel="Not in your build"
+        formatCurrency={formatCurrency}
+        getProductSupplierName={getProductSupplierName}
+        onOpenProductDetail={onOpenProductDetail}
+        onOpenProductPurchase={onOpenProductPurchase}
+        product={row.yourProduct}
+        surfaceBorder={tone.border}
+      />
+
+      <CompareProductCell
+        emptyLabel="Not in expert build"
+        formatCurrency={formatCurrency}
+        getProductSupplierName={getProductSupplierName}
+        onOpenProductDetail={onOpenProductDetail}
+        onOpenProductPurchase={onOpenProductPurchase}
+        product={row.expertProduct}
+        surfaceBorder={tone.border}
+      />
+
+      <div style={{ padding: "9px 12px", minWidth: 0, display: "grid", alignContent: "start", gap: 3, justifyItems: "start" }}>
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "fit-content",
+            maxWidth: "100%",
+            padding: "4px 8px",
+            borderRadius: 999,
+            background: tone.pillBackground,
+            color: tone.pillColor,
+            fontSize: 10,
+            fontWeight: 800,
+            textAlign: "center",
+          }}
+        >
+          {row.status}
+        </span>
+        <div style={{ fontSize: 10, color: "#64748b", lineHeight: 1.2 }}>{statusCopy.comparisonLabel}</div>
+      </div>
+
+      <div style={{ padding: "9px 12px", minWidth: 0, display: "grid", gap: 4, alignContent: "start", justifyItems: "start" }}>
+        {canAddProduct && row.actionProduct ? (
+          <button
+            type="button"
+            onClick={() => addToBuild(row.actionProduct!)}
+            style={{
+              minHeight: 30,
+              padding: "5px 9px",
+              borderRadius: 10,
+              border: "none",
+              background: "#0f172a",
+              color: "#ffffff",
+              fontWeight: 800,
+              cursor: "pointer",
+              fontSize: 11,
+            }}
+          >
+            {row.status === "Different item" ? "Replace with expert item" : "Add to my build"}
+          </button>
+        ) : row.actionProduct ? (
+          <div style={{ fontSize: 10, color: "#166534", fontWeight: 700 }}>
+            Already added to your build
+          </div>
+        ) : (
+          <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700 }}>No action needed</div>
+        )}
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          {row.expertProduct ? (
+            <button
+              type="button"
+              onClick={() => onOpenProductDetail(row.expertProduct!)}
+              style={tableLinkButtonStyle}
+            >
+              View expert item
+            </button>
+          ) : null}
+
+          {row.yourProduct ? (
+            <button
+              type="button"
+              onClick={() => onOpenProductDetail(row.yourProduct!)}
+              style={tableLinkButtonStyle}
+            >
+              View your item
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompareProductCell({
+  emptyLabel,
+  formatCurrency,
+  getProductSupplierName,
+  onOpenProductDetail,
+  onOpenProductPurchase,
+  product,
+  surfaceBorder,
+}: {
+  emptyLabel: string;
+  formatCurrency: (value: number) => string;
+  getProductSupplierName: (product: Product) => string;
+  onOpenProductDetail: (product: Product) => void;
+  onOpenProductPurchase: (state: {
+    product: Product;
+    sourceContext: CommerceSourceContext;
+  }) => void;
+  product: Product | null;
+  surfaceBorder: string;
+}) {
+  if (!product) {
+    return (
+      <div style={{ padding: "9px 12px", minWidth: 0 }}>
+      <div
+        style={{
+          minHeight: 0,
+          borderRadius: 8,
+          border: "1px dashed rgba(203,213,225,0.7)",
+          background: "transparent",
+          display: "grid",
+          placeItems: "center",
+          padding: "6px 4px",
+          color: "#a0aec0",
+          fontSize: 10,
+          lineHeight: 1.2,
+          textAlign: "left",
+          opacity: 0.9,
+        }}
+      >
+          {emptyLabel}
+        </div>
+      </div>
+    );
+  }
+
+  const commerce = resolveProductCommerce({ product });
+
+  return (
+    <div style={{ padding: "9px 12px", minWidth: 0 }}>
+      <div
+        style={{
+          minHeight: 0,
+          borderRadius: 0,
+          border: "none",
+          background: "transparent",
+          padding: 0,
+          display: "grid",
+          gap: 3,
+          alignContent: "start",
+        }}
+      >
+        <div style={{ fontSize: 12, fontWeight: 800, color: "#0f172a", lineHeight: 1.25 }}>
+          {product.name}
+        </div>
+        <div style={{ fontSize: 10, color: "#64748b", lineHeight: 1.2, overflowWrap: "anywhere" }}>
+          {getProductSupplierName(product)} · {formatCurrency(product.price)}
+        </div>
+        <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+          <button
+            type="button"
+            onClick={() => onOpenProductDetail(product)}
+            style={tableLinkButtonStyle}
+          >
+            View product
+          </button>
+          <ProductPurchaseButton
+            commerce={commerce}
+            compact
+            onOpen={() =>
+              onOpenProductPurchase({
+                product,
+                sourceContext: "garage",
+              })
+            }
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TableHeaderCell({
+  subtitle,
+  title,
+}: {
+  subtitle: string;
+  title: string;
+}) {
+  return (
+    <div
+      style={{
+        padding: "10px 12px",
+        display: "grid",
+        gap: 2,
+        minWidth: 0,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: 0.5,
+          textTransform: "uppercase",
+          color: "#94a3b8",
+        }}
+      >
+        {title}
+      </div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: "#0f172a", lineHeight: 1.2 }}>
+        {subtitle}
+      </div>
+    </div>
   );
 }
 
@@ -433,456 +758,106 @@ function ContextPill({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CompareSectionCard({
-  addToBuild,
-  formatCurrency,
-  getProductSupplierName,
-  isPhone,
-  section,
-  selectedProducts,
-}: {
-  addToBuild: (product: Product) => void;
-  formatCurrency: (value: number) => string;
-  getProductSupplierName: (product: Product) => string;
-  isPhone: boolean;
-  section: CompareCategorySection;
-  selectedProducts: Product[];
-}) {
-  if (isPhone) {
-    return (
-      <div
-        style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 20,
-          overflow: "hidden",
-          background: "#ffffff",
-          boxShadow: "0 8px 22px rgba(15,23,42,0.04)",
-        }}
-      >
-        <div
-          style={{
-            padding: "14px 16px",
-            background: "linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%)",
-            borderBottom: "1px solid #e5e7eb",
-            display: "grid",
-            gap: 3,
-          }}
-        >
-          <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>
-            {section.categoryLabel}
-          </div>
-          <div style={{ fontSize: 12, color: "#64748b" }}>
-            {section.rows.length} comparison row{section.rows.length === 1 ? "" : "s"}
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gap: 10, padding: 12 }}>
-          {section.rows.map((row) => {
-            const canAddProduct =
-              !!row.actionProduct &&
-              !selectedProducts.some((product) => product.id === row.actionProduct?.id);
-            const statusTone =
-              row.status === "Match"
-                ? { background: "#dcfce7", color: "#166534", surface: "#f0fdf4" }
-                : row.status === "Missing from your build"
-                ? { background: "#dbeafe", color: "#1d4ed8", surface: "#f8fbff" }
-                : row.status === "Only in your build"
-                ? { background: "#fef3c7", color: "#92400e", surface: "#fffbeb" }
-                : { background: "#ede9fe", color: "#6d28d9", surface: "#faf5ff" };
-
-            return (
-              <div
-                key={row.key}
-                style={{
-                  display: "grid",
-                  gap: 12,
-                  padding: 14,
-                  borderRadius: 16,
-                  border: "1px solid #e5e7eb",
-                  background: statusTone.surface,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 10,
-                    alignItems: "start",
-                  }}
-                >
-                  <div style={{ display: "grid", gap: 4 }}>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a" }}>
-                      {row.expertProduct?.name || row.yourProduct?.name || "Accessory"}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
-                      {row.status === "Missing from your build"
-                        ? "Expert build includes this and your current build does not."
-                        : row.status === "Different item"
-                        ? "Both builds cover this category with different products."
-                        : row.status === "Only in your build"
-                        ? "This pick is unique to your current build."
-                        : "Both builds currently match here."}
-                    </div>
-                  </div>
-
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      padding: "7px 10px",
-                      borderRadius: 999,
-                      background: statusTone.background,
-                      color: statusTone.color,
-                      fontSize: 11,
-                      fontWeight: 800,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {row.status}
-                  </span>
-                </div>
-
-                <div style={{ display: "grid", gap: 10 }}>
-                  <MobileCompareColumn
-                    emptyLabel="Not in your build"
-                    formatCurrency={formatCurrency}
-                    getProductSupplierName={getProductSupplierName}
-                    label="Your build"
-                    product={row.yourProduct}
-                  />
-                  <MobileCompareColumn
-                    emptyLabel="Not in expert build"
-                    formatCurrency={formatCurrency}
-                    getProductSupplierName={getProductSupplierName}
-                    label="Expert build"
-                    product={row.expertProduct}
-                  />
-                </div>
-
-                {canAddProduct && row.actionProduct ? (
-                  <div style={{ display: "grid", gap: 8 }}>
-                    <button
-                      type="button"
-                      onClick={() => addToBuild(row.actionProduct!)}
-                      style={{
-                        minHeight: 40,
-                        padding: "10px 12px",
-                        borderRadius: 12,
-                        border: "none",
-                        background: "#0f172a",
-                        color: "#ffffff",
-                        fontWeight: 800,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {row.status === "Different item"
-                        ? "Replace with expert item"
-                        : "Add to my build"}
-                    </button>
-                  </div>
-                ) : row.actionProduct ? (
-                  <div style={{ fontSize: 12, color: "#166534", fontWeight: 700 }}>
-                    Already added to your build
-                  </div>
-                ) : (
-                  <div style={{ fontSize: 12, color: "#94a3b8", fontWeight: 700 }}>
-                    No action needed
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
+function EmptyCompareMessage({ body }: { body: string }) {
   return (
     <div
       style={{
-        border: "1px solid #e5e7eb",
+        border: "1px dashed #cbd5e1",
+        borderRadius: 18,
+        padding: 20,
+        background: "#f8fafc",
+        color: "#64748b",
+        lineHeight: 1.6,
+      }}
+    >
+      {body}
+    </div>
+  );
+}
+
+function EmptyCompareState({
+  actionLabel,
+  body,
+  onAction,
+  title,
+}: {
+  actionLabel?: string;
+  body: string;
+  onAction?: () => void;
+  title: string;
+}) {
+  return (
+    <div
+      style={{
+        background: "#ffffff",
+        border: "1px dashed #cbd5e1",
         borderRadius: 20,
-        overflow: "hidden",
-        background: "#ffffff",
-        boxShadow: "0 8px 22px rgba(15,23,42,0.04)",
+        padding: 18,
+        display: "grid",
+        gap: 10,
       }}
     >
+      <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>{title}</div>
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(240px, 1.15fr) minmax(0, 1fr) minmax(0, 1fr) minmax(250px, 1fr)",
-          gap: 12,
-          padding: "14px 18px",
-          background: "linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%)",
-          borderBottom: "1px solid #e5e7eb",
-          alignItems: "center",
+          fontSize: 14,
+          color: "#64748b",
+          lineHeight: 1.55,
+          maxWidth: 720,
         }}
       >
-        <div style={{ display: "grid", gap: 4 }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
-            {section.categoryLabel}
-          </div>
-          <div style={{ fontSize: 12, color: "#64748b" }}>
-            {section.rows.length} comparison row{section.rows.length === 1 ? "" : "s"}
-          </div>
+        {body}
+      </div>
+      {actionLabel && onAction ? (
+        <div>
+          <button
+            type="button"
+            onClick={onAction}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 36,
+              padding: "8px 12px",
+              borderRadius: 12,
+              border: "none",
+              background: "#0f172a",
+              color: "#ffffff",
+              fontWeight: 800,
+              cursor: "pointer",
+            }}
+          >
+            {actionLabel}
+          </button>
         </div>
-        <HeaderCaption>Your build</HeaderCaption>
-        <HeaderCaption>Expert build</HeaderCaption>
-        <HeaderCaption align="right">Status / action</HeaderCaption>
-      </div>
-      <div style={{ display: "grid" }}>
-        {section.rows.map((row, index) => {
-          const canAddProduct =
-            !!row.actionProduct &&
-            !selectedProducts.some((product) => product.id === row.actionProduct?.id);
-          const statusTone =
-            row.status === "Match"
-              ? { background: "#dcfce7", color: "#166534", surface: "#f0fdf4" }
-              : row.status === "Missing from your build"
-              ? { background: "#dbeafe", color: "#1d4ed8", surface: "#f8fbff" }
-              : row.status === "Only in your build"
-              ? { background: "#fef3c7", color: "#92400e", surface: "#fffbeb" }
-              : { background: "#ede9fe", color: "#6d28d9", surface: "#faf5ff" };
-
-          return (
-            <div
-              key={row.key}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "minmax(240px, 1.15fr) minmax(0, 1fr) minmax(0, 1fr) minmax(250px, 1fr)",
-                gap: 12,
-                padding: "16px 18px",
-                alignItems: "start",
-                borderTop: index === 0 ? "none" : "1px solid #eef2f7",
-                background: row.status === "Match" ? "#ffffff" : statusTone.surface,
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <div
-                  style={{
-                    fontSize: 15,
-                    fontWeight: 800,
-                    color: "#0f172a",
-                    lineHeight: 1.35,
-                  }}
-                >
-                  {row.expertProduct?.name || row.yourProduct?.name || "Accessory"}
-                </div>
-                <div style={{ marginTop: 4, fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
-                  {row.status === "Missing from your build"
-                    ? "Expert build recommends this item and it is not yet in your shortlist."
-                    : row.status === "Different item"
-                    ? "Expert build uses a different pick in this category."
-                    : row.status === "Only in your build"
-                    ? "This item is unique to your current plan."
-                    : "Both builds include the same item."}
-                </div>
-              </div>
-              <CompareProductColumn
-                emptyLabel="Not in your build"
-                product={row.yourProduct}
-                getProductSupplierName={getProductSupplierName}
-                formatCurrency={formatCurrency}
-              />
-              <CompareProductColumn
-                emptyLabel="Not in expert build"
-                product={row.expertProduct}
-                getProductSupplierName={getProductSupplierName}
-                formatCurrency={formatCurrency}
-              />
-              <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
-                <span
-                  style={{
-                    display: "inline-flex",
-                    padding: "8px 11px",
-                    borderRadius: 999,
-                    background: statusTone.background,
-                    color: statusTone.color,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    textAlign: "center",
-                    boxShadow:
-                      row.status === "Missing from your build"
-                        ? "0 8px 18px rgba(59,130,246,0.16)"
-                        : "none",
-                  }}
-                >
-                  {row.status}
-                </span>
-                {canAddProduct && row.actionProduct ? (
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                    <button
-                      type="button"
-                      onClick={() => addToBuild(row.actionProduct!)}
-                      style={{
-                        minHeight: 34,
-                        padding: "7px 11px",
-                        borderRadius: 10,
-                        border: "none",
-                        background: "#0f172a",
-                        color: "#ffffff",
-                        fontWeight: 800,
-                        cursor: "pointer",
-                        boxShadow:
-                          row.status === "Missing from your build"
-                            ? "0 10px 20px rgba(15,23,42,0.16)"
-                            : "none",
-                      }}
-                    >
-                      {row.status === "Different item"
-                        ? "Replace with expert item"
-                        : "Add to my build"}
-                    </button>
-                  </div>
-                ) : row.actionProduct ? (
-                  <div style={{ fontSize: 12, color: "#166534", fontWeight: 700 }}>
-                    Already added to your build
-                  </div>
-                ) : (
-                  <div style={{ fontSize: 12, color: "#94a3b8", fontWeight: 700 }}>
-                    No action needed
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      ) : null}
     </div>
   );
 }
 
-function MobileCompareColumn({
-  emptyLabel,
-  formatCurrency,
-  getProductSupplierName,
-  label,
-  product,
-}: {
-  emptyLabel: string;
-  formatCurrency: (value: number) => string;
-  getProductSupplierName: (product: Product) => string;
-  label: string;
-  product: Product | null;
-}) {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gap: 4,
-        padding: "11px 12px",
-        borderRadius: 14,
-        border: "1px solid #e2e8f0",
-        background: "#ffffff",
-      }}
-    >
-      <div
-        style={{
-          fontSize: 10,
-          fontWeight: 800,
-          letterSpacing: 0.5,
-          textTransform: "uppercase",
-          color: "#94a3b8",
-        }}
-      >
-        {label}
-      </div>
-      {product ? (
-        <>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", lineHeight: 1.35 }}>
-            {product.name}
-          </div>
-          <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-            {getProductSupplierName(product)}
-          </div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>
-            {formatCurrency(product.price)}
-          </div>
-        </>
-      ) : (
-        <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.45 }}>{emptyLabel}</div>
-      )}
-    </div>
-  );
-}
+const tableSecondaryButtonStyle = {
+  minHeight: 32,
+  padding: "5px 9px",
+  borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  background: "#ffffff",
+  color: "#111827",
+  fontWeight: 700,
+  cursor: "pointer",
+  fontSize: 11,
+} as const;
 
-function HeaderCaption({
-  align = "left",
-  children,
-}: {
-  align?: "left" | "right";
-  children: string;
-}) {
-  return (
-    <div
-      style={{
-        fontSize: 11,
-        fontWeight: 800,
-        letterSpacing: 0.5,
-        textTransform: "uppercase",
-        color: "#94a3b8",
-        textAlign: align,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function CompareProductColumn({
-  emptyLabel,
-  formatCurrency,
-  getProductSupplierName,
-  product,
-}: {
-  emptyLabel: string;
-  formatCurrency: (value: number) => string;
-  getProductSupplierName: (product: Product) => string;
-  product: Product | null;
-}) {
-  if (!product) {
-    return (
-      <div
-        style={{
-          minHeight: 96,
-          borderRadius: 16,
-          border: "1px dashed #dbe3ee",
-          background: "#ffffff",
-          display: "grid",
-          placeItems: "center",
-          padding: 14,
-          color: "#94a3b8",
-          fontSize: 12,
-          lineHeight: 1.45,
-          textAlign: "center",
-        }}
-      >
-        {emptyLabel}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      style={{
-        minHeight: 96,
-        borderRadius: 16,
-        border: "1px solid #e2e8f0",
-        background: "#ffffff",
-        padding: 14,
-        display: "grid",
-        gap: 6,
-        alignContent: "start",
-      }}
-    >
-      <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", lineHeight: 1.35 }}>
-        {product.name}
-      </div>
-      <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-        {getProductSupplierName(product)}
-      </div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>
-        {formatCurrency(product.price)}
-      </div>
-    </div>
-  );
-}
+const tableLinkButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: 28,
+  padding: "2px 0",
+  border: "none",
+  background: "transparent",
+  color: "#334155",
+  fontWeight: 700,
+  cursor: "pointer",
+  fontSize: 11,
+  textDecoration: "none",
+  whiteSpace: "nowrap",
+} as const;

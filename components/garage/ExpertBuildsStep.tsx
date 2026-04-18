@@ -84,30 +84,27 @@ export function ExpertBuildsStep({
 
   return (
     <section style={{ maxWidth: 1600, margin: "0 auto", padding: isPhone ? "0 0 28px" : "0 10px 32px" }}>
-      <div style={{ display: "grid", gap: 14 }}>
+      <div style={{ display: "grid", gap: 10 }}>
         <div
           style={{
             display: "grid",
-            gap: 12,
-            padding: isPhone ? 14 : 18,
-            borderRadius: 20,
+            gap: 10,
+            padding: isPhone ? 12 : 14,
+            borderRadius: 18,
             border: "1px solid #e5e7eb",
             background: "#ffffff",
-            boxShadow: "0 10px 24px rgba(15,23,42,0.05)",
+            boxShadow: "0 8px 18px rgba(15,23,42,0.04)",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "end" }}>
-            <div style={{ display: "grid", gap: 4 }}>
+              <div style={{ display: "grid", gap: 3 }}>
               <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase", color: "#64748b" }}>
                 Expert Builds
               </div>
-              <h3 style={{ margin: 0, fontSize: isPhone ? 20 : 22, color: "#0f172a", lineHeight: 1.1 }}>
-                Expert Builds for {currentBike.make} {currentBike.model}
-              </h3>
-              <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
-                Compare matched setups, spot planning gaps fast, and open Merge Studio when a build is worth borrowing from.
+                <h3 style={{ margin: 0, fontSize: isPhone ? 18 : 20, color: "#0f172a", lineHeight: 1.1 }}>
+                  Expert Builds for {currentBike.make} {currentBike.model}
+                </h3>
               </div>
-            </div>
             <div style={{ display: "grid", gap: 5, justifyItems: "end" }}>
               <div style={{ fontSize: 10, color: "#64748b", fontWeight: 800, letterSpacing: 0.55, textTransform: "uppercase" }}>
                 Current shortlist
@@ -159,11 +156,6 @@ export function ExpertBuildsStep({
               paddingTop: 2,
             }}
           >
-            <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-              {viewMode === "grid"
-                ? "Grid keeps every expert build at a consistent catalogue width."
-                : "List condenses the same builds into a faster scan view."}
-            </div>
             <div
               style={{
                 display: "inline-flex",

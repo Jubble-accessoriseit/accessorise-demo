@@ -1,17 +1,20 @@
+import './globals.css'
+import GlobalNav from '@/components/GlobalNav'
+
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
     <html lang="en">
       <body
-        style={{
-          fontFamily: "Arial, sans-serif",
-        }}
+        className="bg-[#0D0D0D] text-[#F5F3EE]"
+        style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
       >
+        <GlobalNav />
         {children}
       </body>
     </html>
-  );
+  )
 }

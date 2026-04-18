@@ -1,4 +1,4 @@
-import type { SupabaseBike } from "@/types/garage";
+import type { BikePhoto, SavedBuildPhoto, SupabaseBike } from "@/types/garage";
 import { demoBikeImages } from "@/lib/demo-content/images";
 
 export const FALLBACK_BIKE_PLACEHOLDER = "/bike-placeholder.jpg";
@@ -42,4 +42,46 @@ export function resolveGarageBikeImage(
     getGarageBikeCategoryImage(bike.category) ||
     FALLBACK_BIKE_PLACEHOLDER
   );
+}
+
+function getPreferredGaragePhotoUrl(
+  photos: Array<Pick<BikePhoto, "imageUrl" | "isCover" | "sortOrder">> | Array<Pick<SavedBuildPhoto, "imageUrl" | "isCover" | "sortOrder">> | null | undefined
+) {
+  if (!photos || photos.length === 0) {
+    return null;
+  }
+
+  const preferredPhoto =
+    photos.find((photo) => photo.isCover) ??
+    [...photos].sort((left, right) => left.sortOrder - right.sortOrder)[0] ??
+    null;
+
+  return preferredPhoto?.imageUrl ?? null;
+}
+
+export function resolveGarageBikePreviewImage(input: {
+  bike:
+    | Pick<SupabaseBike, "heroImageUrl" | "image" | "category" | "photos">
+    | null
+    | undefined;
+  build?:
+    | {
+        photos?: Array<Pick<SavedBuildPhoto, "imageUrl" | "isCover" | "sortOrder">>;
+      }
+    | null
+    | undefined;
+}) {
+  const buildPhotoUrl = getPreferredGaragePhotoUrl(input.build?.photos);
+
+  if (buildPhotoUrl) {
+    return buildPhotoUrl;
+  }
+
+  const bikePhotoUrl = getPreferredGaragePhotoUrl(input.bike?.photos);
+
+  if (bikePhotoUrl) {
+    return bikePhotoUrl;
+  }
+
+  return resolveGarageBikeImage(input.bike);
 }

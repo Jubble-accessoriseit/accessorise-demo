@@ -90,6 +90,7 @@ export type PersistedGarageSnapshot = {
   garageBikeMetaById: Record<
     string,
     {
+      garageBikeName?: string | null;
       nickname?: string | null;
       ownershipStatus?: GarageOwnershipStatus | null;
       isArchived?: boolean;
@@ -296,7 +297,8 @@ function mapBikeRow(
     photoCount: photos.length,
     coverPhotoId: row.cover_photo_id ?? coverPhoto?.id ?? null,
     photos,
-    nickname: row.garage_bike_name ?? row.nickname,
+    garageBikeName: row.garage_bike_name,
+    nickname: row.nickname ?? row.garage_bike_name,
     ownershipStatus: row.ownership_status,
     isArchived: row.is_archived,
     builds,
@@ -384,6 +386,7 @@ export async function loadGarageFromSupabase(
     PersistedGarageSnapshot["garageBikeMetaById"]
   >((acc, row) => {
     acc[row.id] = {
+      garageBikeName: row.garage_bike_name,
       nickname: row.garage_bike_name ?? row.nickname,
       ownershipStatus: row.ownership_status,
       isArchived: row.is_archived,
@@ -956,6 +959,7 @@ create table if not exists public.garage_bikes (
   model text not null,
   year integer not null check (year between 1900 and 2100),
   variant text null,
+  garage_bike_name text null,
   nickname text null,
   ownership_status text null,
   is_archived boolean not null default false,
@@ -969,6 +973,9 @@ create table if not exists public.garage_bikes (
       or ownership_status in ('Owned', 'In service', 'Previously owned', 'Wishlist')
     )
 );
+
+alter table public.garage_bikes
+add column if not exists garage_bike_name text null;
 
 create table if not exists public.garage_builds (
   id text primary key,

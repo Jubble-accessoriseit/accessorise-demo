@@ -179,6 +179,7 @@ export type SupabaseBike = {
   photos?: BikePhoto[];
   sourceLabel?: string | null;
   sourceUrl?: string | null;
+  garageBikeName?: string | null;
   nickname?: string | null;
   ownershipStatus?: GarageOwnershipStatus | null;
   isArchived?: boolean;
@@ -349,6 +350,7 @@ export type GarageResumeEntry = {
   bikeName: string;
   buildName: string;
   bikeLabel: string;
+  optionLabel: string;
   updatedAt: string;
   isPrimary: boolean;
 };

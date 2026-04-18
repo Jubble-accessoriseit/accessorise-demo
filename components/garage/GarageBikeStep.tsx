@@ -31,13 +31,16 @@ type GarageBikeStepProps = {
   modelOptions: ModelOption[];
   onClearBikeSelection: () => void;
   onContinueToBuild: () => void;
-  onOpenGarageBuildInWorkspace: (buildId: string) => void;
+  onSelectGarageResumeEntry: (buildId: string) => void;
   onSelectMake: (value: string) => void;
   onSelectModel: (value: string) => void;
   onSelectSeries: (value: string) => void;
   onSelectTemplateBike: (bikeId: string) => void;
   onSelectYear: (value: string) => void;
+  previewBike: SupabaseBike | null;
+  isSelectionInProgress: boolean;
   selectedBike: SupabaseBike | null;
+  selectedBikeCardId: string | null;
   selectedBikeId: string | null;
   selectedMake: string;
   selectedModel: string;
@@ -49,10 +52,10 @@ type GarageBikeStepProps = {
 
 const selectorCardStyle = {
   background: "rgba(255,255,255,0.92)",
-  borderRadius: 24,
-  padding: 18,
+  borderRadius: 20,
+  padding: 14,
   border: "1px solid rgba(226,232,240,0.95)",
-  boxShadow: "0 14px 30px rgba(15,23,42,0.07)",
+  boxShadow: "0 10px 22px rgba(15,23,42,0.05)",
 };
 
 function BikeFilterField({
@@ -63,10 +66,10 @@ function BikeFilterField({
   label: string;
 }) {
   return (
-    <div style={{ display: "grid", gap: 5 }}>
+    <div style={{ display: "grid", gap: 4 }}>
       <label
         style={{
-          fontSize: 12,
+          fontSize: 10,
           fontWeight: 700,
           color: "#475569",
           letterSpacing: 0.4,
@@ -87,12 +90,12 @@ function BikeSelect(props: SelectHTMLAttributes<HTMLSelectElement>) {
     <select
       disabled={disabled}
       style={{
-        minHeight: 46,
-        padding: "11px 14px",
-        borderRadius: 14,
+        minHeight: 40,
+        padding: "9px 11px",
+        borderRadius: 12,
         border: "1px solid #cbd5e1",
         background: disabled ? "#f3f4f6" : "#ffffff",
-        fontSize: 14,
+        fontSize: 13,
         outline: "none",
         width: "100%",
         color: disabled ? "#9ca3af" : "#111827",
@@ -119,13 +122,16 @@ export function GarageBikeStep({
   modelOptions,
   onClearBikeSelection,
   onContinueToBuild,
-  onOpenGarageBuildInWorkspace,
+  onSelectGarageResumeEntry,
   onSelectMake,
   onSelectModel,
   onSelectSeries,
   onSelectTemplateBike,
   onSelectYear,
+  previewBike,
+  isSelectionInProgress,
   selectedBike,
+  selectedBikeCardId,
   selectedBikeId,
   selectedMake,
   selectedModel,
@@ -134,12 +140,14 @@ export function GarageBikeStep({
   seriesOptions,
   yearOptions,
 }: GarageBikeStepProps) {
+  const shouldShowMatchingBikes = !selectedBikeId || isSelectionInProgress;
+
   return (
     <GarageStepShell isPhone={isPhone}>
       <section
         style={{
           display: "grid",
-          gap: 16,
+          gap: 12,
         }}
       >
         <div
@@ -151,42 +159,35 @@ export function GarageBikeStep({
           }}
         >
           <div style={selectorCardStyle}>
-            <GarageSectionHeader
-              eyebrow="Bike"
-              title="Select your bike"
-              description="Choose a bike template or jump back into a saved Garage build."
-            />
+            <GarageSectionHeader eyebrow="Bike" title="Select your bike" />
 
             <div
               style={{
                 display: "grid",
-                gap: 8,
-                marginBottom: 16,
-                padding: 14,
-                borderRadius: 18,
+                gap: 6,
+                marginBottom: 12,
+                padding: 12,
+                borderRadius: 16,
                 border: "1px solid #e2e8f0",
                 background: "#ffffff",
               }}
             >
               <div style={garageEyebrowStyle}>Resume from Garage</div>
-              <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
-                Pick up where you left off without rebuilding your context.
-              </div>
               <select
                 defaultValue=""
                 onChange={(event) => {
                   const buildId = event.target.value;
                   if (!buildId) return;
-                  onOpenGarageBuildInWorkspace(buildId);
+                  onSelectGarageResumeEntry(buildId);
                   event.currentTarget.value = "";
                 }}
                 style={{
-                  minHeight: 44,
-                  padding: "10px 12px",
-                  borderRadius: 14,
+                  minHeight: 40,
+                  padding: "9px 11px",
+                  borderRadius: 12,
                   border: "1px solid #cbd5e1",
                   background: "#ffffff",
-                  fontSize: 14,
+                  fontSize: 13,
                   color: "#0f172a",
                   width: "100%",
                   maxWidth: "100%",
@@ -196,11 +197,11 @@ export function GarageBikeStep({
                 <option value="">
                   {garageResumeEntries.length === 0
                     ? "No saved Garage builds yet"
-                    : "Choose a saved bike and build"}
+                    : "Choose a saved bike"}
                 </option>
                 {garageResumeEntries.map((entry) => (
                   <option key={entry.key} value={entry.buildId}>
-                    {entry.bikeName} - {entry.buildName}
+                    {entry.optionLabel}
                   </option>
                 ))}
               </select>
@@ -210,7 +211,7 @@ export function GarageBikeStep({
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                gap: 12,
+                gap: 10,
                 alignItems: "end",
               }}
             >
@@ -276,28 +277,26 @@ export function GarageBikeStep({
                   </option>
                   {yearOptions.map((year) => (
                     <option key={String(year)} value={String(year)}>
-                      {`${year} - ${selectedMake} ${selectedSeries}${
-                        selectedModel !== "Base" ? ` ${selectedModel}` : ""
-                      }`}
+                      {String(year)}
                     </option>
                   ))}
                 </BikeSelect>
               </BikeFilterField>
             </div>
 
-            {selectedBikeId ? (
+            {selectedBikeId && !isSelectionInProgress ? (
               <div
                 style={{
                   display: "grid",
-                  gap: 10,
-                  marginTop: 16,
-                  padding: 14,
-                  borderRadius: 18,
+                  gap: 8,
+                  marginTop: 12,
+                  padding: 12,
+                  borderRadius: 16,
                   border: "1px solid #dbeafe",
                   background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #eff6ff 100%)",
                 }}
               >
-                <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>
                   {isSelectedBikeSavedGarageBike
                     ? "Saved Garage bike selected. Continue editing or switch back to template browsing."
                     : "Bike template selected. You can move straight into Build now."}
@@ -317,174 +316,184 @@ export function GarageBikeStep({
                   </button>
                 </div>
               </div>
-            ) : null}
-
-            <div style={{ marginTop: 18 }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 10,
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  marginBottom: 10,
-                }}
-              >
-                <div style={garageEyebrowStyle}>Matching bikes</div>
-                <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.4 }}>{bikeStepHelperText}</div>
-              </div>
-
+            ) : isSelectionInProgress ? (
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: isPhone ? "1fr" : "repeat(auto-fit, minmax(280px, 1fr))",
-                  gap: 12,
+                  gap: 6,
+                  marginTop: 12,
+                  padding: 12,
+                  borderRadius: 16,
+                  border: "1px solid #e2e8f0",
+                  background: "#f8fafc",
                 }}
               >
-                {isBikeStepBlankState ? (
-                  <div
-                    style={{
-                      padding: "14px 16px",
-                      borderRadius: 18,
-                      border: "1px solid #e2e8f0",
-                      background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-                    }}
-                  >
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>
-                      Choose your bike
-                    </div>
-                    <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                      Start with a make, then narrow by model, variant, and year.
-                    </div>
-                  </div>
-                ) : bikeStepFilteredBikeOptions.length === 0 ? (
-                  <div
-                    style={{
-                      padding: "14px 16px",
-                      borderRadius: 18,
-                      border: "1px solid #e2e8f0",
-                      background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-                    }}
-                  >
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>
-                      No bikes found
-                    </div>
-                    <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                      Try broadening one of the filters.
-                    </div>
-                  </div>
-                ) : (
-                  bikeStepFilteredBikeOptions.map((bike) => {
-                    const bikeImage = resolveGarageBikeImage(bike);
-                    const isSelected = selectedBikeId === bike.id;
+                <div style={{ ...garageEyebrowStyle }}>Selection in progress</div>
+                <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>
+                  Choose the remaining fields to confirm your next bike. The previous bike will not stay active while you are changing selection.
+                </div>
+              </div>
+            ) : null}
 
-                    return (
-                      <button
-                        key={bike.id}
-                        type="button"
-                        onClick={() => onSelectTemplateBike(bike.id)}
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "112px minmax(0, 1fr)",
-                          alignItems: "stretch",
-                          gap: 14,
-                          width: "100%",
-                          padding: 12,
-                          borderRadius: 20,
-                          border: isSelected ? "1px solid #0f172a" : "1px solid #e5e7eb",
-                          background: isSelected
-                            ? "linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)"
-                            : "linear-gradient(135deg, #ffffff 0%, #fcfdff 100%)",
-                          textAlign: "left",
-                          cursor: "pointer",
-                          boxShadow: isSelected
-                            ? "0 18px 34px rgba(15,23,42,0.14)"
-                            : "0 6px 18px rgba(15,23,42,0.05)",
-                        }}
-                      >
-                        <div
+            {shouldShowMatchingBikes ? (
+              <div style={{ marginTop: 18 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
+                  <div style={garageEyebrowStyle}>Matching bikes</div>
+                  <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.35 }}>{bikeStepHelperText}</div>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isPhone ? "1fr" : "repeat(auto-fit, minmax(280px, 1fr))",
+                    gap: 12,
+                  }}
+                >
+                  {isBikeStepBlankState ? (
+                    <div
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 16,
+                        border: "1px solid #e2e8f0",
+                        background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+                      }}
+                    >
+                      <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>
+                        Choose your bike
+                      </div>
+                      <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+                        Start with a make, then narrow by model, variant, and year.
+                      </div>
+                    </div>
+                  ) : bikeStepFilteredBikeOptions.length === 0 ? (
+                    <div
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 16,
+                        border: "1px solid #e2e8f0",
+                        background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+                      }}
+                    >
+                      <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>
+                        No bikes found
+                      </div>
+                      <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+                        Try broadening one of the filters.
+                      </div>
+                    </div>
+                  ) : (
+                    bikeStepFilteredBikeOptions.map((bike) => {
+                      const bikeImage = resolveGarageBikeImage(bike);
+                      const isSelected = selectedBikeCardId === bike.id;
+
+                      return (
+                        <button
+                          key={bike.id}
+                          type="button"
+                          onClick={() => onSelectTemplateBike(bike.id)}
                           style={{
-                            minHeight: 84,
-                            borderRadius: 16,
-                            overflow: "hidden",
-                            border: isSelected ? "1px solid #bfdbfe" : "1px solid #e5e7eb",
-                            background: `linear-gradient(180deg, rgba(15,23,42,0.04), rgba(15,23,42,0.16)), url(${bikeImage}) center/cover`,
+                            display: "grid",
+                            gridTemplateColumns: isPhone ? "96px minmax(0, 1fr)" : "104px minmax(0, 1fr)",
+                            alignItems: "stretch",
+                            gap: 12,
+                            width: "100%",
+                            padding: 10,
+                            borderRadius: 18,
+                            border: isSelected ? "1px solid #0f172a" : "1px solid #e5e7eb",
+                            background: isSelected
+                              ? "linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)"
+                              : "linear-gradient(135deg, #ffffff 0%, #fcfdff 100%)",
+                            textAlign: "left",
+                            cursor: "pointer",
+                            boxShadow: isSelected
+                              ? "0 12px 24px rgba(15,23,42,0.12)"
+                              : "0 4px 12px rgba(15,23,42,0.05)",
                           }}
-                        />
-
-                        <div style={{ minWidth: 0, display: "grid", gap: 8, alignContent: "center" }}>
+                        >
                           <div
                             style={{
-                              display: "flex",
-                              alignItems: "flex-start",
-                              justifyContent: "space-between",
-                              gap: 12,
+                              minHeight: isPhone ? 72 : 80,
+                              borderRadius: 14,
+                              overflow: "hidden",
+                              border: isSelected ? "1px solid #bfdbfe" : "1px solid #e5e7eb",
+                              background: `linear-gradient(180deg, rgba(15,23,42,0.04), rgba(15,23,42,0.16)), url(${bikeImage}) center/cover`,
                             }}
-                          >
-                            <div style={{ minWidth: 0 }}>
+                          />
+
+                          <div style={{ minWidth: 0, display: "grid", gap: 6, alignContent: "center" }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "flex-start",
+                                justifyContent: "space-between",
+                                gap: 12,
+                              }}
+                            >
+                              <div style={{ minWidth: 0 }}>
+                                <div
+                                  style={{
+                                    fontSize: 14,
+                                    fontWeight: 800,
+                                    color: "#111827",
+                                    lineHeight: 1.2,
+                                    overflowWrap: "anywhere",
+                                  }}
+                                >
+                                  {getBikeOptionLabel(bike)}
+                                </div>
+                                <div style={{ marginTop: 2, fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>
+                                  {bike.year} model
+                                </div>
+                              </div>
                               <div
                                 style={{
-                                  fontSize: 15,
+                                  width: 24,
+                                  height: 24,
+                                  borderRadius: 999,
+                                  display: "grid",
+                                  placeItems: "center",
+                                  background: isSelected ? "#0f172a" : "#f8fafc",
+                                  border: isSelected ? "none" : "1px solid #e2e8f0",
+                                  color: isSelected ? "#ffffff" : "#94a3b8",
+                                  fontSize: 13,
                                   fontWeight: 800,
-                                  color: "#111827",
-                                  lineHeight: 1.2,
-                                  overflowWrap: "anywhere",
+                                  flexShrink: 0,
                                 }}
                               >
-                                {getBikeOptionLabel(bike)}
-                              </div>
-                              <div style={{ marginTop: 3, fontSize: 12, color: "#64748b", lineHeight: 1.35 }}>
-                                {bike.year} model
+                                {isSelected ? "✓" : "→"}
                               </div>
                             </div>
-                            <div
-                              style={{
-                                width: 24,
-                                height: 24,
-                                borderRadius: 999,
-                                display: "grid",
-                                placeItems: "center",
-                                background: isSelected ? "#0f172a" : "#f8fafc",
-                                border: isSelected ? "none" : "1px solid #e2e8f0",
-                                color: isSelected ? "#ffffff" : "#94a3b8",
-                                fontSize: 13,
-                                fontWeight: 800,
-                                flexShrink: 0,
-                              }}
-                            >
-                              {isSelected ? "✓" : "→"}
-                            </div>
-                          </div>
 
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                            <div
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                padding: "5px 9px",
-                                borderRadius: 999,
-                                background: isSelected ? "#dbeafe" : "#f8fafc",
-                                border: isSelected ? "1px solid #bfdbfe" : "1px solid #e2e8f0",
-                                fontSize: 11,
-                                fontWeight: 700,
-                                color: isSelected ? "#1d4ed8" : "#475569",
-                              }}
-                            >
-                              {bike.category || "Adventure"}
-                            </div>
-                            {bike.variant ? (
-                              <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.35 }}>
-                                {bike.variant}
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                              <div
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  padding: "5px 9px",
+                                  borderRadius: 999,
+                                  background: isSelected ? "#dbeafe" : "#f8fafc",
+                                  border: isSelected ? "1px solid #bfdbfe" : "1px solid #e2e8f0",
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  color: isSelected ? "#1d4ed8" : "#475569",
+                                }}
+                              >
+                                {bike.category || "Adventure"}
                               </div>
-                            ) : null}
+                              {bike.variant ? (
+                                <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.35 }}>
+                                  {bike.variant}
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
 
           <aside
@@ -497,31 +506,28 @@ export function GarageBikeStep({
             }}
           >
             <div>
-              <div style={{ ...garageEyebrowStyle, marginBottom: 6 }}>Garage workspace</div>
-              <h3 style={{ margin: 0, fontSize: 24, lineHeight: 1.12, color: "#0f172a" }}>
-                Here is your bike. Next, build around it.
+              <div style={{ ...garageEyebrowStyle, marginBottom: 4 }}>Bike preview</div>
+              <h3 style={{ margin: 0, fontSize: 20, lineHeight: 1.12, color: "#0f172a" }}>
+                {previewBike ? `${previewBike.make} ${previewBike.model}` : "Ready for Build"}
               </h3>
-              <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.5, color: "#64748b" }}>
-                Keep the selector in view, confirm the active bike, and move into Build when you are ready.
-              </p>
             </div>
 
             <div
               style={{
-                minHeight: isPhone ? 220 : 320,
-                borderRadius: 22,
+                minHeight: isPhone ? 180 : 260,
+                borderRadius: 18,
                 overflow: "hidden",
                 border: "1px solid rgba(226,232,240,0.9)",
                 background:
-                  heroImage && selectedBike
+                  heroImage && previewBike
                     ? `linear-gradient(180deg, rgba(15,23,42,0.05), rgba(15,23,42,0.22)), url(${heroImage}) center/cover`
                     : "#e2e8f0",
-                boxShadow: "0 10px 26px rgba(15,23,42,0.08)",
+                boxShadow: "0 8px 18px rgba(15,23,42,0.06)",
                 display: "flex",
                 alignItems: "flex-end",
               }}
             >
-              {!heroImage || !selectedBike ? (
+              {!heroImage || !previewBike ? (
                 <img
                   src="https://exieufhwbrbeilmjltny.supabase.co/storage/v1/object/public/app-assets/garage/garage-workshop-motorcycle-wall-v1.png"
                   alt="Garage workshop with motorcycles and accessory wall"
@@ -530,169 +536,73 @@ export function GarageBikeStep({
               ) : null}
             </div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: isPhone ? "1fr" : "repeat(2, minmax(0, 1fr))",
-                gap: 10,
-              }}
-            >
-              <div
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: 16,
-                  background: "#ffffff",
-                  border: "1px solid #e2e8f0",
-                }}
-              >
-                <div style={{ ...garageEyebrowStyle, marginBottom: 4 }}>Start here</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", lineHeight: 1.35 }}>
-                  Pick a template or resume a saved build
-                </div>
-              </div>
-              <div
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: 16,
-                  background: "#ffffff",
-                  border: "1px solid #e2e8f0",
-                }}
-              >
-                <div style={{ ...garageEyebrowStyle, marginBottom: 4 }}>Next step</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", lineHeight: 1.35 }}>
-                  Continue to Build once the right bike is selected
-                </div>
-              </div>
-            </div>
-          </aside>
-        </div>
-
-        {selectedBikeId ? (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: isDesktop ? "repeat(2, minmax(0, 1fr))" : "1fr",
-              gap: 16,
-            }}
-          >
-            <div
-              style={{
-                ...selectorCardStyle,
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-                gap: 12,
-              }}
-            >
-              <div>
-                <div style={{ ...garageEyebrowStyle, marginBottom: 6 }}>Bike preview</div>
-                <h2 style={{ margin: 0, fontSize: 26, lineHeight: 1.08, color: "#0f172a" }}>
-                  {selectedBike ? `${selectedBike.make} ${selectedBike.model}` : "Selected bike preview"}
-                </h2>
-                <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.45, color: "#64748b" }}>
-                  Review the active bike before moving into the build studio.
-                </p>
-              </div>
-
-              <div
-                style={{
-                  minHeight: 240,
-                  borderRadius: 22,
-                  overflow: "hidden",
-                  background: heroImage
-                    ? `linear-gradient(180deg, rgba(15,23,42,0.05), rgba(15,23,42,0.22)), url(${heroImage}) center/cover`
-                    : "linear-gradient(135deg, #dbeafe 0%, #eff6ff 45%, #e2e8f0 100%)",
-                  display: "flex",
-                  alignItems: "flex-end",
-                }}
-              >
-                <div
-                  style={{
-                    width: "100%",
-                    padding: 18,
-                    background: "linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,0.72) 100%)",
-                    color: "#ffffff",
-                  }}
-                >
-                  <div style={{ fontSize: 12, letterSpacing: 1, textTransform: "uppercase", opacity: 0.82 }}>
-                    Selected bike
-                  </div>
-                  <div style={{ marginTop: 6, fontSize: 24, fontWeight: 800, lineHeight: 1.04 }}>
-                    {selectedBike
-                      ? `${selectedBike.year} ${selectedBike.make} ${selectedBike.model}`
-                      : "Select a bike to preview it here"}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div
-              style={{
-                ...selectorCardStyle,
-                display: "grid",
-                gap: 14,
-                alignContent: "start",
-              }}
-            >
-              <div>
-                <div style={{ ...garageEyebrowStyle, marginBottom: 6 }}>Bike summary</div>
-                <h3 style={{ margin: 0, fontSize: 24, lineHeight: 1.08, color: "#0f172a" }}>Active bike</h3>
-                <p style={{ margin: "8px 0 0", fontSize: 13, lineHeight: 1.45, color: "#64748b" }}>
-                  Confirm the details, then move into Build with confidence.
-                </p>
-              </div>
-
+            {(selectedBikeId || isSelectionInProgress) ? (
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
                   gap: 10,
+                  alignContent: "start",
                 }}
               >
-                {[
-                  ["Make", selectedBike?.make || selectedMake || "Not selected"],
-                  ["Model", selectedBike?.model || selectedSeries || "Not selected"],
-                  ["Variant", selectedBike?.variant || selectedModel || "Not selected"],
-                  ["Year", selectedBike?.year || selectedYear || "Not selected"],
-                ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    style={{
-                      padding: 12,
-                      borderRadius: 18,
-                      background: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                    }}
-                  >
-                    <div style={{ ...garageEyebrowStyle, marginBottom: 6 }}>{label}</div>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: "#0f172a", lineHeight: 1.4 }}>{value}</div>
-                  </div>
-                ))}
-              </div>
+                <div>
+                  <div style={{ ...garageEyebrowStyle, marginBottom: 4 }}>Bike summary</div>
+                  <h3 style={{ margin: 0, fontSize: 20, lineHeight: 1.08, color: "#0f172a" }}>
+                    {isSelectionInProgress ? "Draft bike" : "Active bike"}
+                  </h3>
+                </div>
 
-              <div
-                style={{
-                  padding: 14,
-                  borderRadius: 18,
-                  background: "linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)",
-                  border: "1px solid #dbeafe",
-                }}
-              >
-                <div style={{ ...garageEyebrowStyle, marginBottom: 6 }}>Build readiness</div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", lineHeight: 1.25 }}>
-                  {selectedMake && selectedSeries && selectedModel && selectedYear
-                    ? `${selectedYear} ${selectedMake} ${selectedSeries}${
-                        selectedModel !== "Base" ? ` ${selectedModel}` : ""
-                      }`
-                    : "No bike selected yet"}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                    gap: 10,
+                  }}
+                >
+                  {[
+                    ["Make", previewBike?.make || selectedMake || "Not selected"],
+                    ["Model", previewBike?.model || selectedSeries || "Not selected"],
+                    ["Variant", previewBike?.variant || selectedModel || "Not selected"],
+                    ["Year", previewBike?.year || selectedYear || "Not selected"],
+                  ].map(([label, value]) => (
+                    <div
+                      key={label}
+                      style={{
+                        padding: 10,
+                        borderRadius: 14,
+                        background: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                      }}
+                    >
+                      <div style={{ ...garageEyebrowStyle, marginBottom: 6 }}>{label}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a", lineHeight: 1.35 }}>{value}</div>
+                    </div>
+                  ))}
                 </div>
-                <div style={{ marginTop: 6, fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                  {compatibleCount} compatible accessories currently match this bike.
+
+                <div
+                  style={{
+                    padding: 12,
+                    borderRadius: 16,
+                    background: "linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)",
+                    border: "1px solid #dbeafe",
+                  }}
+                >
+                  <div style={{ ...garageEyebrowStyle, marginBottom: 4 }}>Build readiness</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", lineHeight: 1.25 }}>
+                    {selectedMake && selectedSeries && selectedModel && selectedYear
+                      ? `${selectedYear} ${selectedMake} ${selectedSeries}${
+                          selectedModel !== "Base" ? ` ${selectedModel}` : ""
+                        }`
+                      : "No bike selected yet"}
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: 11, color: "#64748b", lineHeight: 1.35 }}>
+                    {compatibleCount} compatible accessories currently match this bike.
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        ) : null}
+            ) : null}
+          </aside>
+        </div>
       </section>
     </GarageStepShell>
   );

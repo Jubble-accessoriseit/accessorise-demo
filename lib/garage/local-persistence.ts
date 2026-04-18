@@ -70,6 +70,12 @@ function normalizeBike(value: unknown): SupabaseBike | null {
     photos: Array.isArray(value.photos) ? value.photos : [],
     sourceLabel: typeof value.sourceLabel === "string" ? value.sourceLabel : null,
     sourceUrl: typeof value.sourceUrl === "string" ? value.sourceUrl : null,
+    garageBikeName:
+      typeof value.garageBikeName === "string"
+        ? value.garageBikeName
+        : typeof value.nickname === "string"
+        ? value.nickname
+        : null,
     nickname: typeof value.nickname === "string" ? value.nickname : null,
     ownershipStatus:
       value.ownershipStatus === "Owned" ||
@@ -87,7 +93,12 @@ export type PersistedGarageLocalSnapshot = {
   buildsByBike: Record<string, GarageBuildRecord[]>;
   bikeMetaById: Record<
     string,
-    { nickname?: string | null; ownershipStatus?: GarageOwnershipStatus | null; isArchived?: boolean }
+    {
+      garageBikeName?: string | null;
+      nickname?: string | null;
+      ownershipStatus?: GarageOwnershipStatus | null;
+      isArchived?: boolean;
+    }
   >;
   buildPhotosByBuildId: Record<string, SavedBuildPhoto[]>;
 };

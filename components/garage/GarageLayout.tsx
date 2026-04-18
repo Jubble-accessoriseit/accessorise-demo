@@ -28,7 +28,7 @@ export function GarageStepShell({
   children,
   isPhone,
   maxWidth = 1360,
-  paddingBottom = 32,
+  paddingBottom = 24,
 }: GarageStepShellProps) {
   return (
     <section
@@ -36,8 +36,8 @@ export function GarageStepShell({
         maxWidth,
         margin: "0 auto",
         padding: isPhone
-          ? `0 14px ${Math.max(24, paddingBottom - 4)}px`
-          : `0 16px ${paddingBottom}px`,
+          ? `0 14px ${Math.max(20, paddingBottom - 2)}px`
+          : `0 14px ${paddingBottom}px`,
       }}
     >
       {children}
@@ -55,13 +55,13 @@ export function GarageSummaryCard({
   return (
     <div
       style={{
-        background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 70%, #eff6ff 100%)",
-        borderRadius: 24,
-        padding: 18,
+        background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+        borderRadius: 20,
+        padding: 14,
         border: "1px solid #e2e8f0",
-        boxShadow: "0 14px 30px rgba(15,23,42,0.06)",
+        boxShadow: "0 10px 22px rgba(15,23,42,0.05)",
         display: "grid",
-        gap: 14,
+        gap: 10,
       }}
     >
       <div
@@ -78,15 +78,15 @@ export function GarageSummaryCard({
           <h2
             style={{
               margin: 0,
-              fontSize: 28,
-              lineHeight: 1.03,
+              fontSize: 22,
+              lineHeight: 1.05,
               color: "#0f172a",
             }}
           >
             {title}
           </h2>
           {description ? (
-            <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
               {description}
             </div>
           ) : null}
@@ -112,7 +112,7 @@ export function GarageSectionHeader({
         gap: 14,
         alignItems: "flex-start",
         flexWrap: "wrap",
-        marginBottom: 18,
+        marginBottom: 12,
       }}
     >
       <div style={{ minWidth: 0 }}>
@@ -126,9 +126,9 @@ export function GarageSectionHeader({
             {eyebrow}
           </div>
         ) : null}
-        <h2 style={{ margin: 0, fontSize: 26, lineHeight: 1.05, color: "#0f172a" }}>{title}</h2>
+        <h2 style={{ margin: 0, fontSize: 21, lineHeight: 1.08, color: "#0f172a" }}>{title}</h2>
         {description ? (
-          <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.55, color: "#64748b", maxWidth: 760 }}>
+          <p style={{ margin: "5px 0 0", fontSize: 12, lineHeight: 1.45, color: "#64748b", maxWidth: 760 }}>
             {description}
           </p>
         ) : null}
@@ -139,31 +139,33 @@ export function GarageSectionHeader({
 }
 
 export const garageEyebrowStyle = {
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 800,
-  letterSpacing: 0.6,
+  letterSpacing: 0.5,
   textTransform: "uppercase" as const,
   color: "#64748b",
 };
 
 export const garagePrimaryButtonStyle: CSSProperties = {
-  padding: "11px 15px",
-  borderRadius: 14,
+  padding: "9px 13px",
+  borderRadius: 12,
   border: "none",
   background: "#0f172a",
   color: "#ffffff",
   fontWeight: 700,
   cursor: "pointer",
-  boxShadow: "0 12px 24px rgba(15,23,42,0.16)",
+  boxShadow: "0 8px 18px rgba(15,23,42,0.12)",
+  fontSize: 12,
 };
 
 export const garageSecondaryButtonStyle: CSSProperties = {
-  padding: "10px 14px",
-  borderRadius: 14,
+  padding: "8px 12px",
+  borderRadius: 12,
   border: "1px solid #cbd5e1",
   background: "#ffffff",
   color: "#0f172a",
   fontWeight: 700,
   cursor: "pointer",
   boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+  fontSize: 12,
 };
