@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import type { GarageBikeRecord, GarageBuildItem, GarageBuildRecord } from '@/types/garage'
 import { garageCategories } from '@/types/garage'
 import { formatGaragePriceDisplay } from '@/lib/garage/price-display'
+import { AddAccessoryModal } from './AddAccessoryModal'
 
 type ItemState = 'fitted' | 'wishlist' | 'moved_on'
 type Filter = 'all' | 'fitted' | 'wishlist' | 'history'
@@ -349,6 +350,7 @@ type GarageScreenProps = {
 
 export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwitchBike }: GarageScreenProps) {
   const [activeFilter, setActiveFilter] = useState<Filter>('all')
+  const [showModal, setShowModal] = useState(false)
 
   const allItems = useMemo(
     () => selectedBuild?.buildItems ?? [],
@@ -441,6 +443,7 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
       {/* F — Add accessory CTA */}
       <button
         className="w-full text-center"
+        onClick={() => setShowModal(true)}
         style={{
           border: '1.5px dashed rgba(232,132,26,0.25)',
           borderRadius: 10,
@@ -454,6 +457,15 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
       >
         + Add accessory
       </button>
+
+      {showModal && (
+        <AddAccessoryModal
+          bikeName={[selectedBike?.year, selectedBike?.make, selectedBike?.model].filter(Boolean).join(' ')}
+          bikeId={selectedBike?.id ?? null}
+          onClose={() => setShowModal(false)}
+          onViewBuild={() => setShowModal(false)}
+        />
+      )}
     </div>
   )
 }
