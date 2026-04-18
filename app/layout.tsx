@@ -12,8 +12,10 @@ export default function RootLayout({
         className="bg-[#0D0D0D] text-[#F5F3EE]"
         style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
       >
-        <GlobalNav />
-        {children}
+        <div style={{ maxWidth: 430, margin: '0 auto', backgroundColor: '#0D0D0D', minHeight: '100vh' }}>
+          <GlobalNav />
+          {children}
+        </div>
       </body>
     </html>
   )
