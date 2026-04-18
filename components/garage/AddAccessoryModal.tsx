@@ -37,6 +37,7 @@ function matchesSearch(p: Product, q: string): boolean {
 function CloseBtn({ onClose }: { onClose: () => void }) {
   return (
     <button
+      type="button"
       onClick={onClose}
       style={{
         background: 'none', border: 'none', cursor: 'pointer',
@@ -53,6 +54,7 @@ function CloseBtn({ onClose }: { onClose: () => void }) {
 function BackBtn({ onClick }: { onClick: () => void }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       style={{
         background: 'none', border: 'none', cursor: 'pointer',
@@ -177,7 +179,7 @@ function Step1Search({
             }}
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')}
+            <button type="button" onClick={() => setSearchQuery('')}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#44423E', fontSize: 16, padding: 0, lineHeight: 1 }}>
               ×
             </button>
@@ -190,7 +192,7 @@ function Step1Search({
         {['all', ...availableCategoryIds].map(catId => {
           const active = activeCategoryId === catId
           return (
-            <button key={catId} onClick={() => setActiveCategoryId(catId)}
+            <button type="button" key={catId} onClick={() => setActiveCategoryId(catId)}
               style={{
                 flexShrink: 0, borderRadius: 20, padding: '6px 13px',
                 fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap', cursor: 'pointer',
@@ -214,7 +216,7 @@ function Step1Search({
           visibleProducts.map((product, i) => {
             const isTopResult = i === 0 && !searchQuery
             return (
-              <button key={product.id} onClick={() => onSelect(product)}
+              <button type="button" key={product.id} onClick={() => onSelect(product)}
                 style={{
                   display: 'flex', gap: 12, alignItems: 'center',
                   backgroundColor: isTopResult ? 'rgba(232,132,26,0.03)' : '#141414',
@@ -319,7 +321,7 @@ function Step2Details({
       {/* State option cards */}
       <div style={{ display: 'flex', gap: 8, padding: '0 20px 12px' }}>
         {/* Wish list */}
-        <button onClick={() => setItemState('wishlist')}
+        <button type="button" onClick={() => setItemState('wishlist')}
           style={{
             flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
             gap: 6, padding: '14px 10px',
@@ -334,7 +336,7 @@ function Step2Details({
         </button>
 
         {/* Fitted */}
-        <button onClick={() => setItemState('fitted')}
+        <button type="button" onClick={() => setItemState('fitted')}
           style={{
             flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
             gap: 6, padding: '14px 10px',
@@ -393,7 +395,7 @@ function Step2Details({
 
       {/* CTA */}
       <div style={{ padding: '16px 20px 32px' }}>
-        <button onClick={onConfirm}
+        <button type="button" onClick={onConfirm}
           style={{
             width: '100%',
             backgroundColor: '#E8841A', color: '#0D0D0D',
@@ -474,7 +476,7 @@ function Step3Confirmation({
 
         {/* CTAs */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-          <button onClick={onViewBuild}
+          <button type="button" onClick={onViewBuild}
             style={{
               width: '100%', backgroundColor: '#E8841A', color: '#0D0D0D',
               border: 'none', borderRadius: 8, padding: '13px 20px',
@@ -485,7 +487,7 @@ function Step3Confirmation({
             }}>
             View my build
           </button>
-          <button onClick={onAddAnother}
+          <button type="button" onClick={onAddAnother}
             style={{
               width: '100%',
               backgroundColor: 'transparent',
