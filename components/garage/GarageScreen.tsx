@@ -351,6 +351,7 @@ type GarageScreenProps = {
 export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwitchBike }: GarageScreenProps) {
   const [activeFilter, setActiveFilter] = useState<Filter>('all')
   const [showModal, setShowModal] = useState(false)
+  const [modalKey, setModalKey] = useState(0)
 
   const allItems = useMemo(
     () => selectedBuild?.buildItems ?? [],
@@ -443,7 +444,7 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
       {/* F — Add accessory CTA */}
       <button
         className="w-full text-center"
-        onClick={() => setShowModal(true)}
+        onClick={() => { setModalKey(k => k + 1); setShowModal(true) }}
         style={{
           border: '1.5px dashed rgba(232,132,26,0.25)',
           borderRadius: 10,
@@ -460,6 +461,7 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
 
       {showModal && (
         <AddAccessoryModal
+          key={modalKey}
           bikeName={[selectedBike?.year, selectedBike?.make, selectedBike?.model].filter(Boolean).join(' ')}
           bikeId={selectedBike?.id ?? null}
           onClose={() => setShowModal(false)}
