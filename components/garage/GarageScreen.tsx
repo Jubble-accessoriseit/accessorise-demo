@@ -55,7 +55,7 @@ const STATE_ORDER: ItemState[] = ['fitted', 'wishlist', 'moved_on']
 
 // ── Bike header card ─────────────────────────────────────────────────────────
 
-function BikeHeaderCard({ bike, build, onSwitchBike }: { bike: GarageBikeRecord; build: GarageBuildRecord | null; onSwitchBike: () => void }) {
+function BikeHeaderCard({ bike, build, onSwitchBike, onDeleteBike }: { bike: GarageBikeRecord; build: GarageBuildRecord | null; onSwitchBike: () => void; onDeleteBike?: () => void }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const bikeName = [bike.year, bike.make, bike.model, bike.variant].filter(Boolean).join(' ')
   const reg = bike.nickname ?? '—'
@@ -123,6 +123,7 @@ function BikeHeaderCard({ bike, build, onSwitchBike }: { bike: GarageBikeRecord;
                 onClick={() => {
                   // TODO: wire to Supabase delete
                   setShowDeleteConfirm(false)
+                  onDeleteBike?.()
                   onSwitchBike()
                 }}
                 style={{ flex: 2, padding: 13, borderRadius: 8, backgroundColor: '#DC3535', border: 'none', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}
@@ -542,6 +543,7 @@ type GarageScreenProps = {
   selectedBike: GarageBikeRecord | null
   selectedBuild: GarageBuildRecord | null
   onSwitchBike: () => void
+  onDeleteBike?: () => void
 }
 
 type ReturnPromptState = {
@@ -551,7 +553,7 @@ type ReturnPromptState = {
   productId: number
 }
 
-export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwitchBike }: GarageScreenProps) {
+export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwitchBike, onDeleteBike }: GarageScreenProps) {
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<Filter>('all')
   const [showModal, setShowModal] = useState(false)
@@ -629,7 +631,7 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
         />
       )}
 
-      <BikeHeaderCard bike={selectedBike} build={selectedBuild} onSwitchBike={onSwitchBike} />
+      <BikeHeaderCard bike={selectedBike} build={selectedBuild} onSwitchBike={onSwitchBike} onDeleteBike={onDeleteBike} />
 
       <div className="flex gap-2">
         <StatCard count={counts.fitted}   label="Fitted"    borderColor="#1D9E75" />

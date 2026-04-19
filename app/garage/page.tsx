@@ -57,6 +57,17 @@ export default function GaragePage() {
     )
   }
 
+  function handleDeleteBike() {
+    if (state.status !== 'loaded' || !state.selectedBike) return
+    setState({
+      status: 'loaded',
+      bikes: state.bikes.filter(b => b.id !== state.selectedBike!.id),
+      selectedBike: null,
+      selectedBuild: null,
+    })
+    setView('overview')
+  }
+
   function handleSelectBike(bike: GarageBikeRecord, build: GarageBuildRecord | null) {
     if (state.status !== 'loaded') return
     const resolvedBuild =
@@ -75,6 +86,7 @@ export default function GaragePage() {
         selectedBike={state.selectedBike}
         selectedBuild={state.selectedBuild}
         onSwitchBike={() => setView('overview')}
+        onDeleteBike={handleDeleteBike}
       />
     )
   }
