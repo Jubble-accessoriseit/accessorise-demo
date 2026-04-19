@@ -71,9 +71,9 @@ function CategoryTag({ label }: { label: string }) {
   return (
     <span
       style={{
-        backgroundColor: 'rgba(232,132,26,0.08)',
-        border: '1px solid rgba(232,132,26,0.16)',
-        color: '#E8841A',
+        backgroundColor: 'rgba(28,105,212,0.08)',
+        border: '1px solid rgba(28,105,212,0.16)',
+        color: '#1C69D4',
         fontSize: 9,
         fontWeight: 500,
         padding: '3px 9px',
@@ -90,9 +90,9 @@ function VerifiedBadge() {
   return (
     <span
       style={{
-        backgroundColor: 'rgba(232,132,26,0.1)',
-        border: '1px solid rgba(232,132,26,0.2)',
-        color: '#E8841A',
+        backgroundColor: 'rgba(28,105,212,0.1)',
+        border: '1px solid rgba(28,105,212,0.2)',
+        color: '#1C69D4',
         fontSize: 9,
         fontWeight: 500,
         padding: '2px 8px',
@@ -108,7 +108,7 @@ function VerifiedBadge() {
 function SectionHeader({ label, count }: { label: string; count: number }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ display: 'inline-block', width: 3, height: 14, backgroundColor: '#E8841A', borderRadius: 2, flexShrink: 0 }} />
+      <span style={{ display: 'inline-block', width: 3, height: 14, backgroundColor: '#1C69D4', borderRadius: 2, flexShrink: 0 }} />
       <span
         style={{
           fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
@@ -130,7 +130,7 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
 
 function BackArrow() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8841A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C69D4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="15 18 9 12 15 6" />
     </svg>
   )
@@ -211,7 +211,7 @@ function AccessoryCard({ acc, build }: { acc: ExpertBuildAccessory; build: Exper
         </div>
 
         {/* Discovery link */}
-        <p style={{ fontSize: 11, fontWeight: 500, color: '#C4741A', margin: '4px 0 0' }}>
+        <p style={{ fontSize: 11, fontWeight: 500, color: '#1456B0', margin: '4px 0 0' }}>
           ↗ Used in {usageCount} expert {usageCount === 1 ? 'build' : 'builds'}
         </p>
       </div>
@@ -222,8 +222,8 @@ function AccessoryCard({ acc, build }: { acc: ExpertBuildAccessory; build: Exper
           width: 28,
           height: 28,
           borderRadius: '50%',
-          border: '1px solid rgba(232,132,26,0.35)',
-          color: '#E8841A',
+          border: '1px solid rgba(28,105,212,0.35)',
+          color: '#1C69D4',
           backgroundColor: 'transparent',
           fontSize: 18,
           fontWeight: 300,
@@ -279,7 +279,7 @@ export default function ExpertBuildDetailPage({ params }: { params: Promise<{ id
           <p style={{ fontSize: 13, color: '#6A6860', margin: '0 0 16px' }}>Build not found.</p>
           <Link
             href="/expert"
-            style={{ fontSize: 12, color: '#E8841A', fontWeight: 500 }}
+            style={{ fontSize: 12, color: '#1C69D4', fontWeight: 500 }}
           >
             ← Back to Expert builds
           </Link>
@@ -339,9 +339,9 @@ export default function ExpertBuildDetailPage({ params }: { params: Promise<{ id
           <span
             style={{
               position: 'absolute', top: 8, left: 8,
-              backgroundColor: 'rgba(232,132,26,0.15)',
-              border: '1px solid rgba(232,132,26,0.3)',
-              color: '#E8841A',
+              backgroundColor: 'rgba(28,105,212,0.15)',
+              border: '1px solid rgba(28,105,212,0.3)',
+              color: '#1C69D4',
               fontSize: 9, fontWeight: 500,
               padding: '2px 8px', borderRadius: 20,
             }}
@@ -367,8 +367,8 @@ export default function ExpertBuildDetailPage({ params }: { params: Promise<{ id
         <div
           style={{
             width: 28, height: 28, borderRadius: '50%',
-            backgroundColor: 'rgba(232,132,26,0.12)',
-            color: '#E8841A',
+            backgroundColor: 'rgba(28,105,212,0.12)',
+            color: '#1C69D4',
             fontSize: 11, fontWeight: 600,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
@@ -429,8 +429,8 @@ export default function ExpertBuildDetailPage({ params }: { params: Promise<{ id
           style={{
             flex: 1,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            border: '1px solid rgba(232,132,26,0.35)',
-            color: '#E8841A',
+            border: '1px solid rgba(28,105,212,0.35)',
+            color: '#1C69D4',
             backgroundColor: 'transparent',
             borderRadius: 8,
             padding: '10px 0',
@@ -475,7 +475,7 @@ export default function ExpertBuildDetailPage({ params }: { params: Promise<{ id
         <button
           style={{
             width: '100%',
-            backgroundColor: '#E8841A',
+            backgroundColor: '#1C69D4',
             color: '#0D0D0D',
             border: 'none',
             borderRadius: 8,

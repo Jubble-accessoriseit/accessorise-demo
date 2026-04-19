@@ -43,10 +43,10 @@ All UI components and page layouts. The data layer stays intact. The presentatio
 | Hero section | `#110F0A` | Hero/banner backgrounds |
 | Archived card | `#111008` | Moved-on / historical items |
 | Tab bar | `#0A0A08` | Bottom tab bar (if used) |
-| Primary amber | `#E8841A` | Primary CTA, active states, accents |
-| Amber muted | `#C4741A` | Discovery links, secondary amber |
-| Amber ghost bg | `rgba(232,132,26,0.1)` | Ghost button backgrounds |
-| Amber border | `rgba(232,132,26,0.22)` | Active borders, highlights |
+| Primary amber | `#1C69D4` | Primary CTA, active states, accents |
+| Amber muted | `#1456B0` | Discovery links, secondary amber |
+| Amber ghost bg | `rgba(28,105,212,0.1)` | Ghost button backgrounds |
+| Amber border | `rgba(28,105,212,0.22)` | Active borders, highlights |
 | Text primary | `#F5F3EE` | Headings, primary body text |
 | Text secondary | `#6A6860` | Secondary labels, metadata |
 | Text muted | `#44423E` | Placeholder, captions |
@@ -71,12 +71,12 @@ State stat card left borders:
 
 | Category | Colour |
 |---|---|
-| Luggage | `#E8841A` (amber) |
+| Luggage | `#1C69D4` (amber) |
 | Protection | `#7F77DD` (purple) |
 | Navigation | `#1D9E75` (green) |
 | Tyres | `#BA7517` (dark amber) |
 | Lighting | `#639922` (green) |
-| Comfort | `#C4741A` (muted amber) |
+| Comfort | `#1456B0` (muted amber) |
 
 ### Typography
 
@@ -132,7 +132,7 @@ State stat card left borders:
 
 Tab specs:
 - Height: 42px total (13px top padding + 12px text + 10px bottom + 3px border)
-- Active: `color: #E8841A`, `border-bottom: 3px solid #E8841A`, `background: rgba(232,132,26,0.06)`
+- Active: `color: #1C69D4`, `border-bottom: 3px solid #1C69D4`, `background: rgba(28,105,212,0.06)`
 - Inactive: `color: #5A5852`, `border-bottom: 3px solid transparent`
 - Font: system-ui, 12px, 500 (active: 600)
 - All tabs white-space nowrap, same horizontal padding
@@ -145,12 +145,12 @@ Tab specs:
 
 ```
 PRIMARY (amber filled)
-  bg: #E8841A | color: #0D0D0D
+  bg: #1C69D4 | color: #0D0D0D
   font: display 900, uppercase, 13px, letter-spacing 0.06em
   padding: 13–14px 20px | border-radius: 8px
 
 GHOST (amber outline, pill shape)
-  bg: transparent | border: 1px solid rgba(232,132,26,0.35) | color: #E8841A
+  bg: transparent | border: 1px solid rgba(28,105,212,0.35) | color: #1C69D4
   font: body 500, 12px | padding: 6px 14px | border-radius: 20px
 
 NEUTRAL OUTLINE
@@ -158,7 +158,7 @@ NEUTRAL OUTLINE
   font: body 500, 12px | padding: 13px 20px | border-radius: 8px
 
 ADD / DASHED
-  border: 1.5px dashed rgba(232,132,26,0.25) | color: rgba(232,132,26,0.5)
+  border: 1.5px dashed rgba(28,105,212,0.25) | color: rgba(28,105,212,0.5)
   font: body 500, 12px | padding: 13px 14px | border-radius: 10px
 ```
 
@@ -169,7 +169,7 @@ STANDARD CARD
   bg: #141414 | border: 1px solid rgba(255,255,255,0.06) | border-radius: 12px | padding: 13–14px
 
 FEATURED / HIGHLIGHTED (e.g. best price, selected item)
-  bg: #141414 | border: 1px solid rgba(232,132,26,0.22) | border-radius: 12px
+  bg: #141414 | border: 1px solid rgba(28,105,212,0.22) | border-radius: 12px
 
 BEST PRICE SUPPLIER CARD
   bg: #141414 | border: 1px solid rgba(99,153,34,0.32) | border-radius: 12px
@@ -178,7 +178,7 @@ ARCHIVED / HISTORY CARD
   bg: #111008 | border: 1px solid rgba(255,255,255,0.04) | border-radius: 11px | opacity: 0.72–0.78
 
 CONTEXTUAL NOTIFICATION CARD
-  bg: rgba(232,132,26,0.06) | border: 1px solid rgba(232,132,26,0.24) | border-radius: 12px
+  bg: rgba(28,105,212,0.06) | border: 1px solid rgba(28,105,212,0.24) | border-radius: 12px
 ```
 
 ### Badges and pills
@@ -190,24 +190,24 @@ FIT BADGE (guaranteed fit confirmation)
   Always includes a small green checkmark SVG (9×9px) before the text
 
 CATEGORY FILTER PILL — active
-  bg: rgba(232,132,26,0.1) | border: 1px solid rgba(232,132,26,0.22)
-  color: #E8841A | border-radius: 20px | padding: 6px 13–14px | font: body 500, 11px
+  bg: rgba(28,105,212,0.1) | border: 1px solid rgba(28,105,212,0.22)
+  color: #1C69D4 | border-radius: 20px | padding: 6px 13–14px | font: body 500, 11px
 
 CATEGORY FILTER PILL — inactive
   bg: #141414 | border: 1px solid rgba(255,255,255,0.07)
   color: #5A5852 | border-radius: 20px | padding: 6px 13–14px
 
 VERIFIED BADGE
-  bg: rgba(232,132,26,0.1) | border: 1px solid rgba(232,132,26,0.2)
-  color: #E8841A | border-radius: 20px | padding: 2px 8px | font: body 500, 9px
+  bg: rgba(28,105,212,0.1) | border: 1px solid rgba(28,105,212,0.2)
+  color: #1C69D4 | border-radius: 20px | padding: 2px 8px | font: body 500, 9px
 
 BEST PRICE BADGE
   bg: rgba(99,153,34,0.12) | border: 1px solid rgba(99,153,34,0.28)
   color: #639922 | border-radius: 20px | padding: 2px 7px | font: body 500, 9px
 
 CATEGORY TAG (on expert builds, accessory cards)
-  bg: rgba(232,132,26,0.08) | border: 1px solid rgba(232,132,26,0.16)
-  color: #E8841A | border-radius: 20px | padding: 3px 9–10px | font: body 500, 9px
+  bg: rgba(28,105,212,0.08) | border: 1px solid rgba(28,105,212,0.16)
+  color: #1C69D4 | border-radius: 20px | padding: 3px 9–10px | font: body 500, 9px
 ```
 
 ### Section headers
@@ -233,7 +233,7 @@ Dots:
   Current / Fitted: 10px solid #1D9E75
   Previous / Moved on: 9px solid #5DCAA5
   Older entries: 9px solid rgba(93,202,165,0.5)
-  Add new (dashed): 9px outline, border: 1.5px dashed rgba(232,132,26,0.35)
+  Add new (dashed): 9px outline, border: 1.5px dashed rgba(28,105,212,0.35)
 
 Connecting line: 1px width, rgba(255,255,255,0.1), no line below last entry
 Last entry in section: no connecting line below dot
@@ -257,14 +257,14 @@ Structure:
 2. Top tabs
 3. Hero section (bg: #110F0A):
    - "Motorcycles" amber pill
-   - Headline: "FIND GEAR / THAT FITS." — "FITS." in #E8841A
+   - Headline: "FIND GEAR / THAT FITS." — "FITS." in #1C69D4
    - Subtext: body 12px, #6A6860
    - Primary CTA: "Browse Accessories" (amber filled)
    - Secondary CTA: "Create free account" (neutral outline)
 4. Feature grid: 2×2 dark cards, each with coloured 3px top bar
    - Expert Builds: #7F77DD
    - Browse Parts: #1D9E75
-   - Plan Build: #E8841A
+   - Plan Build: #1C69D4
    - Shop Suppliers: #639922
 5. Value props: 3 items with amber icon container + headline + descriptor
 
@@ -304,7 +304,7 @@ Structure:
 6. Accessory sections:
    - Section header: amber vertical bar + category + count
    - Each accessory card: 52px photo + name + state dot + price + "↗ Used in N expert builds" discovery link + "+" add button
-   - "↗ Used in N builds" is separately tappable from the row — use colour #C4741A
+   - "↗ Used in N builds" is separately tappable from the row — use colour #1456B0
 7. "See all N accessories" expand link
 8. "Shop all accessories" amber filled CTA
 
@@ -354,7 +354,7 @@ Step 3 — Confirmation:
 
 Shown as a contextual notification card in the Garage, between nav/tabs and the bike header:
 
-- Amber-tinted card (rgba(232,132,26,0.06) bg, amber border)
+- Amber-tinted card (rgba(28,105,212,0.06) bg, amber border)
 - Pulsing dot + "You just visited [Retailer]" small label
 - "Did you buy the [Product]?" headline
 - Price + "was on your wish list" subtext

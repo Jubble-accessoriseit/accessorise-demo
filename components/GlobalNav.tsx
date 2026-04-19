@@ -48,21 +48,21 @@ export default function GlobalNav() {
           className="no-underline text-[#F5F3EE] text-sm uppercase tracking-[0.04em]"
           style={{ fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif", fontWeight: 900 }}
         >
-          ACCESSORISE <span className="text-[#E8841A]">IT</span>
+          ACCESSORISE <span className="text-[#1C69D4]">IT</span>
         </Link>
 
         {session ? (
           <div
-            className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-[#E8841A]"
-            style={{ backgroundColor: 'rgba(232,132,26,0.12)' }}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-[#1C69D4]"
+            style={{ backgroundColor: 'rgba(28,105,212,0.12)' }}
           >
             {getInitials(session)}
           </div>
         ) : (
           <Link
             href="/login"
-            className="rounded-full px-3.5 py-1.5 text-xs font-medium text-[#E8841A] no-underline"
-            style={{ border: '1px solid rgba(232,132,26,0.35)' }}
+            className="rounded-full px-3.5 py-1.5 text-xs font-medium text-[#1C69D4] no-underline"
+            style={{ border: '1px solid rgba(28,105,212,0.35)' }}
           >
             Log in
           </Link>
@@ -79,13 +79,13 @@ export default function GlobalNav() {
               href={href}
               className="flex-1 whitespace-nowrap text-center text-xs no-underline"
               style={{
-                color: active ? '#E8841A' : '#5A5852',
+                color: active ? '#1C69D4' : '#5A5852',
                 fontWeight: active ? 600 : 500,
                 fontFamily: 'system-ui, -apple-system, sans-serif',
                 paddingTop: '13px',
                 paddingBottom: '10px',
-                borderBottom: active ? '3px solid #E8841A' : '3px solid transparent',
-                backgroundColor: active ? 'rgba(232,132,26,0.06)' : 'transparent',
+                borderBottom: active ? '3px solid #1C69D4' : '3px solid transparent',
+                backgroundColor: active ? 'rgba(28,105,212,0.06)' : 'transparent',
               }}
             >
               {label}

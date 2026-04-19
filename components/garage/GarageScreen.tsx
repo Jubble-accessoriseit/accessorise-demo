@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import type { GarageBikeRecord, GarageBuildItem, GarageBuildRecord } from '@/types/garage'
 import { garageCategories } from '@/types/garage'
 import { formatGaragePriceDisplay } from '@/lib/garage/price-display'
 import { AddAccessoryModal } from './AddAccessoryModal'
+import { ReturnPrompt } from './ReturnPrompt'
 
 type ItemState = 'fitted' | 'wishlist' | 'moved_on'
 type Filter = 'all' | 'fitted' | 'wishlist' | 'history'
@@ -101,15 +103,15 @@ function BikeHeaderCard({
         style={{
           width: 62,
           height: 62,
-          border: '1.5px dashed rgba(232,132,26,0.25)',
+          border: '1.5px dashed rgba(28,105,212,0.25)',
           borderRadius: 10,
         }}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(232,132,26,0.4)" strokeWidth="1.5">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(28,105,212,0.4)" strokeWidth="1.5">
           <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
           <circle cx="12" cy="13" r="4" />
         </svg>
-        <span style={{ fontSize: 9, color: 'rgba(232,132,26,0.4)', fontWeight: 500 }}>Add photo</span>
+        <span style={{ fontSize: 9, color: 'rgba(28,105,212,0.4)', fontWeight: 500 }}>Add photo</span>
       </div>
 
       {/* Text */}
@@ -122,7 +124,7 @@ function BikeHeaderCard({
         <button
           onClick={onSwitchBike}
           className="text-left mt-1"
-          style={{ fontSize: 11, color: '#E8841A', fontWeight: 500, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+          style={{ fontSize: 11, color: '#1C69D4', fontWeight: 500, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
         >
           Switch bike
         </button>
@@ -183,10 +185,10 @@ function FilterPills({
               fontSize: 11,
               fontWeight: 500,
               border: isActive
-                ? '1px solid rgba(232,132,26,0.22)'
+                ? '1px solid rgba(28,105,212,0.22)'
                 : '1px solid rgba(255,255,255,0.07)',
-              backgroundColor: isActive ? 'rgba(232,132,26,0.1)' : '#141414',
-              color: isActive ? '#E8841A' : '#5A5852',
+              backgroundColor: isActive ? 'rgba(28,105,212,0.1)' : '#141414',
+              color: isActive ? '#1C69D4' : '#5A5852',
               cursor: 'pointer',
             }}
           >
@@ -201,7 +203,7 @@ function FilterPills({
 
 // ── Accessory item card ───────────────────────────────────────────────────────
 
-function AccessoryCard({ item, state }: { item: GarageBuildItem; state: ItemState }) {
+function AccessoryCard({ item, state, onShopNow }: { item: GarageBuildItem; state: ItemState; onShopNow?: () => void }) {
   const { product } = item
   const meta = STATE_META[state]
   const isHistory = state === 'moved_on'
@@ -260,12 +262,13 @@ function AccessoryCard({ item, state }: { item: GarageBuildItem; state: ItemStat
         {/* Shop now — wish list only */}
         {isWishlist && (
           <button
+            onClick={onShopNow}
             className="mt-2 rounded-full px-3 py-1 flex-shrink-0"
             style={{
               fontSize: 11,
               fontWeight: 500,
-              color: '#E8841A',
-              border: '1px solid rgba(232,132,26,0.35)',
+              color: '#1C69D4',
+              border: '1px solid rgba(28,105,212,0.35)',
               backgroundColor: 'transparent',
               cursor: 'pointer',
             }}
@@ -306,7 +309,7 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
           display: 'inline-block',
           width: 3,
           height: 14,
-          backgroundColor: '#E8841A',
+          backgroundColor: '#1C69D4',
           borderRadius: 2,
           flexShrink: 0,
         }}
@@ -348,10 +351,19 @@ type GarageScreenProps = {
   onSwitchBike: () => void
 }
 
+type ReturnPromptState = {
+  productName: string
+  retailerName: string
+  price: number | null
+  productId: number
+}
+
 export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwitchBike }: GarageScreenProps) {
+  const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<Filter>('all')
   const [showModal, setShowModal] = useState(false)
   const [modalKey, setModalKey] = useState(0)
+  const [returnPrompt, setReturnPrompt] = useState<ReturnPromptState | null>(null)
 
   const allItems = useMemo(
     () => selectedBuild?.buildItems ?? [],
@@ -406,6 +418,18 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
 
   return (
     <div className="flex flex-col gap-4 px-5 pt-4 pb-8">
+      {/* Return prompt — shown after visiting a retailer */}
+      {returnPrompt && (
+        <ReturnPrompt
+          productName={returnPrompt.productName}
+          retailerName={returnPrompt.retailerName}
+          price={returnPrompt.price}
+          onBought={() => setReturnPrompt(null)}
+          onNotYet={() => setReturnPrompt(null)}
+          onRemove={() => setReturnPrompt(null)}
+        />
+      )}
+
       {/* A — Bike header */}
       <BikeHeaderCard bike={selectedBike} build={selectedBuild} onSwitchBike={onSwitchBike} />
 
@@ -434,7 +458,25 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
             <div key={catId} className="flex flex-col gap-2">
               <SectionHeader label={label} count={entries.length} />
               {entries.map(({ item, state }) => (
-                <AccessoryCard key={item.id} item={item} state={state} />
+                <AccessoryCard
+                  key={item.id}
+                  item={item}
+                  state={state}
+                  onShopNow={
+                    state === 'wishlist'
+                      ? () => {
+                          const basePrice = 140 + ((item.productId * 7) % 180)
+                          setReturnPrompt({
+                            productName: item.product.name,
+                            retailerName: item.product.affiliateLinks?.[0]?.vendorName ?? item.product.brand,
+                            price: basePrice,
+                            productId: item.productId,
+                          })
+                          router.push(`/shop/${item.productId}`)
+                        }
+                      : undefined
+                  }
+                />
               ))}
             </div>
           ))}
@@ -446,12 +488,12 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
         className="w-full text-center"
         onClick={() => { setModalKey(k => k + 1); setShowModal(true) }}
         style={{
-          border: '1.5px dashed rgba(232,132,26,0.25)',
+          border: '1.5px dashed rgba(28,105,212,0.25)',
           borderRadius: 10,
           padding: '13px 14px',
           fontSize: 12,
           fontWeight: 500,
-          color: 'rgba(232,132,26,0.5)',
+          color: 'rgba(28,105,212,0.5)',
           backgroundColor: 'transparent',
           cursor: 'pointer',
         }}

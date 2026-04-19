@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import { demoGarageProducts } from '@/lib/demo-content/products'
 import type { Product, ProductAvailabilityStatus } from '@/types/garage'
 
@@ -16,10 +17,7 @@ type SupplierRow = {
   deliveryLabel: string
 }
 
-// ── Demo supplier generator ───────────────────────────────────────────────────
-// Builds 3 supplier rows per product from the real affiliate link + 2 synthetic
-// competitors. Base price is deterministic per product to stay consistent across
-// re-renders. This is UI-only — no data files are touched.
+// ── Demo supplier builder ─────────────────────────────────────────────────────
 
 const SYNTHETIC_VENDORS = [
   { name: 'Wunderlich', stockOffset: 0 },
@@ -41,7 +39,7 @@ function buildDemoSuppliers(product: Product): SupplierRow[] {
   const basePrice = 140 + ((product.id * 7) % 180)
   const realLink = product.affiliateLinks?.[0]
 
-  const rows: SupplierRow[] = [
+  return [
     {
       vendorName: realLink?.vendorName ?? product.brand,
       url: realLink?.url ?? product.supplierUrl ?? '#',
@@ -57,8 +55,6 @@ function buildDemoSuppliers(product: Product): SupplierRow[] {
       deliveryLabel: DELIVERY_LABELS[i + 1],
     })),
   ]
-
-  return rows
 }
 
 function sortSuppliers(rows: SupplierRow[], mode: SortMode): SupplierRow[] {
@@ -70,7 +66,6 @@ function sortSuppliers(rows: SupplierRow[], mode: SortMode): SupplierRow[] {
     }
     return copy.sort((a, b) => order[a.stockStatus] - order[b.stockStatus])
   }
-  // fastest — sort by delivery label (shortest first via index in DELIVERY_LABELS)
   return copy.sort(
     (a, b) =>
       DELIVERY_LABELS.indexOf(a.deliveryLabel) -
@@ -78,16 +73,13 @@ function sortSuppliers(rows: SupplierRow[], mode: SortMode): SupplierRow[] {
   )
 }
 
-// ── Stock dot ─────────────────────────────────────────────────────────────────
+// ── Stock indicator ───────────────────────────────────────────────────────────
 
-const STOCK_META: Record<
-  ProductAvailabilityStatus,
-  { color: string; label: string }
-> = {
-  available:    { color: '#1D9E75', label: 'In stock' },
-  limited:      { color: '#BA7517', label: 'Low stock' },
+const STOCK_META: Record<ProductAvailabilityStatus, { color: string; label: string }> = {
+  available:     { color: '#1D9E75', label: 'In stock' },
+  limited:       { color: '#BA7517', label: 'Low stock' },
   'coming-soon': { color: '#44423E', label: 'Coming soon' },
-  unavailable:  { color: '#44423E', label: 'Unavailable' },
+  unavailable:   { color: '#44423E', label: 'Unavailable' },
 }
 
 function StockIndicator({ status }: { status: ProductAvailabilityStatus }) {
@@ -100,19 +92,15 @@ function StockIndicator({ status }: { status: ProductAvailabilityStatus }) {
   )
 }
 
-// ── Vendor logo placeholder ───────────────────────────────────────────────────
-
 function VendorLogo({ name }: { name: string }) {
   return (
-    <div
-      style={{
-        width: 34, height: 34, borderRadius: 8, flexShrink: 0,
-        backgroundColor: '#1A1814',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 14, fontWeight: 700, color: '#44423E',
-        textTransform: 'uppercase',
-      }}
-    >
+    <div style={{
+      width: 34, height: 34, borderRadius: 8, flexShrink: 0,
+      backgroundColor: '#1A1814',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 14, fontWeight: 700, color: '#44423E',
+      textTransform: 'uppercase',
+    }}>
       {name[0]}
     </div>
   )
@@ -122,60 +110,35 @@ function VendorLogo({ name }: { name: string }) {
 
 function BestPriceCard({ supplier, savings }: { supplier: SupplierRow; savings: number }) {
   return (
-    <div
-      style={{
-        backgroundColor: '#141414',
-        border: '1px solid rgba(99,153,34,0.32)',
-        borderRadius: 12,
-        padding: 13,
-      }}
-    >
-      {/* Badge row */}
+    <div style={{ backgroundColor: '#141414', border: '1px solid rgba(99,153,34,0.32)', borderRadius: 12, padding: 13 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span
-          style={{
-            backgroundColor: 'rgba(99,153,34,0.12)',
-            border: '1px solid rgba(99,153,34,0.28)',
-            color: '#639922',
-            fontSize: 9, fontWeight: 500,
-            padding: '2px 7px', borderRadius: 20,
-            whiteSpace: 'nowrap',
-          }}
-        >
+        <span style={{
+          backgroundColor: 'rgba(99,153,34,0.12)', border: '1px solid rgba(99,153,34,0.28)',
+          color: '#639922', fontSize: 9, fontWeight: 500,
+          padding: '2px 7px', borderRadius: 20, whiteSpace: 'nowrap',
+        }}>
           Best price
         </span>
         {savings > 0 && (
-          <span style={{ fontSize: 11, fontWeight: 500, color: '#639922' }}>
-            ↓ ${savings} cheaper
-          </span>
+          <span style={{ fontSize: 11, fontWeight: 500, color: '#639922' }}>↓ ${savings} cheaper</span>
         )}
       </div>
 
-      {/* Main row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
         <VendorLogo name={supplier.vendorName} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: '#F5F3EE', margin: 0, lineHeight: 1.3 }}>
-            {supplier.vendorName}
-          </p>
-          <div style={{ marginTop: 3 }}>
-            <StockIndicator status={supplier.stockStatus} />
-          </div>
-          <p style={{ fontSize: 10, color: '#6A6860', margin: '2px 0 0' }}>
-            {supplier.deliveryLabel}
-          </p>
+          <p style={{ fontSize: 12, fontWeight: 600, color: '#F5F3EE', margin: 0, lineHeight: 1.3 }}>{supplier.vendorName}</p>
+          <div style={{ marginTop: 3 }}><StockIndicator status={supplier.stockStatus} /></div>
+          <p style={{ fontSize: 10, color: '#6A6860', margin: '2px 0 0' }}>{supplier.deliveryLabel}</p>
         </div>
-        <span
-          style={{
-            fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-            fontWeight: 900, fontSize: 22, color: '#F5F3EE', flexShrink: 0,
-          }}
-        >
+        <span style={{
+          fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+          fontWeight: 900, fontSize: 22, color: '#F5F3EE', flexShrink: 0,
+        }}>
           ${supplier.price}
         </span>
       </div>
 
-      {/* Buy now button */}
       <a
         href={supplier.url}
         target="_blank"
@@ -183,8 +146,7 @@ function BestPriceCard({ supplier, savings }: { supplier: SupplierRow; savings: 
         style={{
           display: 'block', marginTop: 12, width: '100%',
           backgroundColor: '#1C69D4', color: '#0D0D0D',
-          border: 'none', borderRadius: 8,
-          padding: '10px 0',
+          border: 'none', borderRadius: 8, padding: '10px 0',
           fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
           fontWeight: 900, fontSize: 12,
           textTransform: 'uppercase', letterSpacing: '0.06em',
@@ -193,15 +155,12 @@ function BestPriceCard({ supplier, savings }: { supplier: SupplierRow; savings: 
         }}
       >
         Buy now
-        <span
-          style={{
-            display: 'block',
-            fontSize: 10, fontWeight: 400,
-            fontFamily: 'system-ui, -apple-system, sans-serif',
-            textTransform: 'none', letterSpacing: 'normal',
-            color: 'rgba(0,0,0,0.5)', marginTop: 2,
-          }}
-        >
+        <span style={{
+          display: 'block', fontSize: 10, fontWeight: 400,
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          textTransform: 'none', letterSpacing: 'normal',
+          color: 'rgba(0,0,0,0.5)', marginTop: 2,
+        }}>
           opens retailer site ↗
         </span>
       </a>
@@ -211,39 +170,22 @@ function BestPriceCard({ supplier, savings }: { supplier: SupplierRow; savings: 
 
 function StandardSupplierCard({ supplier }: { supplier: SupplierRow }) {
   return (
-    <div
-      style={{
-        backgroundColor: '#141414',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: 12,
-        padding: 13,
-      }}
-    >
-      {/* Main row */}
+    <div style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 13 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <VendorLogo name={supplier.vendorName} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: '#F5F3EE', margin: 0, lineHeight: 1.3 }}>
-            {supplier.vendorName}
-          </p>
-          <div style={{ marginTop: 3 }}>
-            <StockIndicator status={supplier.stockStatus} />
-          </div>
-          <p style={{ fontSize: 10, color: '#6A6860', margin: '2px 0 0' }}>
-            {supplier.deliveryLabel}
-          </p>
+          <p style={{ fontSize: 12, fontWeight: 600, color: '#F5F3EE', margin: 0, lineHeight: 1.3 }}>{supplier.vendorName}</p>
+          <div style={{ marginTop: 3 }}><StockIndicator status={supplier.stockStatus} /></div>
+          <p style={{ fontSize: 10, color: '#6A6860', margin: '2px 0 0' }}>{supplier.deliveryLabel}</p>
         </div>
-        <span
-          style={{
-            fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-            fontWeight: 900, fontSize: 22, color: '#F5F3EE', flexShrink: 0,
-          }}
-        >
+        <span style={{
+          fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+          fontWeight: 900, fontSize: 22, color: '#F5F3EE', flexShrink: 0,
+        }}>
           ${supplier.price}
         </span>
       </div>
 
-      {/* Buy now button */}
       <a
         href={supplier.url}
         target="_blank"
@@ -251,8 +193,7 @@ function StandardSupplierCard({ supplier }: { supplier: SupplierRow }) {
         style={{
           display: 'block', marginTop: 12, width: '100%',
           backgroundColor: 'transparent',
-          border: '1px solid rgba(255,255,255,0.1)',
-          color: '#F5F3EE',
+          border: '1px solid rgba(255,255,255,0.1)', color: '#F5F3EE',
           borderRadius: 8, padding: '10px 0',
           fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
           fontWeight: 900, fontSize: 12,
@@ -262,15 +203,12 @@ function StandardSupplierCard({ supplier }: { supplier: SupplierRow }) {
         }}
       >
         Buy now
-        <span
-          style={{
-            display: 'block',
-            fontSize: 10, fontWeight: 400,
-            fontFamily: 'system-ui, -apple-system, sans-serif',
-            textTransform: 'none', letterSpacing: 'normal',
-            color: '#44423E', marginTop: 2,
-          }}
-        >
+        <span style={{
+          display: 'block', fontSize: 10, fontWeight: 400,
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          textTransform: 'none', letterSpacing: 'normal',
+          color: '#44423E', marginTop: 2,
+        }}>
           opens retailer site ↗
         </span>
       </a>
@@ -278,7 +216,7 @@ function StandardSupplierCard({ supplier }: { supplier: SupplierRow }) {
   )
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── Sort pills ────────────────────────────────────────────────────────────────
 
 const SORT_PILLS: Array<{ id: SortMode; label: string }> = [
   { id: 'best-price', label: 'Best price' },
@@ -286,15 +224,17 @@ const SORT_PILLS: Array<{ id: SortMode; label: string }> = [
   { id: 'fastest',    label: 'Fastest delivery' },
 ]
 
-export default function ShopPage() {
-  const [selectedProductId, setSelectedProductId] = useState<number>(
-    demoGarageProducts[0].id
-  )
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function ShopProductPage() {
+  const params = useParams()
+  const router = useRouter()
   const [sortMode, setSortMode] = useState<SortMode>('best-price')
 
+  const productId = parseInt(params?.productId as string, 10)
   const product = useMemo(
-    () => demoGarageProducts.find(p => p.id === selectedProductId) ?? demoGarageProducts[0],
-    [selectedProductId]
+    () => demoGarageProducts.find(p => p.id === productId) ?? demoGarageProducts[0],
+    [productId]
   )
 
   const suppliers = useMemo(() => {
@@ -307,64 +247,55 @@ export default function ShopPage() {
   return (
     <div style={{ backgroundColor: '#0D0D0D', minHeight: '100vh', paddingBottom: 40 }}>
 
-      {/* A — Product picker */}
-      <div
-        style={{
-          display: 'flex', gap: 8, overflowX: 'auto', padding: '16px 20px 4px',
-          scrollbarWidth: 'none',
-        }}
-      >
-        {demoGarageProducts.map(p => {
-          const active = p.id === selectedProductId
-          return (
-            <button
-              key={p.id}
-              onClick={() => setSelectedProductId(p.id)}
-              style={{
-                flexShrink: 0,
-                borderRadius: 20,
-                padding: '5px 12px',
-                fontSize: 11, fontWeight: 500,
-                whiteSpace: 'nowrap',
-                cursor: 'pointer',
-                border: active
-                  ? '1px solid rgba(28,105,212,0.35)'
-                  : '1px solid rgba(255,255,255,0.07)',
-                backgroundColor: active ? 'rgba(28,105,212,0.08)' : '#141414',
-                color: active ? '#1C69D4' : '#5A5852',
-              }}
-            >
-              {p.name}
-            </button>
-          )
-        })}
+      {/* A — Back navigation */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '16px 20px 12px',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <button
+          onClick={() => router.back()}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: '#1C69D4', fontSize: 12, fontWeight: 500, padding: 0,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C69D4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Garage
+        </button>
+
+        <span style={{
+          fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+          fontWeight: 900, fontSize: 12, color: '#F5F3EE',
+          textTransform: 'uppercase', letterSpacing: '0.05em',
+        }}>
+          Shop suppliers
+        </span>
+
+        <div style={{ width: 52 }} />
       </div>
 
       {/* B — Accessory summary card */}
       <div style={{ padding: '12px 20px 0' }}>
-        <div
-          style={{
-            backgroundColor: '#141414',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 12,
-            padding: 13,
-            display: 'flex', flexDirection: 'column', gap: 6,
-          }}
-        >
+        <div style={{
+          backgroundColor: '#141414',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 12, padding: 13,
+          display: 'flex', flexDirection: 'column', gap: 6,
+        }}>
           <p style={{ fontSize: 13, fontWeight: 600, color: '#F5F3EE', margin: 0, lineHeight: 1.3 }}>
             {product.name}
           </p>
 
-          {/* Fit badge */}
-          <span
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              backgroundColor: 'rgba(29,158,117,0.08)',
-              borderRadius: 20, padding: '2px 8px',
-              width: 'fit-content',
-            }}
-          >
-            {/* checkmark */}
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            backgroundColor: 'rgba(29,158,117,0.08)',
+            borderRadius: 20, padding: '2px 8px',
+            width: 'fit-content',
+          }}>
             <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
               <circle cx="6" cy="6" r="5.5" stroke="#1D9E75" strokeWidth="1" />
               <polyline points="3,6 5,8.5 9,4" stroke="#1D9E75" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -375,23 +306,14 @@ export default function ShopPage() {
           </span>
 
           <div style={{ display: 'flex', gap: 12 }}>
-            <span style={{ fontSize: 11, color: '#6A6860' }}>
-              From ${suppliers[0]?.price ?? '—'}
-            </span>
-            <span style={{ fontSize: 11, color: '#6A6860' }}>
-              {suppliers.length} suppliers
-            </span>
+            <span style={{ fontSize: 11, color: '#6A6860' }}>From ${suppliers[0]?.price ?? '—'}</span>
+            <span style={{ fontSize: 11, color: '#6A6860' }}>{suppliers.length} suppliers</span>
           </div>
         </div>
       </div>
 
       {/* C — Sort pills */}
-      <div
-        style={{
-          display: 'flex', gap: 8, overflowX: 'auto',
-          padding: '12px 20px 0', scrollbarWidth: 'none',
-        }}
-      >
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '12px 20px 0', scrollbarWidth: 'none' }}>
         {SORT_PILLS.map(({ id, label }) => {
           const active = sortMode === id
           return (
@@ -399,13 +321,9 @@ export default function ShopPage() {
               key={id}
               onClick={() => setSortMode(id)}
               style={{
-                flexShrink: 0, borderRadius: 20,
-                padding: '6px 13px',
-                fontSize: 11, fontWeight: 500,
-                whiteSpace: 'nowrap', cursor: 'pointer',
-                border: active
-                  ? '1px solid rgba(28,105,212,0.22)'
-                  : '1px solid rgba(255,255,255,0.07)',
+                flexShrink: 0, borderRadius: 20, padding: '6px 13px',
+                fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap', cursor: 'pointer',
+                border: active ? '1px solid rgba(28,105,212,0.22)' : '1px solid rgba(255,255,255,0.07)',
                 backgroundColor: active ? 'rgba(28,105,212,0.1)' : '#141414',
                 color: active ? '#1C69D4' : '#5A5852',
               }}
@@ -428,14 +346,10 @@ export default function ShopPage() {
       </div>
 
       {/* E — Affiliate disclosure */}
-      <p
-        style={{
-          textAlign: 'center',
-          fontSize: 10, color: '#3A3830',
-          padding: '24px 20px 0',
-          margin: 0, lineHeight: 1.5,
-        }}
-      >
+      <p style={{
+        textAlign: 'center', fontSize: 10, color: '#3A3830',
+        padding: '24px 20px 0', margin: 0, lineHeight: 1.5,
+      }}>
         We may earn a commission on purchases made through links on this page. This doesn&apos;t affect the price you pay.
       </p>
 
