@@ -284,7 +284,7 @@ export default function BrowsePage() {
     setSelectedModelName('')
     setYears([])
     setSelectedYear('')
-    fetch(`/api/bikes/options?makeId=${encodeURIComponent(selectedMakeId)}`)
+    fetch(`/api/bikes/options?make=${encodeURIComponent(selectedMakeId)}`)
       .then(r => r.json())
       .then(d => { setModels(d.models ?? []); setLoadingModels(false) })
       .catch(() => setLoadingModels(false))
@@ -300,7 +300,7 @@ export default function BrowsePage() {
     }
     setLoadingYears(true)
     setSelectedYear('')
-    fetch(`/api/bikes/options?modelId=${encodeURIComponent(selectedModelId)}`)
+    fetch(`/api/bikes/options?model=${encodeURIComponent(selectedModelId)}&make=${encodeURIComponent(selectedMakeId)}`)
       .then(r => r.json())
       .then(d => { setYears(d.years ?? []); setLoadingYears(false) })
       .catch(() => setLoadingYears(false))

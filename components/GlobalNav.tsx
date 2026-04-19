@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Session } from '@supabase/supabase-js'
 
@@ -30,14 +30,38 @@ function isActive(href: string, pathname: string): boolean {
 }
 
 export default function GlobalNav() {
-  const pathname = usePathname()
-  const [session, setSession] = useState<Session | null>(null)
+  const pathname  = usePathname()
+  const router    = useRouter()
+  const [session, setSession]           = useState<Session | null>(null)
+  const [menuOpen, setMenuOpen]         = useState(false)
+  const [signingOut, setSigningOut]     = useState(false)
+  const avatarRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
     return () => subscription.unsubscribe()
   }, [])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!menuOpen) return
+    function handleClick(e: MouseEvent) {
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [menuOpen])
+
+  async function handleSignOut() {
+    setSigningOut(true)
+    setMenuOpen(false)
+    await supabase.auth.signOut()
+    setSigningOut(false)
+    router.push('/')
+  }
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-[#0D0D0D]">
@@ -52,11 +76,66 @@ export default function GlobalNav() {
         </Link>
 
         {session ? (
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-[#1C69D4]"
-            style={{ backgroundColor: 'rgba(28,105,212,0.12)' }}
-          >
-            {getInitials(session)}
+          <div ref={avatarRef} style={{ position: 'relative' }}>
+            {/* Avatar button */}
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 32, height: 32, borderRadius: '50%',
+                backgroundColor: menuOpen ? 'rgba(28,105,212,0.22)' : 'rgba(28,105,212,0.12)',
+                border: menuOpen ? '1px solid rgba(28,105,212,0.4)' : '1px solid transparent',
+                color: '#1C69D4', fontSize: 12, fontWeight: 600,
+                cursor: 'pointer', transition: 'background 0.15s',
+              }}
+              aria-label="Account menu"
+              aria-expanded={menuOpen}
+            >
+              {signingOut ? (
+                <span style={{ fontSize: 10, opacity: 0.6 }}>…</span>
+              ) : (
+                getInitials(session)
+              )}
+            </button>
+
+            {/* Dropdown */}
+            {menuOpen && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                backgroundColor: '#1A1814',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 10, overflow: 'hidden',
+                minWidth: 148,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                zIndex: 100,
+              }}>
+                <Link
+                  href="/account"
+                  onClick={() => setMenuOpen(false)}
+                  style={{
+                    display: 'block', padding: '11px 14px',
+                    fontSize: 13, fontWeight: 500, color: '#F5F3EE',
+                    textDecoration: 'none',
+                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                  }}
+                >
+                  My account
+                </Link>
+                <button
+                  onClick={handleSignOut}
+                  disabled={signingOut}
+                  style={{
+                    display: 'block', width: '100%', padding: '11px 14px',
+                    fontSize: 13, fontWeight: 500, color: '#F5F3EE',
+                    textAlign: 'left', background: 'none', border: 'none',
+                    cursor: signingOut ? 'not-allowed' : 'pointer',
+                    opacity: signingOut ? 0.5 : 1,
+                  }}
+                >
+                  {signingOut ? 'Signing out…' : 'Sign out'}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <Link
