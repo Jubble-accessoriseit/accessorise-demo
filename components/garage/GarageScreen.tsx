@@ -56,35 +56,84 @@ const STATE_ORDER: ItemState[] = ['fitted', 'wishlist', 'moved_on']
 // ── Bike header card ─────────────────────────────────────────────────────────
 
 function BikeHeaderCard({ bike, build, onSwitchBike }: { bike: GarageBikeRecord; build: GarageBuildRecord | null; onSwitchBike: () => void }) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const bikeName = [bike.year, bike.make, bike.model, bike.variant].filter(Boolean).join(' ')
   const reg = bike.nickname ?? '—'
   const buildName = build?.name ?? 'My Build'
 
   return (
-    <div className="flex gap-3 items-start rounded-[12px] p-[13px]" style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}>
-      {(() => {
-        const photoUrl = bike.image ?? bike.photos?.[0]?.imageUrl ?? null
-        return photoUrl ? (
-          <img src={photoUrl} alt={bike.model} className="flex-shrink-0" style={{ width: 62, height: 62, borderRadius: 10, objectFit: 'cover', objectPosition: 'center' }} />
-        ) : (
-          <div className="flex flex-col items-center justify-center gap-1 flex-shrink-0" style={{ width: 62, height: 62, border: '1.5px dashed rgba(28,105,212,0.25)', borderRadius: 10 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(28,105,212,0.4)" strokeWidth="1.5">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-              <circle cx="12" cy="13" r="4" />
-            </svg>
-            <span style={{ fontSize: 9, color: 'rgba(28,105,212,0.4)', fontWeight: 500 }}>Add photo</span>
-          </div>
-        )
-      })()}
-      <div className="flex-1 flex flex-col gap-0.5 min-w-0">
-        <p className="text-[#F5F3EE] font-semibold leading-tight truncate" style={{ fontSize: 13 }}>{bikeName}</p>
-        <p style={{ fontSize: 11, color: '#6A6860' }}>{reg}</p>
-        <p style={{ fontSize: 11, color: '#6A6860' }}>{buildName}</p>
-        <button onClick={onSwitchBike} className="text-left mt-1" style={{ fontSize: 11, color: '#1C69D4', fontWeight: 500, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
-          Switch bike
-        </button>
+    <>
+      <div className="flex gap-3 items-start rounded-[12px] p-[13px]" style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}>
+        {(() => {
+          const photoUrl = bike.image ?? bike.photos?.[0]?.imageUrl ?? null
+          return photoUrl ? (
+            <img src={photoUrl} alt={bike.model} className="flex-shrink-0" style={{ width: 62, height: 62, borderRadius: 10, objectFit: 'cover', objectPosition: 'center' }} />
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-1 flex-shrink-0" style={{ width: 62, height: 62, border: '1.5px dashed rgba(28,105,212,0.25)', borderRadius: 10 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(28,105,212,0.4)" strokeWidth="1.5">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              <span style={{ fontSize: 9, color: 'rgba(28,105,212,0.4)', fontWeight: 500 }}>Add photo</span>
+            </div>
+          )
+        })()}
+        <div className="flex-1 flex flex-col gap-0.5 min-w-0">
+          <p className="text-[#F5F3EE] font-semibold leading-tight truncate" style={{ fontSize: 13 }}>{bikeName}</p>
+          <p style={{ fontSize: 11, color: '#6A6860' }}>{reg}</p>
+          <p style={{ fontSize: 11, color: '#6A6860' }}>{buildName}</p>
+          <button onClick={onSwitchBike} className="text-left mt-1" style={{ fontSize: 11, color: '#1C69D4', fontWeight: 500, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+            Switch bike
+          </button>
+          <button onClick={() => setShowDeleteConfirm(true)} className="text-left mt-0.5" style={{ fontSize: 11, color: '#DC3535', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+            Delete bike
+          </button>
+        </div>
       </div>
-    </div>
+
+      {/* Delete confirmation sheet */}
+      {showDeleteConfirm && (
+        <>
+          <div onClick={() => setShowDeleteConfirm(false)} style={{ position: 'fixed', inset: 0, zIndex: 199, backgroundColor: 'rgba(0,0,0,0.55)' }} />
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#141414', borderTop: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px 12px 0 0', zIndex: 200, paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}>
+            {/* Drag handle */}
+            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 6 }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.12)' }} />
+            </div>
+
+            <div style={{ padding: '8px 20px 16px' }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#F5F3EE', margin: '0 0 8px' }}>
+                Delete this bike?
+              </p>
+              <p style={{ fontSize: 12, color: '#6A6860', lineHeight: 1.55, margin: 0 }}>
+                This will permanently delete {bikeName} and all associated accessories and photos. This cannot be undone.
+              </p>
+            </div>
+
+            <div style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', margin: '0 20px' }} />
+
+            <div style={{ display: 'flex', gap: 10, padding: '14px 20px 8px' }}>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.12)', fontSize: 12, fontWeight: 500, color: '#F5F3EE', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  // TODO: wire to Supabase delete
+                  setShowDeleteConfirm(false)
+                  onSwitchBike()
+                }}
+                style={{ flex: 2, padding: 13, borderRadius: 8, backgroundColor: '#DC3535', border: 'none', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}
+              >
+                Delete bike
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </>
   )
 }
 
@@ -401,7 +450,7 @@ function AccessoryCard({
           <button
             onClick={expanded ? () => setExpanded(false) : openMenu}
             className="flex-shrink-0 flex items-center justify-center"
-            style={{ width: 28, height: 28, fontSize: expanded ? 16 : 18, color: expanded ? '#6A6860' : '#44423E', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}
+            style={{ width: 28, height: 28, fontSize: expanded ? 16 : 18, color: expanded ? '#6A6860' : '#B8B6B0', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}
             aria-label={expanded ? 'Collapse details' : 'More options'}
           >
             {expanded ? '✕' : '⋮'}
