@@ -44,6 +44,29 @@ export async function GET(request: Request) {
     });
   }
 
+  // make + model + year → distinct variants for that make/model/year
+  const year = searchParams.get("year");
+  if (make && model && year) {
+    const { data, error } = await supabase
+      .from("bikes")
+      .select("variant")
+      .eq("make", make)
+      .eq("model", model)
+      .eq("year", parseInt(year, 10))
+      .order("variant");
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    const unique = [
+      ...new Set(
+        (data ?? [])
+          .map((r) => r.variant as string | null)
+          .filter((v): v is string => !!v && v.trim() !== "")
+      ),
+    ].sort();
+    return NextResponse.json({ variants: unique });
+  }
+
   // model provided → distinct years for that model (optionally filtered by make)
   if (model) {
     const { data, error } = make

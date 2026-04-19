@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { demoExpertBuildCatalog } from '@/lib/demo-content/expert-builds'
 import type { ExpertBuild, ExpertBuildAccessory } from '@/lib/expert-builds/types'
 import { garageCategories } from '@/types/garage'
@@ -9,6 +10,14 @@ import { garageCategories } from '@/types/garage'
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type PurposeFilter = 'all' | 'touring' | 'adventure' | 'enduro' | 'by-accessory'
+
+type SelectedBike = {
+  id: string
+  make: string
+  model: string
+  variant: string | null
+  year: number
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -549,20 +558,42 @@ function ByAccessoryView({ builds }: { builds: ExpertBuild[] }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function ExpertPage() {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<PurposeFilter>('all')
+  const [bikeContext, setBikeContext] = useState<SelectedBike | null>(null)
+
+  // Read selected bike from sessionStorage (set by the Browse screen)
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('browse_bike')
+      if (raw) {
+        const parsed = JSON.parse(raw) as SelectedBike
+        if (parsed?.make && parsed?.model) setBikeContext(parsed)
+      }
+    } catch { /* ignore */ }
+  }, [])
 
   const publishedBuilds = useMemo(
     () => demoExpertBuildCatalog.filter(b => b.published),
     []
   )
 
+  // Builds matching the selected bike (make + model, case-insensitive)
+  const buildsForBike = useMemo(() => {
+    if (!bikeContext) return publishedBuilds
+    return publishedBuilds.filter(b =>
+      b.bikeFitment.make.toLowerCase() === bikeContext.make.toLowerCase() &&
+      b.bikeFitment.model.toLowerCase() === bikeContext.model.toLowerCase()
+    )
+  }, [publishedBuilds, bikeContext])
+
   const filteredBuilds = useMemo(
     () =>
-      publishedBuilds
+      buildsForBike
         .filter(b => matchesPurpose(b, activeFilter))
         .filter(b => matchesSearch(b, searchQuery)),
-    [publishedBuilds, activeFilter, searchQuery]
+    [buildsForBike, activeFilter, searchQuery]
   )
 
   const featuredBuild = useMemo(
@@ -575,8 +606,51 @@ export default function ExpertPage() {
     [filteredBuilds, featuredBuild]
   )
 
+  const bikeLabel = bikeContext
+    ? [bikeContext.year, bikeContext.make, bikeContext.model, bikeContext.variant].filter(Boolean).join(' ')
+    : null
+
+  // True when bike is set but no builds match (before search/filter applied)
+  const noBuildsForBike = !!bikeContext && buildsForBike.length === 0
+
   return (
     <div className="flex flex-col gap-4 px-5 pt-4 pb-8 min-h-screen bg-[#0D0D0D]">
+
+      {/* A0 — Bike context banner */}
+      {bikeContext ? (
+        <div style={{
+          backgroundColor: '#141414',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 12, padding: '11px 13px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{
+              margin: 0, fontSize: 13, fontWeight: 600, color: '#F5F3EE',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {bikeLabel}
+            </p>
+            <p style={{ margin: '3px 0 0', fontSize: 10, color: '#6A6860' }}>
+              {noBuildsForBike ? 'No builds found for this bike' : `${buildsForBike.length} expert ${buildsForBike.length === 1 ? 'build' : 'builds'} for your bike`}
+            </p>
+          </div>
+          <button
+            onClick={() => router.push('/browse')}
+            style={{ flexShrink: 0, background: 'none', border: 'none', padding: 0, fontSize: 11, fontWeight: 500, color: '#1C69D4', cursor: 'pointer' }}
+          >
+            Change
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <p style={{ margin: 0, fontSize: 11, color: '#6A6860' }}>Showing all expert builds</p>
+          <Link href="/browse" style={{ fontSize: 11, fontWeight: 500, color: '#1C69D4', textDecoration: 'none' }}>
+            Browse for your bike →
+          </Link>
+        </div>
+      )}
+
       {/* A — Search */}
       <SearchBar value={searchQuery} onChange={setSearchQuery} />
 
@@ -586,6 +660,26 @@ export default function ExpertPage() {
       {/* E — By-accessory mode */}
       {activeFilter === 'by-accessory' ? (
         <ByAccessoryView builds={publishedBuilds} />
+      ) : noBuildsForBike ? (
+        /* No builds for selected bike — offer to show all */
+        <div
+          className="flex flex-col items-center gap-3 rounded-[12px] py-10 px-5 text-center"
+          style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <p style={{ fontSize: 13, color: '#6A6860', margin: 0 }}>
+            No expert builds found for {bikeLabel}.
+          </p>
+          <button
+            onClick={() => setBikeContext(null)}
+            style={{
+              background: 'none', border: '1px solid rgba(28,105,212,0.35)',
+              borderRadius: 20, padding: '6px 14px',
+              fontSize: 11, fontWeight: 500, color: '#1C69D4', cursor: 'pointer',
+            }}
+          >
+            Show all builds
+          </button>
+        </div>
       ) : (
         <>
           {filteredBuilds.length === 0 ? (

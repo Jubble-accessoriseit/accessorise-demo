@@ -201,12 +201,17 @@ export default function BrowsePage() {
   const [selectedMakeId,    setSelectedMakeId]    = useState('')
   const [selectedModelId,   setSelectedModelId]   = useState('')
   const [selectedYear,      setSelectedYear]      = useState('')
+  const [selectedVariant,   setSelectedVariant]   = useState('')
   const [selectedMakeName,  setSelectedMakeName]  = useState('')
   const [selectedModelName, setSelectedModelName] = useState('')
 
   // Loading states
-  const [loadingModels, setLoadingModels] = useState(false)
-  const [loadingYears,  setLoadingYears]  = useState(false)
+  const [loadingModels,   setLoadingModels]   = useState(false)
+  const [loadingYears,    setLoadingYears]    = useState(false)
+  const [loadingVariants, setLoadingVariants] = useState(false)
+
+  // Variant options (only shown when > 1 distinct variant exists)
+  const [variants, setVariants] = useState<string[]>([])
 
   // Filters
   const [activeCategory, setActiveCategory] = useState('all')
@@ -296,31 +301,53 @@ export default function BrowsePage() {
     if (!selectedModelId) {
       setYears([])
       setSelectedYear('')
+      setVariants([])
+      setSelectedVariant('')
       return
     }
     setLoadingYears(true)
     setSelectedYear('')
+    setVariants([])
+    setSelectedVariant('')
     fetch(`/api/bikes/options?model=${encodeURIComponent(selectedModelId)}&make=${encodeURIComponent(selectedMakeId)}`)
       .then(r => r.json())
       .then(d => { setYears(d.years ?? []); setLoadingYears(false) })
       .catch(() => setLoadingYears(false))
   }, [selectedModelId])
 
+  // ── Cascade: fetch variants when year changes ────────────────────────────────
+
+  useEffect(() => {
+    if (!selectedYear || !selectedModelId || !selectedMakeId) {
+      setVariants([])
+      setSelectedVariant('')
+      return
+    }
+    setLoadingVariants(true)
+    setSelectedVariant('')
+    fetch(`/api/bikes/options?make=${encodeURIComponent(selectedMakeId)}&model=${encodeURIComponent(selectedModelId)}&year=${encodeURIComponent(selectedYear)}`)
+      .then(r => r.json())
+      .then(d => { setVariants(d.variants ?? []); setLoadingVariants(false) })
+      .catch(() => setLoadingVariants(false))
+  }, [selectedYear, selectedModelId, selectedMakeId])
+
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   const handleFindAccessories = useCallback(() => {
     if (!selectedMakeId || !selectedModelId || !selectedYear) return
+    if (variants.length > 1 && !selectedVariant) return
+    const variant = variants.length > 1 ? selectedVariant : (variants[0] ?? null)
     const bike: SelectedBike = {
-      id: `${selectedModelId}-${selectedYear}`,
+      id: `${selectedModelId}-${selectedYear}${variant ? `-${variant}` : ''}`,
       make: selectedMakeName,
       model: selectedModelName,
-      variant: null,
+      variant: variant || null,
       year: parseInt(selectedYear, 10),
     }
     setSelectedBike(bike)
     setShowingSelector(false)
     try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(bike)) } catch { /* ignore */ }
-  }, [selectedMakeId, selectedModelId, selectedYear, selectedMakeName, selectedModelName])
+  }, [selectedMakeId, selectedModelId, selectedYear, selectedVariant, selectedMakeName, selectedModelName, variants])
 
   const handleChange = useCallback(() => {
     setSelectedBike(null)
@@ -359,7 +386,8 @@ export default function BrowsePage() {
     return list
   }, [activeCategory, searchQuery])
 
-  const canActivate = !!selectedMakeId && !!selectedModelId && !!selectedYear
+  const needsVariant = variants.length > 1
+  const canActivate = !!selectedMakeId && !!selectedModelId && !!selectedYear && (!needsVariant || !!selectedVariant)
   const bikeNameForPlaceholder = selectedBike ? bikeDisplayName(selectedBike) : 'your bike'
 
   // ── Loading ─────────────────────────────────────────────────────────────────
@@ -485,6 +513,22 @@ export default function BrowsePage() {
               </select>
               <DropdownChevron disabled={!selectedModelId || loadingYears} />
             </div>
+
+            {/* Series / Variant — only shown when multiple variants exist */}
+            {selectedYear && needsVariant && (
+              <div style={{ position: 'relative' }}>
+                <select
+                  value={selectedVariant}
+                  disabled={loadingVariants}
+                  onChange={e => setSelectedVariant(e.target.value)}
+                  style={selectStyle(!loadingVariants)}
+                >
+                  <option value="">{loadingVariants ? 'Loading…' : 'Series / Variant'}</option>
+                  {variants.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+                <DropdownChevron disabled={loadingVariants} />
+              </div>
+            )}
 
             {/* CTA */}
             <button
