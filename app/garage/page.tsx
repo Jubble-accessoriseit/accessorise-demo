@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { loadGarageFromSupabase } from '@/lib/garage/persistence'
+import { loadGarageFromSupabase, deleteGarageBike } from '@/lib/garage/persistence'
 import { getPreferredGarageBuildForBike } from '@/lib/garage/working-context'
 import { demoGarageBikes } from '@/lib/demo-content/bikes'
 import { GarageScreen } from '@/components/garage/GarageScreen'
@@ -59,13 +59,15 @@ export default function GaragePage() {
 
   function handleDeleteBike() {
     if (state.status !== 'loaded' || !state.selectedBike) return
+    const bikeId = state.selectedBike.id
     setState({
       status: 'loaded',
-      bikes: state.bikes.filter(b => b.id !== state.selectedBike!.id),
+      bikes: state.bikes.filter(b => b.id !== bikeId),
       selectedBike: null,
       selectedBuild: null,
     })
     setView('overview')
+    deleteGarageBike(bikeId).catch(err => console.error('Failed to delete bike:', err))
   }
 
   function handleSelectBike(bike: GarageBikeRecord, build: GarageBuildRecord | null) {
