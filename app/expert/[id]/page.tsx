@@ -5,13 +5,24 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { demoExpertBuildCatalog } from '@/lib/demo-content/expert-builds'
 import { demoGarageProducts } from '@/lib/demo-content/products'
-import type { ExpertBuild, ExpertBuildAccessory } from '@/lib/expert-builds/types'
+import type { ExpertBuild } from '@/lib/expert-builds/types'
 import { garageCategories } from '@/types/garage'
 import { supabase } from '@/lib/supabase'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type GarageItemState = 'wishlist' | 'fitted' | null
+
+type TableRow = {
+  key: string
+  title: string
+  brand: string
+  categoryId: string
+  productId: number | null
+  photoUrl: string | null
+  expertNotes: string | null
+  inExpert: boolean
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -39,37 +50,6 @@ function getCategoryLabel(categoryId: string): string {
   return garageCategories.find(c => c.id === categoryId)?.label ?? categoryId
 }
 
-function getPriceLabel(productId?: number | null): string {
-  if (!productId) return '—'
-  const product = demoGarageProducts.find(p => p.id === productId)
-  if (!product || product.price <= 0) return '—'
-  return `$${product.price}`
-}
-
-function countBuildsUsing(accId: string): number {
-  return demoExpertBuildCatalog.filter(
-    b => b.published && b.accessories.some(a => a.id === accId)
-  ).length
-}
-
-function groupByCategory(accessories: ExpertBuildAccessory[]) {
-  const order: string[] = []
-  const map = new Map<string, ExpertBuildAccessory[]>()
-  for (const acc of accessories) {
-    if (!map.has(acc.categoryId)) {
-      order.push(acc.categoryId)
-      map.set(acc.categoryId, [])
-    }
-    map.get(acc.categoryId)!.push(acc)
-  }
-  return order.map(catId => ({
-    catId,
-    label: getCategoryLabel(catId),
-    items: map.get(catId)!,
-  }))
-}
-
-// Same modulo logic as GarageScreen.getDemoItemState — null means not in current active build
 function getDemoGarageState(productId: number): 'wishlist' | 'fitted' | null {
   const n = productId % 3
   if (n === 0) return null
@@ -81,6 +61,23 @@ function getAccPrice(productId: number): number {
   return 140 + ((productId * 7) % 180)
 }
 
+function groupTableRows(rows: TableRow[]) {
+  const order: string[] = []
+  const map = new Map<string, TableRow[]>()
+  for (const row of rows) {
+    if (!map.has(row.categoryId)) {
+      order.push(row.categoryId)
+      map.set(row.categoryId, [])
+    }
+    map.get(row.categoryId)!.push(row)
+  }
+  return order.map(catId => ({
+    catId,
+    label: getCategoryLabel(catId),
+    rows: map.get(catId)!,
+  }))
+}
+
 // ── Shared sheet pieces ───────────────────────────────────────────────────────
 
 const SHEET_STYLE: React.CSSProperties = {
@@ -89,11 +86,18 @@ const SHEET_STYLE: React.CSSProperties = {
   borderTop: '1px solid rgba(255,255,255,0.06)',
   borderRadius: '12px 12px 0 0',
   zIndex: 200,
+  maxHeight: '90vh',
+  overflowY: 'auto',
   paddingBottom: 'env(safe-area-inset-bottom, 16px)',
 }
 
 function SheetBackdrop({ onClose }: { onClose: () => void }) {
-  return <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 199, backgroundColor: 'rgba(0,0,0,0.55)' }} />
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 199, backgroundColor: 'rgba(0,0,0,0.55)' }}
+    />
+  )
 }
 
 function SheetDragHandle() {
@@ -106,7 +110,11 @@ function SheetDragHandle() {
 
 function FitBadge() {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, backgroundColor: 'rgba(29,158,117,0.08)', borderRadius: 20, padding: '2px 8px', fontSize: 9, fontWeight: 500, color: '#1D9E75' }}>
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      backgroundColor: 'rgba(29,158,117,0.08)', borderRadius: 20,
+      padding: '2px 8px', fontSize: 9, fontWeight: 500, color: '#1D9E75',
+    }}>
       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="20 6 9 17 4 12" />
       </svg>
@@ -115,21 +123,18 @@ function FitBadge() {
   )
 }
 
-// ── AddToGarageSheet ──────────────────────────────────────────────────────────
+// ── ProductDetailSheet ────────────────────────────────────────────────────────
 
-function AddToGarageSheet({
-  acc, build, garageState, onAddWishlist, onAddFitted, onClose,
+function ProductDetailSheet({
+  row, garageState, onAddWishlist, onAddFitted, onClose,
 }: {
-  acc: ExpertBuildAccessory
-  build: ExpertBuild
+  row: TableRow
   garageState: GarageItemState
   onAddWishlist: () => void
   onAddFitted: () => void
   onClose: () => void
 }) {
-  const hasPhoto = (acc.installedPhotoIds?.length ?? 0) > 0
-  const photoUrl = hasPhoto ? build.primaryPhoto?.imageUrl ?? null : null
-  const price = acc.productId ? getAccPrice(acc.productId) : null
+  const price = row.productId ? getAccPrice(row.productId) : null
   const inBuild = garageState !== null
 
   return (
@@ -138,29 +143,82 @@ function AddToGarageSheet({
       <div style={SHEET_STYLE}>
         <SheetDragHandle />
 
-        {/* Accessory summary */}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '8px 20px 14px' }}>
-          <div style={{ width: 52, height: 52, borderRadius: 8, backgroundColor: '#1A1814', flexShrink: 0, overflow: 'hidden' }}>
-            {photoUrl && <img src={photoUrl} alt={acc.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#F5F3EE', margin: '0 0 2px', lineHeight: 1.3 }}>{acc.title}</p>
-            <p style={{ fontSize: 11, color: '#6A6860', margin: '0 0 6px' }}>{acc.brand}</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <FitBadge />
-              {price !== null && <span style={{ fontSize: 11, color: '#6A6860' }}>From ${price}</span>}
+        {/* Large photo — 160px */}
+        <div style={{ height: 160, backgroundColor: '#1A1814', overflow: 'hidden', flexShrink: 0 }}>
+          {row.photoUrl ? (
+            <img
+              src={row.photoUrl}
+              alt={row.title}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+            />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
             </div>
+          )}
+        </div>
+
+        {/* Product info */}
+        <div style={{ padding: '14px 20px 12px' }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: '#F5F3EE', margin: '0 0 3px', lineHeight: 1.3 }}>
+            {row.title}
+          </p>
+          <p style={{ fontSize: 11, color: '#6A6860', margin: '0 0 9px' }}>{row.brand}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <FitBadge />
+            {price !== null && (
+              <span style={{ fontSize: 11, color: '#6A6860' }}>From ${price}</span>
+            )}
           </div>
         </div>
+
+        {/* Expert notes */}
+        {row.expertNotes && (
+          <>
+            <div style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', margin: '0 20px' }} />
+            <div style={{ padding: '12px 20px' }}>
+              <p style={{
+                fontSize: 9, fontWeight: 700, color: '#44423E',
+                textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 5px',
+              }}>
+                Expert&apos;s note
+              </p>
+              <p style={{ fontSize: 12, color: '#6A6860', lineHeight: 1.6, margin: 0 }}>
+                {row.expertNotes}
+              </p>
+            </div>
+          </>
+        )}
 
         <div style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', margin: '0 20px' }} />
 
         {/* Actions */}
-        <div style={{ padding: '14px 20px 8px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ padding: '14px 20px 8px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {row.productId && (
+            <Link
+              href={`/shop/${row.productId}`}
+              style={{
+                display: 'block', textAlign: 'center', padding: 13, borderRadius: 8,
+                backgroundColor: '#1C69D4', textDecoration: 'none',
+                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+                fontWeight: 900, fontSize: 13, color: '#fff',
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+              }}
+            >
+              Shop now ↗
+            </Link>
+          )}
+
           {inBuild ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
-              <span style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: '#1D9E75', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <span style={{
+                width: 28, height: 28, borderRadius: '50%', backgroundColor: '#1D9E75',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </span>
@@ -176,11 +234,10 @@ function AddToGarageSheet({
               <button
                 onClick={() => { onAddWishlist(); onClose() }}
                 style={{
-                  width: '100%', padding: 13, borderRadius: 8,
-                  backgroundColor: '#1C69D4', border: 'none',
-                  fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-                  fontWeight: 900, fontSize: 13, color: '#fff',
-                  textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer',
+                  width: '100%', padding: 12, borderRadius: 8,
+                  backgroundColor: 'transparent',
+                  border: '1px solid rgba(28,105,212,0.4)',
+                  fontSize: 12, fontWeight: 600, color: '#1C69D4', cursor: 'pointer',
                 }}
               >
                 Add to wish list
@@ -188,8 +245,9 @@ function AddToGarageSheet({
               <button
                 onClick={() => { onAddFitted(); onClose() }}
                 style={{
-                  width: '100%', padding: 12, borderRadius: 8,
-                  backgroundColor: 'transparent', border: '1px solid rgba(29,158,117,0.4)',
+                  width: '100%', padding: 11, borderRadius: 8,
+                  backgroundColor: 'transparent',
+                  border: '1px solid rgba(29,158,117,0.35)',
                   fontSize: 12, fontWeight: 600, color: '#1D9E75', cursor: 'pointer',
                 }}
               >
@@ -214,7 +272,6 @@ function SaveBuildSheet({
   onClose: () => void
   saved: boolean
 }) {
-  // Snapshot the count at mount so the success message is accurate after garageItems updates
   const [snapCount] = useState(toAddCount)
 
   return (
@@ -225,13 +282,21 @@ function SaveBuildSheet({
 
         {saved ? (
           <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
-            <span style={{ width: 52, height: 52, borderRadius: '50%', backgroundColor: 'rgba(29,158,117,0.12)', border: '1px solid rgba(29,158,117,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{
+              width: 52, height: 52, borderRadius: '50%',
+              backgroundColor: 'rgba(29,158,117,0.12)', border: '1px solid rgba(29,158,117,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </span>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 900, color: '#F5F3EE', margin: '0 0 4px', fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif", textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+              <p style={{
+                fontSize: 14, fontWeight: 900, color: '#F5F3EE', margin: '0 0 4px',
+                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+                textTransform: 'uppercase', letterSpacing: '0.03em',
+              }}>
                 Added to your garage
               </p>
               <p style={{ fontSize: 12, color: '#6A6860', margin: 0 }}>
@@ -254,7 +319,11 @@ function SaveBuildSheet({
         ) : (
           <>
             <div style={{ padding: '12px 20px 16px' }}>
-              <p style={{ fontSize: 14, fontWeight: 900, color: '#F5F3EE', margin: '0 0 6px', fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif", textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+              <p style={{
+                fontSize: 14, fontWeight: 900, color: '#F5F3EE', margin: '0 0 6px',
+                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+                textTransform: 'uppercase', letterSpacing: '0.03em',
+              }}>
                 Save this build?
               </p>
               <p style={{ fontSize: 12, color: '#6A6860', margin: 0, lineHeight: 1.55 }}>
@@ -265,7 +334,11 @@ function SaveBuildSheet({
             <div style={{ padding: '14px 20px 8px', display: 'flex', gap: 10 }}>
               <button
                 onClick={onClose}
-                style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.12)', fontSize: 12, fontWeight: 500, color: '#F5F3EE', cursor: 'pointer' }}
+                style={{
+                  flex: 1, padding: 12, borderRadius: 8,
+                  backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.12)',
+                  fontSize: 12, fontWeight: 500, color: '#F5F3EE', cursor: 'pointer',
+                }}
               >
                 Cancel
               </button>
@@ -289,112 +362,15 @@ function SaveBuildSheet({
   )
 }
 
-// ── CompareBuildSection ───────────────────────────────────────────────────────
-
-function CompareBuildSection({
-  build, garageItems, isLoggedIn,
-}: {
-  build: ExpertBuild
-  garageItems: Partial<Record<number, 'wishlist' | 'fitted'>>
-  isLoggedIn: boolean
-}) {
-  const seeded = build.accessories.filter(a => a.productId != null)
-
-  return (
-    <div style={{ padding: '0 20px' }}>
-      {/* Section header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-        <span style={{ display: 'inline-block', width: 3, height: 14, backgroundColor: '#E8841A', borderRadius: 2, flexShrink: 0 }} />
-        <span style={{ fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif", fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#F5F3EE' }}>
-          Compare with my build
-        </span>
-        <span style={{ fontSize: 11, color: '#44423E' }}>{seeded.length}</span>
-      </div>
-
-      {!isLoggedIn ? (
-        <div style={{ backgroundColor: 'rgba(232,132,26,0.06)', border: '1px solid rgba(232,132,26,0.24)', borderRadius: 12, padding: '14px 16px' }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#F5F3EE', margin: '0 0 4px' }}>
-            Sign in to compare with your build
-          </p>
-          <p style={{ fontSize: 11, color: '#6A6860', margin: '0 0 12px', lineHeight: 1.5 }}>
-            See which of these accessories you already have fitted, on your wish list, or still missing.
-          </p>
-          <Link
-            href="/login"
-            style={{ display: 'inline-block', padding: '9px 18px', borderRadius: 8, backgroundColor: '#E8841A', fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif", fontWeight: 900, fontSize: 12, color: '#0D0D0D', textTransform: 'uppercase', letterSpacing: '0.06em', textDecoration: 'none' }}
-          >
-            Sign in
-          </Link>
-        </div>
-      ) : (
-        <div style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, overflow: 'hidden' }}>
-          {/* Column headers */}
-          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 13px', borderBottom: '1px solid rgba(255,255,255,0.06)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-            <span style={{ flex: 1, fontSize: 9, fontWeight: 700, color: '#44423E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Accessory</span>
-            <span style={{ width: 52, textAlign: 'center', fontSize: 9, fontWeight: 700, color: '#44423E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Expert</span>
-            <span style={{ width: 64, textAlign: 'center', fontSize: 9, fontWeight: 700, color: '#44423E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>My build</span>
-          </div>
-
-          {seeded.map((acc, i) => {
-            const productId = acc.productId!
-            const hasPhoto = (acc.installedPhotoIds?.length ?? 0) > 0
-            const photoUrl = hasPhoto ? build.primaryPhoto?.imageUrl ?? null : null
-            const myState = garageItems[productId] ?? null
-            const isLast = i === seeded.length - 1
-
-            return (
-              <div
-                key={acc.id}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 13px', borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.04)' }}
-              >
-                {/* Thumbnail */}
-                <div style={{ width: 36, height: 36, borderRadius: 6, backgroundColor: '#1A1814', flexShrink: 0, overflow: 'hidden' }}>
-                  {photoUrl && <img src={photoUrl} alt={acc.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                </div>
-
-                {/* Name + brand */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 11, fontWeight: 500, color: '#F5F3EE', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.title}</p>
-                  <p style={{ fontSize: 10, color: '#6A6860', margin: '1px 0 0' }}>{acc.brand}</p>
-                </div>
-
-                {/* Expert — always blue tick */}
-                <div style={{ width: 52, display: 'flex', justifyContent: 'center' }}>
-                  <span style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: '#1C69D4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </span>
-                </div>
-
-                {/* My build */}
-                <div style={{ width: 64, display: 'flex', justifyContent: 'center' }}>
-                  {myState === 'fitted' ? (
-                    <span style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: '#1D9E75', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    </span>
-                  ) : myState === 'wishlist' ? (
-                    <span style={{ width: 20, height: 20, borderRadius: '50%', border: '1.5px solid #888780', backgroundColor: 'transparent', display: 'inline-block', flexShrink: 0 }} />
-                  ) : (
-                    <span style={{ fontSize: 14, color: '#44423E', lineHeight: 1 }}>—</span>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Shared small components ───────────────────────────────────────────────────
 
 function CategoryTag({ label }: { label: string }) {
   return (
-    <span style={{ backgroundColor: 'rgba(28,105,212,0.08)', border: '1px solid rgba(28,105,212,0.16)', color: '#1C69D4', fontSize: 9, fontWeight: 500, padding: '3px 9px', borderRadius: 20, whiteSpace: 'nowrap' }}>
+    <span style={{
+      backgroundColor: 'rgba(28,105,212,0.08)', border: '1px solid rgba(28,105,212,0.16)',
+      color: '#1C69D4', fontSize: 9, fontWeight: 500,
+      padding: '3px 9px', borderRadius: 20, whiteSpace: 'nowrap',
+    }}>
       {label}
     </span>
   )
@@ -402,21 +378,13 @@ function CategoryTag({ label }: { label: string }) {
 
 function VerifiedBadge() {
   return (
-    <span style={{ backgroundColor: 'rgba(28,105,212,0.1)', border: '1px solid rgba(28,105,212,0.2)', color: '#1C69D4', fontSize: 9, fontWeight: 500, padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>
+    <span style={{
+      backgroundColor: 'rgba(28,105,212,0.1)', border: '1px solid rgba(28,105,212,0.2)',
+      color: '#1C69D4', fontSize: 9, fontWeight: 500,
+      padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap',
+    }}>
       Verified
     </span>
-  )
-}
-
-function SectionHeader({ label, count }: { label: string; count: number }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ display: 'inline-block', width: 3, height: 14, backgroundColor: '#1C69D4', borderRadius: 2, flexShrink: 0 }} />
-      <span style={{ fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif", fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#F5F3EE' }}>
-        {label}
-      </span>
-      <span style={{ fontSize: 11, color: '#44423E' }}>{count}</span>
-    </div>
   )
 }
 
@@ -445,69 +413,237 @@ function BookmarkIcon() {
   )
 }
 
-// ── Accessory card ────────────────────────────────────────────────────────────
+// ── ComparisonTable ───────────────────────────────────────────────────────────
 
-function AccessoryCard({
-  acc, build, garageState, onAdd,
+function ComparisonTable({
+  tableGroups, garageItems, isLoggedIn, onRowTap, onQuickAdd,
 }: {
-  acc: ExpertBuildAccessory
-  build: ExpertBuild
-  garageState: GarageItemState
-  onAdd: () => void
+  tableGroups: Array<{ catId: string; label: string; rows: TableRow[] }>
+  garageItems: Partial<Record<number, 'wishlist' | 'fitted'>>
+  isLoggedIn: boolean
+  onRowTap: (row: TableRow) => void
+  onQuickAdd: (productId: number) => void
 }) {
-  const usageCount = countBuildsUsing(acc.id)
-  const price = getPriceLabel(acc.productId)
-  const hasPhoto = (acc.installedPhotoIds?.length ?? 0) > 0
-  const hasProductId = acc.productId != null
-  const inBuild = garageState !== null
+  const totalCount = tableGroups.reduce((n, g) => n + g.rows.length, 0)
 
   return (
-    <div style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 13, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-      {/* 52px photo area */}
-      <div style={{ width: 52, height: 52, backgroundColor: '#1A1814', borderRadius: 8, flexShrink: 0, overflow: 'hidden', position: 'relative' }}>
-        {hasPhoto && build.primaryPhoto?.imageUrl && (
-          <img src={build.primaryPhoto.imageUrl} alt={acc.title} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} />
-        )}
+    <div style={{ padding: '0 20px' }}>
+      {/* Section header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <span style={{
+          display: 'inline-block', width: 3, height: 14,
+          backgroundColor: '#1C69D4', borderRadius: 2, flexShrink: 0,
+        }} />
+        <span style={{
+          fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+          fontWeight: 900, fontSize: 12, textTransform: 'uppercase',
+          letterSpacing: '0.05em', color: '#F5F3EE',
+        }}>
+          Gear comparison
+        </span>
+        <span style={{ fontSize: 11, color: '#44423E' }}>{totalCount}</span>
       </div>
 
-      {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 12, fontWeight: 600, color: '#F5F3EE', lineHeight: 1.3, margin: 0 }}>{acc.title}</p>
-        <p style={{ fontSize: 10, color: '#6A6860', margin: '2px 0 0' }}>{acc.brand}</p>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: '#1D9E75', flexShrink: 0 }} />
-          <span style={{ fontSize: 10, fontWeight: 500, color: '#1D9E75' }}>Fitted</span>
-          <span style={{ fontSize: 10, color: '#44423E' }}>·</span>
-          <span style={{ fontSize: 11, color: '#6A6860' }}>{price}</span>
+      <div style={{
+        backgroundColor: '#141414',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 12,
+        overflow: 'hidden',
+      }}>
+        {/* Column headers */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 44px 68px',
+          alignItems: 'center',
+          padding: '9px 13px',
+          backgroundColor: 'rgba(255,255,255,0.02)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          <span style={{ fontSize: 9, fontWeight: 700, color: '#44423E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Accessory
+          </span>
+          <span style={{ fontSize: 9, fontWeight: 700, color: '#44423E', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>
+            Expert
+          </span>
+          <span style={{ fontSize: 9, fontWeight: 700, color: '#44423E', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>
+            My build
+          </span>
         </div>
 
-        <p style={{ fontSize: 11, fontWeight: 500, color: '#1456B0', margin: '4px 0 0' }}>
-          ↗ Used in {usageCount} expert {usageCount === 1 ? 'build' : 'builds'}
-        </p>
-      </div>
+        {/* Sign-in prompt for logged-out riders */}
+        {!isLoggedIn && (
+          <div style={{
+            margin: '10px 13px 4px',
+            backgroundColor: 'rgba(28,105,212,0.06)',
+            border: '1px solid rgba(28,105,212,0.24)',
+            borderRadius: 10,
+            padding: '10px 13px',
+          }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: '#F5F3EE', margin: '0 0 4px' }}>
+              Sign in to see your build
+            </p>
+            <p style={{ fontSize: 11, color: '#6A6860', margin: '0 0 10px', lineHeight: 1.5 }}>
+              See which of these you already have fitted or on your wish list.
+            </p>
+            <Link
+              href="/login"
+              style={{
+                display: 'inline-block', padding: '7px 14px', borderRadius: 8,
+                backgroundColor: '#1C69D4', textDecoration: 'none',
+                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+                fontWeight: 900, fontSize: 11, color: '#fff',
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+              }}
+            >
+              Sign in
+            </Link>
+          </div>
+        )}
 
-      {/* + button or green tick */}
-      {hasProductId && (
-        inBuild ? (
-          <span
-            style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: '#1D9E75', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-            aria-label={`${acc.title} is in your build`}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </span>
-        ) : (
-          <button
-            onClick={onAdd}
-            style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid rgba(28,105,212,0.35)', color: '#1C69D4', backgroundColor: 'transparent', fontSize: 18, fontWeight: 300, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
-            aria-label={`Add ${acc.title} to garage`}
-          >
-            +
-          </button>
-        )
-      )}
+        {/* Category groups */}
+        {tableGroups.map(({ catId, label, rows }, gIdx) => (
+          <div key={catId}>
+            {/* Category header row */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              padding: '7px 13px',
+              backgroundColor: 'rgba(255,255,255,0.025)',
+              borderTop: gIdx === 0 && isLoggedIn
+                ? '1px solid rgba(255,255,255,0.06)'
+                : '1px solid rgba(255,255,255,0.06)',
+            }}>
+              <span style={{
+                width: 3, height: 11,
+                backgroundColor: '#1C69D4', borderRadius: 1, flexShrink: 0,
+              }} />
+              <span style={{
+                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+                fontWeight: 900, fontSize: 10,
+                textTransform: 'uppercase', letterSpacing: '0.05em', color: '#F5F3EE',
+              }}>
+                {label}
+              </span>
+              <span style={{ fontSize: 10, color: '#44423E' }}>{rows.length}</span>
+            </div>
+
+            {/* Accessory rows */}
+            {rows.map((row, rIdx) => {
+              const myState = row.productId != null ? (garageItems[row.productId] ?? null) : null
+              const showPlus = isLoggedIn && row.productId != null && myState === null
+              const isLast = rIdx === rows.length - 1
+
+              return (
+                <div
+                  key={row.key}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 44px 68px',
+                    alignItems: 'center',
+                    borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.04)',
+                  }}
+                >
+                  {/* Accessory name cell — tappable */}
+                  <button
+                    onClick={() => onRowTap(row)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 9,
+                      padding: '10px 0 10px 13px',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      textAlign: 'left', minWidth: 0,
+                    }}
+                  >
+                    {/* 36px thumbnail */}
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 6,
+                      backgroundColor: '#1A1814', flexShrink: 0, overflow: 'hidden',
+                    }}>
+                      {row.photoUrl && (
+                        <img
+                          src={row.photoUrl}
+                          alt=""
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      )}
+                    </div>
+                    {/* Name + brand */}
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{
+                        fontSize: 11, fontWeight: 500, color: '#F5F3EE',
+                        margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {row.title}
+                      </p>
+                      <p style={{ fontSize: 10, color: '#6A6860', margin: '1px 0 0' }}>
+                        {row.brand}
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Expert column */}
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    {row.inExpert ? (
+                      <span style={{
+                        width: 20, height: 20, borderRadius: '50%',
+                        backgroundColor: '#1C69D4',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 14, color: '#44423E', lineHeight: 1 }}>—</span>
+                    )}
+                  </div>
+
+                  {/* My Build column */}
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    {!isLoggedIn ? (
+                      <span style={{ fontSize: 14, color: '#3A3830', lineHeight: 1 }}>—</span>
+                    ) : myState === 'fitted' ? (
+                      <span style={{
+                        width: 20, height: 20, borderRadius: '50%',
+                        backgroundColor: '#1D9E75',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </span>
+                    ) : myState === 'wishlist' ? (
+                      <span style={{
+                        width: 18, height: 18, borderRadius: '50%',
+                        border: '1.5px solid #888780',
+                        backgroundColor: 'transparent',
+                        display: 'inline-block', flexShrink: 0,
+                      }} />
+                    ) : showPlus ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onQuickAdd(row.productId!) }}
+                        style={{
+                          width: 24, height: 24, borderRadius: '50%',
+                          border: '1px solid rgba(28,105,212,0.4)',
+                          color: '#1C69D4', backgroundColor: 'transparent',
+                          fontSize: 16, fontWeight: 300, lineHeight: 1,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer', flexShrink: 0,
+                        }}
+                        aria-label={`Add ${row.title} to wish list`}
+                      >
+                        +
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: 14, color: '#44423E', lineHeight: 1 }}>—</span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -520,7 +656,7 @@ export default function ExpertBuildDetailPage({ params }: { params: Promise<{ id
 
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [garageItems, setGarageItems] = useState<Partial<Record<number, 'wishlist' | 'fitted'>>>({})
-  const [addSheetAcc, setAddSheetAcc] = useState<ExpertBuildAccessory | null>(null)
+  const [detailRow, setDetailRow] = useState<TableRow | null>(null)
   const [saveSheetOpen, setSaveSheetOpen] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
 
@@ -529,25 +665,17 @@ export default function ExpertBuildDetailPage({ params }: { params: Promise<{ id
     [id]
   )
 
-  // Check auth and seed demo garage state from build accessories
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setIsLoggedIn(!!data.session))
 
-    if (!build) return
+    // Seed garage state from ALL demo products (not just this build's accessories)
     const initial: Partial<Record<number, 'wishlist' | 'fitted'>> = {}
-    for (const acc of build.accessories) {
-      if (acc.productId != null) {
-        const s = getDemoGarageState(acc.productId)
-        if (s !== null) initial[acc.productId] = s
-      }
+    for (const product of demoGarageProducts) {
+      const s = getDemoGarageState(product.id)
+      if (s !== null) initial[product.id] = s
     }
     setGarageItems(initial)
-  }, [id, build])
-
-  const categoryGroups = useMemo(
-    () => (build ? groupByCategory(build.accessories) : []),
-    [build]
-  )
+  }, [id])
 
   const uniqueCategories = useMemo(
     () => (build ? new Set(build.accessories.map(a => a.categoryId)).size : 0),
@@ -556,7 +684,49 @@ export default function ExpertBuildDetailPage({ params }: { params: Promise<{ id
 
   const photoCount = build ? 1 + build.galleryPhotos.length : 0
 
-  // Count seeded accessories not yet in garageItems (null = not in build)
+  // Build unified comparison rows: expert accessories + garage-only products
+  const tableRows = useMemo((): TableRow[] => {
+    if (!build) return []
+    const rows: TableRow[] = []
+    const expertProductIds = new Set<number>()
+
+    for (const acc of build.accessories) {
+      if (acc.productId != null) expertProductIds.add(acc.productId)
+      const hasPhoto = (acc.installedPhotoIds?.length ?? 0) > 0
+      rows.push({
+        key: `expert-${acc.id}`,
+        title: acc.title,
+        brand: acc.brand,
+        categoryId: acc.categoryId,
+        productId: acc.productId ?? null,
+        photoUrl: hasPhoto ? build.primaryPhoto?.imageUrl ?? null : null,
+        expertNotes: acc.notes ?? null,
+        inExpert: true,
+      })
+    }
+
+    // Garage-only: demo products the rider has that aren't in this expert build
+    for (const product of demoGarageProducts) {
+      if (expertProductIds.has(product.id)) continue
+      if (getDemoGarageState(product.id) === null) continue
+      rows.push({
+        key: `garage-${product.id}`,
+        title: product.name,
+        brand: product.brand,
+        categoryId: product.categoryId,
+        productId: product.id,
+        photoUrl: product.image,
+        expertNotes: null,
+        inExpert: false,
+      })
+    }
+
+    return rows
+  }, [build])
+
+  const tableGroups = useMemo(() => groupTableRows(tableRows), [tableRows])
+
+  // Count expert accessories not yet in garageItems (for save sheet)
   const toAddCount = useMemo(
     () => build?.accessories.filter(a => a.productId != null && !garageItems[a.productId!]).length ?? 0,
     [build, garageItems]
@@ -589,7 +759,9 @@ export default function ExpertBuildDetailPage({ params }: { params: Promise<{ id
       <div style={{ padding: '40px 20px', textAlign: 'center' }}>
         <div style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 32 }}>
           <p style={{ fontSize: 13, color: '#6A6860', margin: '0 0 16px' }}>Build not found.</p>
-          <Link href="/expert" style={{ fontSize: 12, color: '#1C69D4', fontWeight: 500 }}>← Back to Expert builds</Link>
+          <Link href="/expert" style={{ fontSize: 12, color: '#1C69D4', fontWeight: 500 }}>
+            ← Back to Expert builds
+          </Link>
         </div>
       </div>
     )
@@ -604,14 +776,21 @@ export default function ExpertBuildDetailPage({ params }: { params: Promise<{ id
       {/* A — Back nav */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
-          <button onClick={() => router.back()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', flexShrink: 0 }} aria-label="Go back">
+          <button
+            onClick={() => router.back()}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+            aria-label="Go back"
+          >
             <BackArrow />
           </button>
           <span style={{ fontSize: 12, fontWeight: 600, color: '#F5F3EE', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>
             {build.title}
           </span>
         </div>
-        <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#44423E', display: 'flex', alignItems: 'center', flexShrink: 0 }} aria-label="Share">
+        <button
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#44423E', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+          aria-label="Share"
+        >
           <ShareIcon />
         </button>
       </div>
@@ -619,7 +798,11 @@ export default function ExpertBuildDetailPage({ params }: { params: Promise<{ id
       {/* B — Photo area */}
       <div style={{ position: 'relative', height: 158, backgroundColor: '#1A1814', overflow: 'hidden' }}>
         {build.primaryPhoto?.imageUrl && (
-          <img src={build.primaryPhoto.imageUrl} alt={build.primaryPhoto.alt} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} />
+          <img
+            src={build.primaryPhoto.imageUrl}
+            alt={build.primaryPhoto.alt}
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+          />
         )}
         {build.credibility?.hasRealBuildPhotos && (
           <span style={{ position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(28,105,212,0.15)', border: '1px solid rgba(28,105,212,0.3)', color: '#1C69D4', fontSize: 9, fontWeight: 500, padding: '2px 8px', borderRadius: 20 }}>
@@ -661,7 +844,7 @@ export default function ExpertBuildDetailPage({ params }: { params: Promise<{ id
       </div>
 
       {/* E — Save + Share buttons */}
-      <div style={{ display: 'flex', gap: 8, padding: '0 20px 16px' }}>
+      <div style={{ display: 'flex', gap: 8, padding: '0 20px 20px' }}>
         <button
           onClick={() => { setSaveSuccess(false); setSaveSheetOpen(true) }}
           style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: '1px solid rgba(28,105,212,0.35)', color: '#1C69D4', backgroundColor: 'transparent', borderRadius: 8, padding: '10px 0', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
@@ -677,30 +860,16 @@ export default function ExpertBuildDetailPage({ params }: { params: Promise<{ id
         </button>
       </div>
 
-      {/* F — Accessory sections */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '0 20px' }}>
-        {categoryGroups.map(({ catId, label, items }) => (
-          <div key={catId} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <SectionHeader label={label} count={items.length} />
-            {items.map(acc => (
-              <AccessoryCard
-                key={acc.id}
-                acc={acc}
-                build={build}
-                garageState={acc.productId != null ? (garageItems[acc.productId] ?? null) : null}
-                onAdd={() => setAddSheetAcc(acc)}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
+      {/* F — Unified comparison table */}
+      <ComparisonTable
+        tableGroups={tableGroups}
+        garageItems={garageItems}
+        isLoggedIn={isLoggedIn}
+        onRowTap={setDetailRow}
+        onQuickAdd={handleAddWishlist}
+      />
 
-      {/* G — Compare section */}
-      <div style={{ marginTop: 28 }}>
-        <CompareBuildSection build={build} garageItems={garageItems} isLoggedIn={isLoggedIn} />
-      </div>
-
-      {/* H — Shop all accessories CTA */}
+      {/* G — Shop all CTA */}
       <div style={{ padding: '24px 20px 0' }}>
         <button
           style={{ width: '100%', backgroundColor: '#1C69D4', color: '#fff', border: 'none', borderRadius: 8, padding: '13px 20px', fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif", fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer' }}
@@ -710,14 +879,13 @@ export default function ExpertBuildDetailPage({ params }: { params: Promise<{ id
       </div>
 
       {/* Sheets */}
-      {addSheetAcc && (
-        <AddToGarageSheet
-          acc={addSheetAcc}
-          build={build}
-          garageState={addSheetAcc.productId != null ? (garageItems[addSheetAcc.productId] ?? null) : null}
-          onAddWishlist={() => addSheetAcc.productId != null && handleAddWishlist(addSheetAcc.productId)}
-          onAddFitted={() => addSheetAcc.productId != null && handleAddFitted(addSheetAcc.productId)}
-          onClose={() => setAddSheetAcc(null)}
+      {detailRow && (
+        <ProductDetailSheet
+          row={detailRow}
+          garageState={detailRow.productId != null ? (garageItems[detailRow.productId] ?? null) : null}
+          onAddWishlist={() => detailRow.productId != null && handleAddWishlist(detailRow.productId)}
+          onAddFitted={() => detailRow.productId != null && handleAddFitted(detailRow.productId)}
+          onClose={() => setDetailRow(null)}
         />
       )}
 

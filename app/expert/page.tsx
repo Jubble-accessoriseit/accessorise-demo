@@ -342,7 +342,7 @@ function FeaturedBuildCard({ build }: { build: ExpertBuild }) {
             padding: '10px 0',
           }}
         >
-          View full build
+          Compare build →
         </Link>
       </div>
     </div>
