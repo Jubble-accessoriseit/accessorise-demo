@@ -1,34 +1,5 @@
 import Link from 'next/link'
-import { demoExpertBuildCatalog } from '@/lib/demo-content/expert-builds'
 import { HomeHeroCtas } from './components/HomeHeroCtas'
-
-// ── Featured build ────────────────────────────────────────────────────────────
-
-const featuredBuild = demoExpertBuildCatalog[0]
-
-const CATEGORY_LABELS: Record<string, string> = {
-  luggage: 'Luggage',
-  protection: 'Protection',
-  navigation: 'Navigation',
-  tyres: 'Tyres',
-  lighting: 'Lighting',
-  comfort: 'Comfort',
-  electrical: 'Electrical',
-  'connectivity-navigation': 'Navigation',
-}
-
-function getFeaturedCategories(build: typeof featuredBuild): string[] {
-  const seen = new Set<string>()
-  const labels: string[] = []
-  for (const item of build.accessories) {
-    const label = CATEGORY_LABELS[item.categoryId] ?? item.categoryId
-    if (!seen.has(label)) {
-      seen.add(label)
-      labels.push(label)
-    }
-  }
-  return labels.slice(0, 4)
-}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -130,9 +101,6 @@ function ValueProp({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
-  const featuredCategories = getFeaturedCategories(featuredBuild)
-  const bikeLabel = `${featuredBuild.bikeFitment.make} ${featuredBuild.bikeFitment.model} ${featuredBuild.bikeFitment.yearStart}`
-
   return (
     <main style={{ backgroundColor: '#0D0D0D', minHeight: '100vh', paddingBottom: 40 }}>
 
@@ -253,74 +221,16 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── 4. Featured expert build ────────────────────────────────────────── */}
-      <section style={{ padding: '24px 20px 0' }}>
-        <SectionHeader label="Featured Build" />
-        <div style={{
-          backgroundColor: '#141414',
-          border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: 12, padding: 13,
-          display: 'flex', flexDirection: 'column', gap: 10,
-        }}>
-          {/* Bike + builder */}
-          <div>
-            <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: '#F5F3EE', lineHeight: 1.3 }}>
-              {featuredBuild.title}
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 11, color: '#6A6860' }}>{bikeLabel}</span>
-              <span style={{ fontSize: 11, color: '#44423E' }}>·</span>
-              <span style={{ fontSize: 11, color: '#6A6860' }}>{featuredBuild.builderName}</span>
-              {/* Verified badge */}
-              <span style={{
-                backgroundColor: 'rgba(28,105,212,0.1)',
-                border: '1px solid rgba(28,105,212,0.2)',
-                color: '#1C69D4', borderRadius: 20,
-                padding: '1px 7px', fontSize: 9, fontWeight: 500,
-              }}>
-                Verified
-              </span>
-            </div>
-          </div>
-
-          {/* Summary */}
-          <p style={{ margin: 0, fontSize: 11, color: '#6A6860', lineHeight: 1.55 }}>
-            {featuredBuild.summary}
-          </p>
-
-          {/* Category tags */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {featuredCategories.map((cat) => (
-              <span
-                key={cat}
-                style={{
-                  backgroundColor: 'rgba(28,105,212,0.08)',
-                  border: '1px solid rgba(28,105,212,0.16)',
-                  color: '#1C69D4', borderRadius: 20,
-                  padding: '3px 9px', fontSize: 9, fontWeight: 500,
-                }}
-              >
-                {cat}
-              </span>
-            ))}
-          </div>
-
-          {/* View full build link */}
-          <Link
-            href={`/expert/${featuredBuild.id}`}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              color: '#1C69D4', fontSize: 11, fontWeight: 500,
-              textDecoration: 'none',
-              border: '1px solid rgba(28,105,212,0.35)',
-              borderRadius: 20, padding: '6px 14px',
-              backgroundColor: 'transparent',
-              width: 'fit-content',
-            }}
-          >
-            View full build →
-          </Link>
-        </div>
+      {/* ── 4. Hero image strip ─────────────────────────────────────────────── */}
+      <section style={{ marginTop: 24 }}>
+        <img
+          src="/placeholder-new.jpg"
+          alt=""
+          style={{ display: 'block', width: '100%', height: 220, objectFit: 'cover', objectPosition: 'center' }}
+        />
+        <p style={{ margin: '10px 0 0', textAlign: 'center', fontSize: 11, color: '#6A6860' }}>
+          From luggage to lighting — every accessory, guaranteed to fit your bike.
+        </p>
       </section>
 
     </main>

@@ -102,9 +102,9 @@ export default function GlobalNav() {
             {menuOpen && (
               <div style={{
                 position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-                backgroundColor: '#1A1814',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 10, overflow: 'hidden',
+                backgroundColor: '#141414',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 8, overflow: 'hidden',
                 minWidth: 148,
                 boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                 zIndex: 100,
@@ -112,10 +112,9 @@ export default function GlobalNav() {
                 <Link
                   href="/account"
                   onClick={() => setMenuOpen(false)}
+                  className="block px-3.5 py-2.5 text-[#F5F3EE] no-underline hover:bg-white/[0.05] active:bg-white/[0.08] transition-colors"
                   style={{
-                    display: 'block', padding: '11px 14px',
-                    fontSize: 13, fontWeight: 500, color: '#F5F3EE',
-                    textDecoration: 'none',
+                    fontSize: 12, fontWeight: 500,
                     borderBottom: '1px solid rgba(255,255,255,0.06)',
                   }}
                 >
@@ -124,13 +123,8 @@ export default function GlobalNav() {
                 <button
                   onClick={handleSignOut}
                   disabled={signingOut}
-                  style={{
-                    display: 'block', width: '100%', padding: '11px 14px',
-                    fontSize: 13, fontWeight: 500, color: '#F5F3EE',
-                    textAlign: 'left', background: 'none', border: 'none',
-                    cursor: signingOut ? 'not-allowed' : 'pointer',
-                    opacity: signingOut ? 0.5 : 1,
-                  }}
+                  className="block w-full text-left px-3.5 py-2.5 text-[#F5F3EE] bg-transparent border-none hover:bg-white/[0.05] active:bg-white/[0.08] transition-colors disabled:opacity-50"
+                  style={{ fontSize: 12, fontWeight: 500, cursor: signingOut ? 'not-allowed' : 'pointer' }}
                 >
                   {signingOut ? 'Signing out…' : 'Sign out'}
                 </button>

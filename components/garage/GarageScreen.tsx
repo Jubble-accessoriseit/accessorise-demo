@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import type { GarageBikeRecord, GarageBuildItem, GarageBuildRecord } from '@/types/garage'
 import { garageCategories } from '@/types/garage'
 import { formatGaragePriceDisplay } from '@/lib/garage/price-display'
@@ -10,6 +11,7 @@ import { ReturnPrompt } from './ReturnPrompt'
 
 type ItemState = 'fitted' | 'wishlist' | 'moved_on'
 type Filter = 'all' | 'fitted' | 'wishlist' | 'history'
+type MenuMode = 'root' | 'edit-state' | 'confirm-remove'
 
 // GarageBuildItem.state is in the DB schema but not yet in the TypeScript type.
 // This derives a demo state from productId so all three variants are visible.
@@ -30,44 +32,16 @@ function getCategoryLabel(categoryId: string): string {
 function StateDot({ state, size = 8 }: { state: ItemState; size?: number }) {
   if (state === 'fitted') {
     return (
-      <span
-        style={{
-          display: 'inline-block',
-          width: size,
-          height: size,
-          borderRadius: '50%',
-          backgroundColor: '#1D9E75',
-          flexShrink: 0,
-        }}
-      />
+      <span style={{ display: 'inline-block', width: size, height: size, borderRadius: '50%', backgroundColor: '#1D9E75', flexShrink: 0 }} />
     )
   }
   if (state === 'wishlist') {
     return (
-      <span
-        style={{
-          display: 'inline-block',
-          width: size,
-          height: size,
-          borderRadius: '50%',
-          border: `1.5px solid #888780`,
-          backgroundColor: 'transparent',
-          flexShrink: 0,
-        }}
-      />
+      <span style={{ display: 'inline-block', width: size, height: size, borderRadius: '50%', border: '1.5px solid #888780', backgroundColor: 'transparent', flexShrink: 0 }} />
     )
   }
   return (
-    <span
-      style={{
-        display: 'inline-block',
-        width: size,
-        height: size,
-        borderRadius: '50%',
-        backgroundColor: '#5DCAA5',
-        flexShrink: 0,
-      }}
-    />
+    <span style={{ display: 'inline-block', width: size, height: size, borderRadius: '50%', backgroundColor: '#5DCAA5', flexShrink: 0 }} />
   )
 }
 
@@ -77,55 +51,36 @@ const STATE_META: Record<ItemState, { label: string; color: string }> = {
   moved_on: { label: 'History',   color: '#5DCAA5' },
 }
 
+const STATE_ORDER: ItemState[] = ['fitted', 'wishlist', 'moved_on']
+
 // ── Bike header card ─────────────────────────────────────────────────────────
 
-function BikeHeaderCard({
-  bike,
-  build,
-  onSwitchBike,
-}: {
-  bike: GarageBikeRecord
-  build: GarageBuildRecord | null
-  onSwitchBike: () => void
-}) {
+function BikeHeaderCard({ bike, build, onSwitchBike }: { bike: GarageBikeRecord; build: GarageBuildRecord | null; onSwitchBike: () => void }) {
   const bikeName = [bike.year, bike.make, bike.model, bike.variant].filter(Boolean).join(' ')
   const reg = bike.nickname ?? '—'
   const buildName = build?.name ?? 'My Build'
 
   return (
-    <div
-      className="flex gap-3 items-start rounded-[12px] p-[13px]"
-      style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}
-    >
-      {/* Photo area */}
-      <div
-        className="flex flex-col items-center justify-center gap-1 flex-shrink-0"
-        style={{
-          width: 62,
-          height: 62,
-          border: '1.5px dashed rgba(28,105,212,0.25)',
-          borderRadius: 10,
-        }}
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(28,105,212,0.4)" strokeWidth="1.5">
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-          <circle cx="12" cy="13" r="4" />
-        </svg>
-        <span style={{ fontSize: 9, color: 'rgba(28,105,212,0.4)', fontWeight: 500 }}>Add photo</span>
-      </div>
-
-      {/* Text */}
+    <div className="flex gap-3 items-start rounded-[12px] p-[13px]" style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}>
+      {(() => {
+        const photoUrl = bike.image ?? bike.photos?.[0]?.imageUrl ?? null
+        return photoUrl ? (
+          <img src={photoUrl} alt={bike.model} className="flex-shrink-0" style={{ width: 62, height: 62, borderRadius: 10, objectFit: 'cover', objectPosition: 'center' }} />
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-1 flex-shrink-0" style={{ width: 62, height: 62, border: '1.5px dashed rgba(28,105,212,0.25)', borderRadius: 10 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(28,105,212,0.4)" strokeWidth="1.5">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+            <span style={{ fontSize: 9, color: 'rgba(28,105,212,0.4)', fontWeight: 500 }}>Add photo</span>
+          </div>
+        )
+      })()}
       <div className="flex-1 flex flex-col gap-0.5 min-w-0">
-        <p className="text-[#F5F3EE] font-semibold leading-tight truncate" style={{ fontSize: 13 }}>
-          {bikeName}
-        </p>
+        <p className="text-[#F5F3EE] font-semibold leading-tight truncate" style={{ fontSize: 13 }}>{bikeName}</p>
         <p style={{ fontSize: 11, color: '#6A6860' }}>{reg}</p>
         <p style={{ fontSize: 11, color: '#6A6860' }}>{buildName}</p>
-        <button
-          onClick={onSwitchBike}
-          className="text-left mt-1"
-          style={{ fontSize: 11, color: '#1C69D4', fontWeight: 500, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-        >
+        <button onClick={onSwitchBike} className="text-left mt-1" style={{ fontSize: 11, color: '#1C69D4', fontWeight: 500, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
           Switch bike
         </button>
       </div>
@@ -137,18 +92,8 @@ function BikeHeaderCard({
 
 function StatCard({ count, label, borderColor }: { count: number; label: string; borderColor: string }) {
   return (
-    <div
-      className="flex-1 flex flex-col items-start rounded-[11px] p-[11px]"
-      style={{
-        backgroundColor: '#141414',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderLeft: `3px solid ${borderColor}`,
-      }}
-    >
-      <span
-        className="text-[#F5F3EE] leading-none"
-        style={{ fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif", fontWeight: 900, fontSize: 22 }}
-      >
+    <div className="flex-1 flex flex-col items-start rounded-[11px] p-[11px]" style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderLeft: `3px solid ${borderColor}` }}>
+      <span className="text-[#F5F3EE] leading-none" style={{ fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif", fontWeight: 900, fontSize: 22 }}>
         {count}
       </span>
       <span style={{ fontSize: 10, color: '#6A6860', marginTop: 4 }}>{label}</span>
@@ -160,18 +105,12 @@ function StatCard({ count, label, borderColor }: { count: number; label: string;
 
 const FILTER_CONFIG: Array<{ filter: Filter; label: string; dot?: ItemState }> = [
   { filter: 'all',      label: 'All' },
-  { filter: 'fitted',   label: 'Fitted',     dot: 'fitted' },
-  { filter: 'wishlist', label: 'Wish list',  dot: 'wishlist' },
-  { filter: 'history',  label: 'History',    dot: 'moved_on' },
+  { filter: 'fitted',   label: 'Fitted',    dot: 'fitted' },
+  { filter: 'wishlist', label: 'Wish list', dot: 'wishlist' },
+  { filter: 'history',  label: 'History',   dot: 'moved_on' },
 ]
 
-function FilterPills({
-  active,
-  onChange,
-}: {
-  active: Filter
-  onChange: (f: Filter) => void
-}) {
+function FilterPills({ active, onChange }: { active: Filter; onChange: (f: Filter) => void }) {
   return (
     <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
       {FILTER_CONFIG.map(({ filter, label, dot }) => {
@@ -182,14 +121,10 @@ function FilterPills({
             onClick={() => onChange(filter)}
             className="flex items-center gap-1.5 whitespace-nowrap rounded-full px-[13px] py-[6px] flex-shrink-0"
             style={{
-              fontSize: 11,
-              fontWeight: 500,
-              border: isActive
-                ? '1px solid rgba(28,105,212,0.22)'
-                : '1px solid rgba(255,255,255,0.07)',
+              fontSize: 11, fontWeight: 500, cursor: 'pointer',
+              border: isActive ? '1px solid rgba(28,105,212,0.22)' : '1px solid rgba(255,255,255,0.07)',
               backgroundColor: isActive ? 'rgba(28,105,212,0.1)' : '#141414',
               color: isActive ? '#1C69D4' : '#5A5852',
-              cursor: 'pointer',
             }}
           >
             {dot && <StateDot state={dot} size={8} />}
@@ -201,101 +136,329 @@ function FilterPills({
   )
 }
 
+// ── Accessory menu sheet ──────────────────────────────────────────────────────
+
+function AccessoryMenuSheet({
+  item,
+  currentState,
+  mode,
+  onSetMode,
+  onStateChange,
+  onRemove,
+  onViewDetails,
+  onClose,
+}: {
+  item: GarageBuildItem
+  currentState: ItemState
+  mode: MenuMode
+  onSetMode: (m: MenuMode) => void
+  onStateChange: (s: ItemState) => void
+  onRemove: () => void
+  onViewDetails: () => void
+  onClose: () => void
+}) {
+  const sheetStyle: React.CSSProperties = {
+    position: 'fixed', bottom: 0, left: 0, right: 0,
+    backgroundColor: '#141414',
+    borderTop: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: '12px 12px 0 0',
+    zIndex: 200,
+    paddingBottom: 'env(safe-area-inset-bottom, 16px)',
+  }
+
+  const rowStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 12,
+    width: '100%', padding: '14px 20px',
+    fontSize: 13, fontWeight: 500, color: '#F5F3EE',
+    background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer',
+  }
+
+  const dividerStyle: React.CSSProperties = {
+    height: 1, margin: '0 20px', backgroundColor: 'rgba(255,255,255,0.06)',
+  }
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 199, backgroundColor: 'rgba(0,0,0,0.55)' }} />
+
+      {/* Sheet */}
+      <div style={sheetStyle}>
+        {/* Drag handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 6 }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.12)' }} />
+        </div>
+
+        {mode === 'root' && (
+          <>
+            {/* Item name label */}
+            <div style={{ padding: '4px 20px 10px', fontSize: 11, color: '#6A6860', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              {item.product.name}
+            </div>
+
+            <button
+              className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
+              style={rowStyle}
+              onClick={() => onSetMode('edit-state')}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                <StateDot state={currentState} size={10} />
+                Edit state
+              </span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#44423E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+
+            <div style={dividerStyle} />
+
+            <button
+              className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
+              style={rowStyle}
+              onClick={() => onSetMode('confirm-remove')}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888780" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                <path d="M10 11v6M14 11v6" />
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+              </svg>
+              Remove from build
+            </button>
+
+            <div style={dividerStyle} />
+
+            <button
+              className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
+              style={rowStyle}
+              onClick={() => { onViewDetails(); onClose() }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888780" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              View details
+            </button>
+
+            <div style={{ height: 8 }} />
+          </>
+        )}
+
+        {mode === 'edit-state' && (
+          <>
+            <div style={{ padding: '4px 20px 10px', fontSize: 11, color: '#6A6860', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              Change state for {item.product.name}
+            </div>
+
+            {STATE_ORDER.map((s) => {
+              const meta = STATE_META[s]
+              const isCurrent = s === currentState
+              return (
+                <button
+                  key={s}
+                  className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
+                  style={{ ...rowStyle, color: isCurrent ? meta.color : '#F5F3EE' }}
+                  onClick={() => { onStateChange(s); onClose() }}
+                >
+                  <StateDot state={s} size={10} />
+                  <span style={{ flex: 1 }}>{meta.label}</span>
+                  {isCurrent && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={meta.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </button>
+              )
+            })}
+
+            <div style={dividerStyle} />
+            <button
+              className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
+              style={{ ...rowStyle, color: '#6A6860' }}
+              onClick={() => onSetMode('root')}
+            >
+              ← Back
+            </button>
+            <div style={{ height: 8 }} />
+          </>
+        )}
+
+        {mode === 'confirm-remove' && (
+          <>
+            <div style={{ padding: '12px 20px 16px' }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#F5F3EE', margin: '0 0 4px' }}>
+                Remove from build?
+              </p>
+              <p style={{ fontSize: 12, color: '#6A6860', margin: 0, lineHeight: 1.5 }}>
+                {item.product.name} will be removed from your current build.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 10, padding: '0 20px 16px' }}>
+              <button
+                onClick={onClose}
+                style={{
+                  flex: 1, padding: '12px', fontSize: 12, fontWeight: 500,
+                  color: '#F5F3EE', backgroundColor: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { onRemove(); onClose() }}
+                style={{
+                  flex: 1, padding: '12px', fontSize: 12, fontWeight: 600,
+                  color: '#fff', backgroundColor: 'rgba(220,53,53,0.85)',
+                  border: '1px solid rgba(220,53,53,0.5)', borderRadius: 8, cursor: 'pointer',
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  )
+}
+
 // ── Accessory item card ───────────────────────────────────────────────────────
 
-function AccessoryCard({ item, state, onShopNow }: { item: GarageBuildItem; state: ItemState; onShopNow?: () => void }) {
+function AccessoryCard({
+  item,
+  state,
+  onShopNow,
+  onStateChange,
+  onRemove,
+}: {
+  item: GarageBuildItem
+  state: ItemState
+  onShopNow?: () => void
+  onStateChange: (newState: ItemState) => void
+  onRemove: () => void
+}) {
   const { product } = item
   const meta = STATE_META[state]
   const isHistory = state === 'moved_on'
   const isWishlist = state === 'wishlist'
   const priceLabel = formatGaragePriceDisplay(product.price)
 
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuMode, setMenuMode] = useState<MenuMode>('root')
+  const [expanded, setExpanded] = useState(false)
+
+  function openMenu() {
+    setMenuMode('root')
+    setMenuOpen(true)
+  }
+
   return (
-    <div
-      className="flex gap-3 items-start rounded-[12px] p-[13px]"
-      style={
-        isHistory
-          ? {
-              backgroundColor: '#111008',
-              border: '1px solid rgba(255,255,255,0.04)',
-              borderRadius: 11,
-              opacity: 0.75,
-            }
-          : {
-              backgroundColor: '#141414',
-              border: '1px solid rgba(255,255,255,0.06)',
-            }
-      }
-    >
-      {/* Product image */}
+    <>
       <div
-        className="flex-shrink-0 rounded-[8px] overflow-hidden"
-        style={{ width: 52, height: 52, backgroundColor: '#1A1814' }}
+        className="rounded-[12px] p-[13px]"
+        style={
+          isHistory
+            ? { backgroundColor: '#111008', border: '1px solid rgba(255,255,255,0.04)', borderRadius: 11, opacity: 0.75 }
+            : { backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }
+        }
       >
-        {product.image ? (
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
-        ) : null}
-      </div>
+        <div className="flex gap-3 items-start">
+          {/* Product image */}
+          <div className="flex-shrink-0 rounded-[8px] overflow-hidden" style={{ width: 52, height: 52, backgroundColor: '#1A1814' }}>
+            {product.image ? (
+              <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+            ) : null}
+          </div>
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <p
-          className="text-[#F5F3EE] font-semibold leading-tight truncate"
-          style={{ fontSize: 12 }}
-        >
-          {product.name}
-        </p>
-        <p style={{ fontSize: 10, color: '#6A6860', marginTop: 1 }}>{product.brand}</p>
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <p className="text-[#F5F3EE] font-semibold leading-tight truncate" style={{ fontSize: 12 }}>
+              {product.name}
+            </p>
+            <p style={{ fontSize: 10, color: '#6A6860', marginTop: 1 }}>{product.brand}</p>
 
-        {/* State + price row */}
-        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-          <StateDot state={state} size={8} />
-          <span style={{ fontSize: 10, fontWeight: 500, color: meta.color }}>{meta.label}</span>
-          <span style={{ fontSize: 10, color: '#44423E' }}>·</span>
-          <span style={{ fontSize: 11, color: '#6A6860' }}>{priceLabel}</span>
+            {/* State + price row */}
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <StateDot state={state} size={8} />
+              <span style={{ fontSize: 10, fontWeight: 500, color: meta.color }}>{meta.label}</span>
+              <span style={{ fontSize: 10, color: '#44423E' }}>·</span>
+              <span style={{ fontSize: 11, color: '#6A6860' }}>{priceLabel}</span>
+            </div>
+
+            {/* Shop now — wish list only */}
+            {isWishlist && (
+              <button
+                onClick={onShopNow}
+                className="mt-2 rounded-full px-3 py-1 flex-shrink-0"
+                style={{ fontSize: 11, fontWeight: 500, color: '#1C69D4', border: '1px solid rgba(28,105,212,0.35)', backgroundColor: 'transparent', cursor: 'pointer' }}
+              >
+                Shop now →
+              </button>
+            )}
+          </div>
+
+          {/* Three-dot / close button */}
+          <button
+            onClick={expanded ? () => setExpanded(false) : openMenu}
+            className="flex-shrink-0 flex items-center justify-center"
+            style={{ width: 28, height: 28, fontSize: expanded ? 16 : 18, color: expanded ? '#6A6860' : '#44423E', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}
+            aria-label={expanded ? 'Collapse details' : 'More options'}
+          >
+            {expanded ? '✕' : '⋮'}
+          </button>
         </div>
 
-        {/* Shop now — wish list only */}
-        {isWishlist && (
-          <button
-            onClick={onShopNow}
-            className="mt-2 rounded-full px-3 py-1 flex-shrink-0"
-            style={{
-              fontSize: 11,
-              fontWeight: 500,
-              color: '#1C69D4',
-              border: '1px solid rgba(28,105,212,0.35)',
-              backgroundColor: 'transparent',
-              cursor: 'pointer',
-            }}
-          >
-            Shop now →
-          </button>
+        {/* Expanded details */}
+        {expanded && (
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex flex-col gap-2">
+              {/* Detail rows */}
+              {[
+                { label: 'Supplier', value: product.affiliateLinks?.[0]?.vendorName ?? product.brand },
+                { label: 'Listed price', value: priceLabel },
+                { label: 'Price paid', value: '—' },
+                { label: 'Date fitted', value: '—' },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex justify-between items-baseline">
+                  <span style={{ fontSize: 11, color: '#6A6860' }}>{label}</span>
+                  <span style={{ fontSize: 11, color: '#F5F3EE', fontWeight: 500 }}>{value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Shop now */}
+            <Link
+              href={`/shop/${item.productId}`}
+              className="mt-3 flex items-center justify-center gap-1 rounded-full"
+              style={{
+                padding: '7px 16px',
+                fontSize: 11, fontWeight: 500, color: '#E8841A',
+                border: '1px solid rgba(232,132,26,0.35)',
+                backgroundColor: 'transparent',
+                textDecoration: 'none',
+              }}
+            >
+              Shop now ↗
+              <span style={{ fontSize: 10, color: '#44423E', marginLeft: 2 }}>opens retailer site</span>
+            </Link>
+          </div>
         )}
       </div>
 
-      {/* Three-dot menu */}
-      <button
-        className="flex-shrink-0 flex items-center justify-center"
-        style={{
-          width: 28,
-          height: 28,
-          fontSize: 18,
-          color: '#44423E',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          lineHeight: 1,
-        }}
-        aria-label="More options"
-      >
-        ⋮
-      </button>
-    </div>
+      {/* Menu sheet — rendered outside card flow via fixed positioning */}
+      {menuOpen && (
+        <AccessoryMenuSheet
+          item={item}
+          currentState={state}
+          mode={menuMode}
+          onSetMode={setMenuMode}
+          onStateChange={onStateChange}
+          onRemove={onRemove}
+          onViewDetails={() => setExpanded(true)}
+          onClose={() => setMenuOpen(false)}
+        />
+      )}
+    </>
   )
 }
 
@@ -304,24 +467,8 @@ function AccessoryCard({ item, state, onShopNow }: { item: GarageBuildItem; stat
 function SectionHeader({ label, count }: { label: string; count: number }) {
   return (
     <div className="flex items-center gap-2">
-      <span
-        style={{
-          display: 'inline-block',
-          width: 3,
-          height: 14,
-          backgroundColor: '#1C69D4',
-          borderRadius: 2,
-          flexShrink: 0,
-        }}
-      />
-      <span
-        className="uppercase tracking-[0.05em] text-[#F5F3EE]"
-        style={{
-          fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-          fontWeight: 900,
-          fontSize: 12,
-        }}
-      >
+      <span style={{ display: 'inline-block', width: 3, height: 14, backgroundColor: '#1C69D4', borderRadius: 2, flexShrink: 0 }} />
+      <span className="uppercase tracking-[0.05em] text-[#F5F3EE]" style={{ fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif", fontWeight: 900, fontSize: 12 }}>
         {label}
       </span>
       <span style={{ fontSize: 11, color: '#44423E' }}>{count}</span>
@@ -333,10 +480,7 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
 
 function EmptyPrompt({ message }: { message: string }) {
   return (
-    <div
-      className="flex items-center justify-center rounded-[12px] py-10 px-5 text-center"
-      style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}
-    >
+    <div className="flex items-center justify-center rounded-[12px] py-10 px-5 text-center" style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}>
       <p style={{ fontSize: 13, color: '#6A6860' }}>{message}</p>
     </div>
   )
@@ -365,15 +509,19 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
   const [modalKey, setModalKey] = useState(0)
   const [returnPrompt, setReturnPrompt] = useState<ReturnPromptState | null>(null)
 
-  const allItems = useMemo(
-    () => selectedBuild?.buildItems ?? [],
-    [selectedBuild]
-  )
+  // Local-only overrides — persisted to Supabase in a future pass
+  const [stateOverrides, setStateOverrides] = useState<Record<string, ItemState>>({})
+  const [removedItemIds, setRemovedItemIds] = useState<Set<string>>(new Set())
 
-  // Assign demo state and compute counts
+  const allItems = useMemo(() => selectedBuild?.buildItems ?? [], [selectedBuild])
+
+  // Apply state overrides and filter removed items
   const itemsWithState = useMemo(
-    () => allItems.map((item) => ({ item, state: getDemoItemState(item) })),
-    [allItems]
+    () =>
+      allItems
+        .filter((item) => !removedItemIds.has(item.id))
+        .map((item) => ({ item, state: stateOverrides[item.id] ?? getDemoItemState(item) })),
+    [allItems, stateOverrides, removedItemIds]
   )
 
   const counts = useMemo(
@@ -385,7 +533,6 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
     [itemsWithState]
   )
 
-  // Filter items by active pill
   const visibleItems = useMemo(() => {
     if (activeFilter === 'all')      return itemsWithState
     if (activeFilter === 'fitted')   return itemsWithState.filter((x) => x.state === 'fitted')
@@ -393,20 +540,24 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
     return itemsWithState.filter((x) => x.state === 'moved_on')
   }, [itemsWithState, activeFilter])
 
-  // Group visible items by categoryId, preserving insertion order
   const categoryGroups = useMemo(() => {
     const order: string[] = []
     const map = new Map<string, Array<{ item: GarageBuildItem; state: ItemState }>>()
     for (const entry of visibleItems) {
       const catId = entry.item.product.categoryId
-      if (!map.has(catId)) {
-        order.push(catId)
-        map.set(catId, [])
-      }
+      if (!map.has(catId)) { order.push(catId); map.set(catId, []) }
       map.get(catId)!.push(entry)
     }
     return order.map((catId) => ({ catId, label: getCategoryLabel(catId), entries: map.get(catId)! }))
   }, [visibleItems])
+
+  function handleStateChange(itemId: string, newState: ItemState) {
+    setStateOverrides((prev) => ({ ...prev, [itemId]: newState }))
+  }
+
+  function handleRemove(itemId: string) {
+    setRemovedItemIds((prev) => new Set([...prev, itemId]))
+  }
 
   if (!selectedBike) {
     return (
@@ -418,7 +569,6 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
 
   return (
     <div className="flex flex-col gap-4 px-5 pt-4 pb-8">
-      {/* Return prompt — shown after visiting a retailer */}
       {returnPrompt && (
         <ReturnPrompt
           productName={returnPrompt.productName}
@@ -430,20 +580,16 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
         />
       )}
 
-      {/* A — Bike header */}
       <BikeHeaderCard bike={selectedBike} build={selectedBuild} onSwitchBike={onSwitchBike} />
 
-      {/* B — Stat cards */}
       <div className="flex gap-2">
-        <StatCard count={counts.fitted}   label="Fitted"     borderColor="#1D9E75" />
-        <StatCard count={counts.wishlist} label="Wish list"  borderColor="#888780" />
-        <StatCard count={counts.history}  label="History"    borderColor="#5DCAA5" />
+        <StatCard count={counts.fitted}   label="Fitted"    borderColor="#1D9E75" />
+        <StatCard count={counts.wishlist} label="Wish list" borderColor="#888780" />
+        <StatCard count={counts.history}  label="History"   borderColor="#5DCAA5" />
       </div>
 
-      {/* C — Filter pills */}
       <FilterPills active={activeFilter} onChange={setActiveFilter} />
 
-      {/* D+E — Accessory sections */}
       {categoryGroups.length === 0 ? (
         <EmptyPrompt
           message={
@@ -462,6 +608,8 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
                   key={item.id}
                   item={item}
                   state={state}
+                  onStateChange={(newState) => handleStateChange(item.id, newState)}
+                  onRemove={() => handleRemove(item.id)}
                   onShopNow={
                     state === 'wishlist'
                       ? () => {
@@ -483,19 +631,13 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
         </div>
       )}
 
-      {/* F — Add accessory CTA */}
       <button
         className="w-full text-center"
         onClick={() => { setModalKey(k => k + 1); setShowModal(true) }}
         style={{
-          border: '1.5px dashed rgba(28,105,212,0.25)',
-          borderRadius: 10,
-          padding: '13px 14px',
-          fontSize: 12,
-          fontWeight: 500,
-          color: 'rgba(28,105,212,0.5)',
-          backgroundColor: 'transparent',
-          cursor: 'pointer',
+          border: '1.5px dashed rgba(28,105,212,0.25)', borderRadius: 10,
+          padding: '13px 14px', fontSize: 12, fontWeight: 500,
+          color: 'rgba(28,105,212,0.5)', backgroundColor: 'transparent', cursor: 'pointer',
         }}
       >
         + Add accessory

@@ -7,7 +7,10 @@ import { loadGarageFromSupabase } from '@/lib/garage/persistence'
 import { getPreferredGarageBuildForBike } from '@/lib/garage/working-context'
 import { demoGarageBikes } from '@/lib/demo-content/bikes'
 import { GarageScreen } from '@/components/garage/GarageScreen'
+import { MyBikesOverview } from '@/components/garage/MyBikesOverview'
 import type { GarageBikeRecord, GarageBuildRecord } from '@/types/garage'
+
+type View = 'overview' | 'detail'
 
 type GarageState =
   | { status: 'loading' }
@@ -16,6 +19,7 @@ type GarageState =
 export default function GaragePage() {
   const router = useRouter()
   const [state, setState] = useState<GarageState>({ status: 'loading' })
+  const [view, setView] = useState<View>('overview')
 
   useEffect(() => {
     async function load() {
@@ -29,12 +33,7 @@ export default function GaragePage() {
       try {
         const snapshot = await loadGarageFromSupabase(demoGarageBikes)
         const bikes = snapshot?.bikes ?? []
-        const selectedBike = bikes[0] ?? null
-        const selectedBuild = selectedBike
-          ? (getPreferredGarageBuildForBike({ garageBikes: bikes, selectedBikeId: selectedBike.id }) ?? selectedBike.builds[0] ?? null)
-          : null
-
-        setState({ status: 'loaded', bikes, selectedBike, selectedBuild })
+        setState({ status: 'loaded', bikes, selectedBike: null, selectedBuild: null })
       } catch {
         setState({ status: 'loaded', bikes: [], selectedBike: null, selectedBuild: null })
       }
@@ -58,12 +57,32 @@ export default function GaragePage() {
     )
   }
 
+  function handleSelectBike(bike: GarageBikeRecord, build: GarageBuildRecord | null) {
+    if (state.status !== 'loaded') return
+    const resolvedBuild =
+      build ??
+      getPreferredGarageBuildForBike({ garageBikes: state.bikes, selectedBikeId: bike.id }) ??
+      bike.builds[0] ??
+      null
+    setState({ status: 'loaded', bikes: state.bikes, selectedBike: bike, selectedBuild: resolvedBuild })
+    setView('detail')
+  }
+
+  if (view === 'detail' && state.selectedBike) {
+    return (
+      <GarageScreen
+        bikes={state.bikes}
+        selectedBike={state.selectedBike}
+        selectedBuild={state.selectedBuild}
+        onSwitchBike={() => setView('overview')}
+      />
+    )
+  }
+
   return (
-    <GarageScreen
+    <MyBikesOverview
       bikes={state.bikes}
-      selectedBike={state.selectedBike}
-      selectedBuild={state.selectedBuild}
-      onSwitchBike={() => router.push('/garage/build')}
+      onSelectBike={handleSelectBike}
     />
   )
 }
