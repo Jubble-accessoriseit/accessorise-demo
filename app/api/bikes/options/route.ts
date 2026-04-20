@@ -3,8 +3,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const make  = searchParams.get("make");
-  const model = searchParams.get("model");
+  const make    = searchParams.get("make");
+  const model   = searchParams.get("model");
+  const variant = searchParams.get("variant"); // null = not in URL; "" = no variant filter
 
   const supabase = createSupabaseServerClient();
 
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
     });
   }
 
-  // make provided → distinct models for that make
+  // make only → distinct models for that make
   if (make && !model) {
     const { data, error } = await supabase
       .from("bikes")
@@ -44,15 +45,32 @@ export async function GET(request: Request) {
     });
   }
 
-  // make + model + year → distinct variants for that make/model/year
-  const year = searchParams.get("year");
-  if (make && model && year) {
+  // make + model + variant param present → years for that make/model(/variant)
+  // variant="" means no variant filter (single-variant bikes); variant="X" filters to that variant
+  if (make && model && variant !== null) {
+    let query = supabase
+      .from("bikes")
+      .select("year")
+      .eq("make", make)
+      .eq("model", model);
+
+    if (variant) query = query.eq("variant", variant);
+
+    const { data, error } = await query.order("year", { ascending: false });
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    const unique = [...new Set((data ?? []).map((r) => r.year as number))].sort((a, b) => b - a);
+    return NextResponse.json({ years: unique });
+  }
+
+  // make + model → distinct variants for that make/model
+  if (make && model) {
     const { data, error } = await supabase
       .from("bikes")
       .select("variant")
       .eq("make", make)
       .eq("model", model)
-      .eq("year", parseInt(year, 10))
       .order("variant");
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -65,18 +83,6 @@ export async function GET(request: Request) {
       ),
     ].sort();
     return NextResponse.json({ variants: unique });
-  }
-
-  // model provided → distinct years for that model (optionally filtered by make)
-  if (model) {
-    const { data, error } = make
-      ? await supabase.from("bikes").select("year").eq("model", model).eq("make", make).order("year", { ascending: false })
-      : await supabase.from("bikes").select("year").eq("model", model).order("year", { ascending: false });
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-    const unique = [...new Set((data ?? []).map((r) => r.year as number))].sort((a, b) => b - a);
-    return NextResponse.json({ years: unique });
   }
 
   return NextResponse.json({ error: "Invalid query" }, { status: 400 });

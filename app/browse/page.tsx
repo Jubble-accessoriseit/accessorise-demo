@@ -295,41 +295,48 @@ export default function BrowsePage() {
       .catch(() => setLoadingModels(false))
   }, [selectedMakeId])
 
-  // ── Cascade: fetch years when model changes ─────────────────────────────────
+  // ── Cascade: fetch variants when model changes ──────────────────────────────
 
   useEffect(() => {
     if (!selectedModelId) {
+      setVariants([])
+      setSelectedVariant('')
       setYears([])
       setSelectedYear('')
-      setVariants([])
-      setSelectedVariant('')
-      return
-    }
-    setLoadingYears(true)
-    setSelectedYear('')
-    setVariants([])
-    setSelectedVariant('')
-    fetch(`/api/bikes/options?model=${encodeURIComponent(selectedModelId)}&make=${encodeURIComponent(selectedMakeId)}`)
-      .then(r => r.json())
-      .then(d => { setYears(d.years ?? []); setLoadingYears(false) })
-      .catch(() => setLoadingYears(false))
-  }, [selectedModelId])
-
-  // ── Cascade: fetch variants when year changes ────────────────────────────────
-
-  useEffect(() => {
-    if (!selectedYear || !selectedModelId || !selectedMakeId) {
-      setVariants([])
-      setSelectedVariant('')
       return
     }
     setLoadingVariants(true)
     setSelectedVariant('')
-    fetch(`/api/bikes/options?make=${encodeURIComponent(selectedMakeId)}&model=${encodeURIComponent(selectedModelId)}&year=${encodeURIComponent(selectedYear)}`)
+    setVariants([])
+    setYears([])
+    setSelectedYear('')
+    fetch(`/api/bikes/options?make=${encodeURIComponent(selectedMakeId)}&model=${encodeURIComponent(selectedModelId)}`)
       .then(r => r.json())
       .then(d => { setVariants(d.variants ?? []); setLoadingVariants(false) })
       .catch(() => setLoadingVariants(false))
-  }, [selectedYear, selectedModelId, selectedMakeId])
+  }, [selectedModelId, selectedMakeId])
+
+  // ── Cascade: fetch years when variant is ready ───────────────────────────────
+  // Fires when variants finish loading (no variant needed) or when user picks one
+
+  useEffect(() => {
+    const needsVar = variants.length > 1
+    const variantReady = !needsVar || !!selectedVariant
+
+    if (!selectedModelId || loadingVariants || !variantReady) {
+      setYears([])
+      setSelectedYear('')
+      return
+    }
+
+    const variantParam = needsVar ? selectedVariant : ''
+    setLoadingYears(true)
+    setSelectedYear('')
+    fetch(`/api/bikes/options?make=${encodeURIComponent(selectedMakeId)}&model=${encodeURIComponent(selectedModelId)}&variant=${encodeURIComponent(variantParam)}`)
+      .then(r => r.json())
+      .then(d => { setYears(d.years ?? []); setLoadingYears(false) })
+      .catch(() => setLoadingYears(false))
+  }, [selectedVariant, variants, selectedModelId, selectedMakeId, loadingVariants])
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -354,6 +361,9 @@ export default function BrowsePage() {
     setShowingSelector(true)
     setSelectedMakeId('')
     setSelectedModelId('')
+    setSelectedVariant('')
+    setVariants([])
+    setYears([])
     setSelectedYear('')
     try { sessionStorage.removeItem(SESSION_KEY) } catch { /* ignore */ }
   }, [])
@@ -500,35 +510,34 @@ export default function BrowsePage() {
               <DropdownChevron disabled={!selectedMakeId || loadingModels} />
             </div>
 
+            {/* Series / Variant — only shown when multiple variants exist */}
+            {selectedModelId && !loadingVariants && needsVariant && (
+              <div style={{ position: 'relative' }}>
+                <select
+                  value={selectedVariant}
+                  onChange={e => setSelectedVariant(e.target.value)}
+                  style={selectStyle(true)}
+                >
+                  <option value="">Series / Variant</option>
+                  {variants.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+                <DropdownChevron />
+              </div>
+            )}
+
             {/* Year */}
             <div style={{ position: 'relative' }}>
               <select
                 value={selectedYear}
-                disabled={!selectedModelId || loadingYears}
+                disabled={!selectedModelId || loadingYears || (needsVariant && !selectedVariant)}
                 onChange={e => setSelectedYear(e.target.value)}
-                style={selectStyle(!!selectedModelId && !loadingYears)}
+                style={selectStyle(!!selectedModelId && !loadingYears && (!needsVariant || !!selectedVariant))}
               >
                 <option value="">{loadingYears ? 'Loading…' : 'Year'}</option>
                 {years.map(y => <option key={y} value={String(y)}>{y}</option>)}
               </select>
-              <DropdownChevron disabled={!selectedModelId || loadingYears} />
+              <DropdownChevron disabled={!selectedModelId || loadingYears || (needsVariant && !selectedVariant)} />
             </div>
-
-            {/* Series / Variant — only shown when multiple variants exist */}
-            {selectedYear && needsVariant && (
-              <div style={{ position: 'relative' }}>
-                <select
-                  value={selectedVariant}
-                  disabled={loadingVariants}
-                  onChange={e => setSelectedVariant(e.target.value)}
-                  style={selectStyle(!loadingVariants)}
-                >
-                  <option value="">{loadingVariants ? 'Loading…' : 'Series / Variant'}</option>
-                  {variants.map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-                <DropdownChevron disabled={loadingVariants} />
-              </div>
-            )}
 
             {/* CTA */}
             <button
