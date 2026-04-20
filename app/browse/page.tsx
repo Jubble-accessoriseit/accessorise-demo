@@ -550,6 +550,8 @@ export default function BrowsePage() {
           </div>
         )}
 
+        {selectedBike && (<>
+
         {/* ── B: Search bar ────────────────────────────────────────────── */}
         <div style={{ position: 'relative' }}>
           <svg
@@ -632,6 +634,8 @@ export default function BrowsePage() {
             ))}
           </div>
         )}
+
+        </>)}
 
       </div>
     </main>
