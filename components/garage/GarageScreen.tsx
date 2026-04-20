@@ -55,11 +55,50 @@ const STATE_ORDER: ItemState[] = ['fitted', 'wishlist', 'moved_on']
 
 // ── Bike header card ─────────────────────────────────────────────────────────
 
-function BikeHeaderCard({ bike, build, onSwitchBike, onDeleteBike }: { bike: GarageBikeRecord; build: GarageBuildRecord | null; onSwitchBike: () => void; onDeleteBike?: () => void }) {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+function BikeHeaderCard({
+  bike, build, bikes, onSwitchBike, onDeleteBike, onDeleteBuild, onSwitchBikeTo,
+}: {
+  bike: GarageBikeRecord
+  build: GarageBuildRecord | null
+  bikes: GarageBikeRecord[]
+  onSwitchBike: () => void
+  onDeleteBike?: () => void
+  onDeleteBuild?: () => void
+  onSwitchBikeTo?: (bike: GarageBikeRecord) => void
+}) {
+  const [showDeleteBikeConfirm, setShowDeleteBikeConfirm] = useState(false)
+  const [buildMenuOpen, setBuildMenuOpen] = useState(false)
+  const [buildMenuMode, setBuildMenuMode] = useState<'root' | 'rename' | 'delete'>('root')
+  const [buildNameOverride, setBuildNameOverride] = useState<string | null>(null)
+  const [renameInput, setRenameInput] = useState('')
+  const [showBikePicker, setShowBikePicker] = useState(false)
+
   const bikeName = [bike.year, bike.make, bike.model, bike.variant].filter(Boolean).join(' ')
   const reg = bike.nickname ?? '—'
-  const buildName = build?.name ?? 'My Build'
+  const buildName = buildNameOverride ?? build?.name ?? 'My Build'
+  const otherBikes = bikes.filter(b => b.id !== bike.id)
+
+  const baseSheetStyle: React.CSSProperties = {
+    position: 'fixed', bottom: 0, left: 0, right: 0,
+    backgroundColor: '#141414',
+    borderTop: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: '12px 12px 0 0',
+    zIndex: 200,
+    paddingBottom: 'env(safe-area-inset-bottom, 16px)',
+  }
+
+  const DragHandle = () => (
+    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 6 }}>
+      <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.12)' }} />
+    </div>
+  )
+
+  const rowStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 12,
+    width: '100%', padding: '14px 20px',
+    fontSize: 13, fontWeight: 500, color: '#F5F3EE',
+    background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer',
+  }
 
   return (
     <>
@@ -81,51 +120,202 @@ function BikeHeaderCard({ bike, build, onSwitchBike, onDeleteBike }: { bike: Gar
         <div className="flex-1 flex flex-col gap-0.5 min-w-0">
           <p className="text-[#F5F3EE] font-semibold leading-tight truncate" style={{ fontSize: 13 }}>{bikeName}</p>
           <p style={{ fontSize: 11, color: '#6A6860' }}>{reg}</p>
-          <p style={{ fontSize: 11, color: '#6A6860' }}>{buildName}</p>
-          <button onClick={onSwitchBike} className="text-left mt-1" style={{ fontSize: 11, color: '#1C69D4', fontWeight: 500, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+          {/* Build name + options button */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 1 }}>
+            <p style={{ fontSize: 11, color: '#6A6860', margin: 0 }}>{buildName}</p>
+            <button
+              onClick={() => { setBuildMenuMode('root'); setBuildMenuOpen(true) }}
+              style={{ fontSize: 18, color: '#B8B6B0', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', lineHeight: 1, marginLeft: 8, flexShrink: 0 }}
+              aria-label="Build options"
+            >
+              ⋮
+            </button>
+          </div>
+          <button
+            onClick={otherBikes.length > 0 ? () => setShowBikePicker(true) : onSwitchBike}
+            className="text-left mt-1"
+            style={{ fontSize: 11, color: '#1C69D4', fontWeight: 500, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+          >
             Switch bike
           </button>
-          <button onClick={() => setShowDeleteConfirm(true)} className="text-left mt-0.5" style={{ fontSize: 11, color: '#DC3535', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+          <button
+            onClick={() => setShowDeleteBikeConfirm(true)}
+            className="text-left mt-0.5"
+            style={{ fontSize: 11, color: '#DC3535', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+          >
             Delete bike
           </button>
         </div>
       </div>
 
-      {/* Delete confirmation sheet */}
-      {showDeleteConfirm && (
+      {/* Build options sheet */}
+      {buildMenuOpen && (
         <>
-          <div onClick={() => setShowDeleteConfirm(false)} style={{ position: 'fixed', inset: 0, zIndex: 199, backgroundColor: 'rgba(0,0,0,0.55)' }} />
-          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#141414', borderTop: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px 12px 0 0', zIndex: 200, paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}>
-            {/* Drag handle */}
-            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 6 }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.12)' }} />
-            </div>
+          <div onClick={() => setBuildMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 199, backgroundColor: 'rgba(0,0,0,0.55)' }} />
+          <div style={baseSheetStyle}>
+            <DragHandle />
+            {buildMenuMode === 'root' && (
+              <>
+                <div style={{ padding: '4px 20px 10px', fontSize: 11, color: '#6A6860', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  {buildName}
+                </div>
+                <button
+                  onClick={() => { setRenameInput(buildName); setBuildMenuMode('rename') }}
+                  className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
+                  style={rowStyle}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888780" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  Rename build
+                </button>
+                <div style={{ height: 1, margin: '0 20px', backgroundColor: 'rgba(255,255,255,0.06)' }} />
+                <button
+                  onClick={() => setBuildMenuMode('delete')}
+                  className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
+                  style={{ ...rowStyle, color: '#DC3535' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC3535" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                    <path d="M10 11v6M14 11v6" />
+                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                  </svg>
+                  Delete build
+                </button>
+                <div style={{ height: 8 }} />
+              </>
+            )}
 
+            {buildMenuMode === 'rename' && (
+              <>
+                <div style={{ padding: '12px 20px 16px' }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#F5F3EE', margin: '0 0 12px' }}>Rename build</p>
+                  <input
+                    type="text"
+                    value={renameInput}
+                    onChange={e => setRenameInput(e.target.value)}
+                    autoFocus
+                    style={{
+                      width: '100%', boxSizing: 'border-box',
+                      padding: '10px 12px',
+                      backgroundColor: '#1A1814',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      borderRadius: 8,
+                      color: '#F5F3EE', fontSize: 13, outline: 'none',
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 10, padding: '0 20px 12px' }}>
+                  <button
+                    onClick={() => setBuildMenuMode('root')}
+                    style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.12)', fontSize: 12, fontWeight: 500, color: '#F5F3EE', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => { if (renameInput.trim()) setBuildNameOverride(renameInput.trim()); setBuildMenuOpen(false) }}
+                    style={{ flex: 2, padding: 13, borderRadius: 8, backgroundColor: '#1C69D4', border: 'none', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </>
+            )}
+
+            {buildMenuMode === 'delete' && (
+              <>
+                <div style={{ padding: '8px 20px 16px' }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#F5F3EE', margin: '0 0 8px' }}>Delete this build?</p>
+                  <p style={{ fontSize: 12, color: '#6A6860', lineHeight: 1.55, margin: 0 }}>
+                    {buildName} will be permanently deleted. This cannot be undone.
+                  </p>
+                </div>
+                <div style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', margin: '0 20px' }} />
+                <div style={{ display: 'flex', gap: 10, padding: '14px 20px 8px' }}>
+                  <button
+                    onClick={() => setBuildMenuMode('root')}
+                    style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.12)', fontSize: 12, fontWeight: 500, color: '#F5F3EE', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => { setBuildMenuOpen(false); onDeleteBuild?.() }}
+                    style={{ flex: 2, padding: 13, borderRadius: 8, backgroundColor: '#DC3535', border: 'none', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}
+                  >
+                    Delete build
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Bike picker sheet */}
+      {showBikePicker && (
+        <>
+          <div onClick={() => setShowBikePicker(false)} style={{ position: 'fixed', inset: 0, zIndex: 199, backgroundColor: 'rgba(0,0,0,0.55)' }} />
+          <div style={baseSheetStyle}>
+            <DragHandle />
+            <div style={{ padding: '4px 20px 10px', fontSize: 11, color: '#6A6860', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              Switch to...
+            </div>
+            {otherBikes.map(b => {
+              const bName = [b.year, b.make, b.model, b.variant].filter(Boolean).join(' ')
+              const bPhoto = b.image ?? b.photos?.[0]?.imageUrl ?? null
+              return (
+                <button
+                  key={b.id}
+                  onClick={() => { setShowBikePicker(false); onSwitchBikeTo?.(b) }}
+                  className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
+                  style={rowStyle}
+                >
+                  <div style={{ width: 36, height: 36, borderRadius: 7, flexShrink: 0, overflow: 'hidden', backgroundColor: '#1A1814' }}>
+                    {bPhoto && <img src={bPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                  </div>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bName}</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#44423E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
+              )
+            })}
+            <div style={{ height: 1, margin: '0 20px', backgroundColor: 'rgba(255,255,255,0.06)' }} />
+            <button
+              onClick={() => { setShowBikePicker(false); onSwitchBike() }}
+              style={{ display: 'block', width: '100%', padding: '12px 20px', fontSize: 12, fontWeight: 500, color: '#1C69D4', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' }}
+            >
+              View all bikes →
+            </button>
+            <div style={{ height: 8 }} />
+          </div>
+        </>
+      )}
+
+      {/* Delete bike confirmation sheet */}
+      {showDeleteBikeConfirm && (
+        <>
+          <div onClick={() => setShowDeleteBikeConfirm(false)} style={{ position: 'fixed', inset: 0, zIndex: 199, backgroundColor: 'rgba(0,0,0,0.55)' }} />
+          <div style={baseSheetStyle}>
+            <DragHandle />
             <div style={{ padding: '8px 20px 16px' }}>
-              <p style={{ fontSize: 14, fontWeight: 600, color: '#F5F3EE', margin: '0 0 8px' }}>
-                Delete this bike?
-              </p>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#F5F3EE', margin: '0 0 8px' }}>Delete this bike?</p>
               <p style={{ fontSize: 12, color: '#6A6860', lineHeight: 1.55, margin: 0 }}>
                 This will permanently delete {bikeName} and all associated accessories and photos. This cannot be undone.
               </p>
             </div>
-
             <div style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', margin: '0 20px' }} />
-
             <div style={{ display: 'flex', gap: 10, padding: '14px 20px 8px' }}>
               <button
-                onClick={() => setShowDeleteConfirm(false)}
+                onClick={() => setShowDeleteBikeConfirm(false)}
                 style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.12)', fontSize: 12, fontWeight: 500, color: '#F5F3EE', cursor: 'pointer' }}
               >
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  // TODO: wire to Supabase delete
-                  setShowDeleteConfirm(false)
-                  onDeleteBike?.()
-                  onSwitchBike()
-                }}
+                onClick={() => { setShowDeleteBikeConfirm(false); onDeleteBike?.() }}
                 style={{ flex: 2, padding: 13, borderRadius: 8, backgroundColor: '#DC3535', border: 'none', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}
               >
                 Delete bike
@@ -544,6 +734,8 @@ type GarageScreenProps = {
   selectedBuild: GarageBuildRecord | null
   onSwitchBike: () => void
   onDeleteBike?: () => void
+  onDeleteBuild?: () => void
+  onSwitchBikeTo?: (bike: GarageBikeRecord) => void
 }
 
 type ReturnPromptState = {
@@ -553,7 +745,7 @@ type ReturnPromptState = {
   productId: number
 }
 
-export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwitchBike, onDeleteBike }: GarageScreenProps) {
+export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwitchBike, onDeleteBike, onDeleteBuild, onSwitchBikeTo }: GarageScreenProps) {
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<Filter>('all')
   const [showModal, setShowModal] = useState(false)
@@ -631,7 +823,15 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
         />
       )}
 
-      <BikeHeaderCard bike={selectedBike} build={selectedBuild} onSwitchBike={onSwitchBike} onDeleteBike={onDeleteBike} />
+      <BikeHeaderCard
+        bike={selectedBike}
+        build={selectedBuild}
+        bikes={_bikes}
+        onSwitchBike={onSwitchBike}
+        onDeleteBike={onDeleteBike}
+        onDeleteBuild={onDeleteBuild}
+        onSwitchBikeTo={onSwitchBikeTo}
+      />
 
       <div className="flex gap-2">
         <StatCard count={counts.fitted}   label="Fitted"    borderColor="#1D9E75" />

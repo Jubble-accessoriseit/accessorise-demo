@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { loadGarageFromSupabase, deleteGarageBike } from '@/lib/garage/persistence'
+import { loadGarageFromSupabase, deleteGarageBike, deleteGarageBuild } from '@/lib/garage/persistence'
 import { getPreferredGarageBuildForBike } from '@/lib/garage/working-context'
 import { demoGarageBikes } from '@/lib/demo-content/bikes'
 import { GarageScreen } from '@/components/garage/GarageScreen'
@@ -70,6 +70,38 @@ export default function GaragePage() {
     deleteGarageBike(bikeId).catch(err => console.error('Failed to delete bike:', err))
   }
 
+  function handleDeleteBuild() {
+    if (state.status !== 'loaded' || !state.selectedBike || !state.selectedBuild) return
+    const buildId = state.selectedBuild.id
+    const bikeId = state.selectedBike.id
+
+    const updatedBikes = state.bikes.map(b => {
+      if (b.id !== bikeId) return b
+      return { ...b, builds: b.builds.filter(build => build.id !== buildId) }
+    })
+
+    const updatedBike = updatedBikes.find(b => b.id === bikeId) ?? null
+    const nextBuild = updatedBike?.builds?.[0] ?? null
+
+    if (!nextBuild) {
+      setState({ status: 'loaded', bikes: updatedBikes, selectedBike: null, selectedBuild: null })
+      setView('overview')
+    } else {
+      setState({ status: 'loaded', bikes: updatedBikes, selectedBike: updatedBike!, selectedBuild: nextBuild })
+    }
+
+    deleteGarageBuild(buildId).catch(err => console.error('Failed to delete build:', err))
+  }
+
+  function handleSwitchBikeTo(bike: GarageBikeRecord) {
+    if (state.status !== 'loaded') return
+    const build =
+      getPreferredGarageBuildForBike({ garageBikes: state.bikes, selectedBikeId: bike.id }) ??
+      bike.builds[0] ??
+      null
+    setState({ status: 'loaded', bikes: state.bikes, selectedBike: bike, selectedBuild: build })
+  }
+
   function handleSelectBike(bike: GarageBikeRecord, build: GarageBuildRecord | null) {
     if (state.status !== 'loaded') return
     const resolvedBuild =
@@ -89,6 +121,8 @@ export default function GaragePage() {
         selectedBuild={state.selectedBuild}
         onSwitchBike={() => setView('overview')}
         onDeleteBike={handleDeleteBike}
+        onDeleteBuild={handleDeleteBuild}
+        onSwitchBikeTo={handleSwitchBikeTo}
       />
     )
   }
@@ -97,6 +131,7 @@ export default function GaragePage() {
     <MyBikesOverview
       bikes={state.bikes}
       onSelectBike={handleSelectBike}
+      activeBikeId={state.selectedBike?.id ?? null}
     />
   )
 }

@@ -26,9 +26,10 @@ function getPreferredBuild(bike: GarageBikeRecord): GarageBuildRecord | null {
 type Props = {
   bikes: GarageBikeRecord[]
   onSelectBike: (bike: GarageBikeRecord, build: GarageBuildRecord | null) => void
+  activeBikeId?: string | null
 }
 
-export function MyBikesOverview({ bikes, onSelectBike }: Props) {
+export function MyBikesOverview({ bikes, onSelectBike, activeBikeId }: Props) {
   const router = useRouter()
 
   return (
@@ -71,7 +72,9 @@ export function MyBikesOverview({ bikes, onSelectBike }: Props) {
               className="w-full text-left flex gap-3 items-start rounded-[12px] p-[13px]"
               style={{
                 backgroundColor: '#141414',
-                border: '1px solid rgba(255,255,255,0.06)',
+                border: bike.id === activeBikeId
+                  ? '1px solid rgba(28,105,212,0.35)'
+                  : '1px solid rgba(255,255,255,0.06)',
                 cursor: 'pointer',
               }}
             >

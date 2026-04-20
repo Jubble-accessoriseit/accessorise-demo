@@ -241,26 +241,22 @@ export function GarageBikeStep({
                 </BikeSelect>
               </BikeFilterField>
 
-              <BikeFilterField label="Variant">
-                <BikeSelect
-                  value={selectedModel}
-                  onChange={(event) => onSelectModel(event.target.value)}
-                  disabled={!selectedSeries || modelOptions.length === 0}
-                >
-                  <option value="">
-                    {!selectedSeries
-                      ? "Select Model first"
-                      : modelOptions.length === 0
-                      ? "No variants available"
-                      : "Select Variant"}
-                  </option>
-                  {modelOptions.map((model) => (
-                    <option key={model.value} value={model.value}>
-                      {model.label}
-                    </option>
-                  ))}
-                </BikeSelect>
-              </BikeFilterField>
+              {modelOptions.length > 1 && (
+                <BikeFilterField label="Variant">
+                  <BikeSelect
+                    value={selectedModel}
+                    onChange={(event) => onSelectModel(event.target.value)}
+                    disabled={!selectedSeries}
+                  >
+                    <option value="">Select Variant</option>
+                    {modelOptions.map((model) => (
+                      <option key={model.value} value={model.value}>
+                        {model.label}
+                      </option>
+                    ))}
+                  </BikeSelect>
+                </BikeFilterField>
+              )}
 
               <BikeFilterField label="Year">
                 <BikeSelect
