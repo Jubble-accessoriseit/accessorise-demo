@@ -303,6 +303,7 @@ export default function BrowsePage() {
       setSelectedVariant('')
       setYears([])
       setSelectedYear('')
+      setLoadingVariants(false)
       return
     }
     setLoadingVariants(true)
@@ -365,6 +366,8 @@ export default function BrowsePage() {
     setVariants([])
     setYears([])
     setSelectedYear('')
+    setLoadingVariants(false)
+    setLoadingYears(false)
     try { sessionStorage.removeItem(SESSION_KEY) } catch { /* ignore */ }
   }, [])
 
@@ -399,6 +402,7 @@ export default function BrowsePage() {
   const needsVariant = variants.length > 1
   const canActivate = !!selectedMakeId && !!selectedModelId && !!selectedYear && (!needsVariant || !!selectedVariant)
   const bikeNameForPlaceholder = selectedBike ? bikeDisplayName(selectedBike) : 'your bike'
+  const hasFilter = searchQuery.trim() !== '' || activeCategory !== 'all'
 
   // ── Loading ─────────────────────────────────────────────────────────────────
 
@@ -611,7 +615,9 @@ export default function BrowsePage() {
           })}
         </div>
 
-        {/* ── D: Results header ────────────────────────────────────────── */}
+        {/* ── D+E: Results + grid — only when search or category is active ── */}
+        {hasFilter && (<>
+
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 11, color: '#6A6860' }}>
             {filteredProducts.length} accessories · all guaranteed fit
@@ -624,7 +630,6 @@ export default function BrowsePage() {
           </button>
         </div>
 
-        {/* ── E: Product grid ──────────────────────────────────────────── */}
         {filteredProducts.length === 0 ? (
           <div style={{
             padding: '40px 0', textAlign: 'center',
@@ -643,6 +648,8 @@ export default function BrowsePage() {
             ))}
           </div>
         )}
+
+        </>)}
 
         </>)}
 
