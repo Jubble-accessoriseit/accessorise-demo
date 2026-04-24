@@ -1,76 +1,46 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { demoGarageProducts } from '@/lib/demo-content/products'
-import type { Product, ProductAvailabilityStatus } from '@/types/garage'
+import { demoExpertBuildCatalog } from '@/lib/demo-content/expert-builds'
+import { garageCategories } from '@/types/garage'
+import type { ProductAvailabilityStatus } from '@/types/garage'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-type SortMode = 'best-price' | 'in-stock' | 'fastest'
+const BUILD_KEY = 'browse_build'
 
-type SupplierRow = {
-  vendorName: string
-  url: string
-  price: number
-  stockStatus: ProductAvailabilityStatus
-  deliveryLabel: string
+const CATEGORY_ACCENT: Record<string, string> = {
+  luggage:                   '#E8841A',
+  protection:                '#7F77DD',
+  navigation:                '#1D9E75',
+  tyres:                     '#BA7517',
+  lighting:                  '#639922',
+  comfort:                   '#1456B0',
+  ergonomics:                '#1456B0',
+  electrical:                '#7F77DD',
+  'connectivity-navigation': '#1D9E75',
+  'safety-visibility':       '#639922',
+  'rider-tech-recording':    '#7F77DD',
+  'power-support':           '#BA7517',
 }
 
-// ── Demo supplier builder ─────────────────────────────────────────────────────
+// ── Utilities ─────────────────────────────────────────────────────────────────
 
-const SYNTHETIC_VENDORS = [
-  { name: 'Wunderlich', stockOffset: 0 },
-  { name: 'Nippy Normans', stockOffset: 1 },
-]
-
-const DELIVERY_LABELS = ['2–3 days', '3–5 days', '5–7 days']
-
-function getStockStatus(
-  base: ProductAvailabilityStatus | null | undefined,
-  offset: number
-): ProductAvailabilityStatus {
-  if (offset === 0) return base ?? 'available'
-  if (offset === 1) return 'available'
-  return 'limited'
+function demoPrice(productId: number): number {
+  return 140 + ((productId * 7) % 180)
 }
 
-function buildDemoSuppliers(product: Product): SupplierRow[] {
-  const basePrice = 140 + ((product.id * 7) % 180)
-  const realLink = product.affiliateLinks?.[0]
-
-  return [
-    {
-      vendorName: realLink?.vendorName ?? product.brand,
-      url: realLink?.url ?? product.supplierUrl ?? '#',
-      price: basePrice,
-      stockStatus: getStockStatus(product.availabilityStatus, 0),
-      deliveryLabel: DELIVERY_LABELS[0],
-    },
-    ...SYNTHETIC_VENDORS.map((v, i) => ({
-      vendorName: v.name,
-      url: '#',
-      price: basePrice + (i === 0 ? 17 : 34),
-      stockStatus: getStockStatus(product.availabilityStatus, v.stockOffset + 1),
-      deliveryLabel: DELIVERY_LABELS[i + 1],
-    })),
-  ]
+function hexToRgb(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `${r},${g},${b}`
 }
 
-function sortSuppliers(rows: SupplierRow[], mode: SortMode): SupplierRow[] {
-  const copy = [...rows]
-  if (mode === 'best-price') return copy.sort((a, b) => a.price - b.price)
-  if (mode === 'in-stock') {
-    const order: Record<ProductAvailabilityStatus, number> = {
-      available: 0, limited: 1, 'coming-soon': 2, unavailable: 3,
-    }
-    return copy.sort((a, b) => order[a.stockStatus] - order[b.stockStatus])
-  }
-  return copy.sort(
-    (a, b) =>
-      DELIVERY_LABELS.indexOf(a.deliveryLabel) -
-      DELIVERY_LABELS.indexOf(b.deliveryLabel)
-  )
+function getCategoryLabel(categoryId: string): string {
+  return garageCategories.find(c => c.id === categoryId)?.label ?? categoryId
 }
 
 // ── Stock indicator ───────────────────────────────────────────────────────────
@@ -82,181 +52,119 @@ const STOCK_META: Record<ProductAvailabilityStatus, { color: string; label: stri
   unavailable:   { color: '#44423E', label: 'Unavailable' },
 }
 
-function StockIndicator({ status }: { status: ProductAvailabilityStatus }) {
+function StockDot({ status }: { status: ProductAvailabilityStatus }) {
   const { color, label } = STOCK_META[status]
   return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-      <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: color, display: 'inline-block', flexShrink: 0 }} />
       <span style={{ fontSize: 10, color }}>{label}</span>
     </span>
   )
 }
 
-function VendorLogo({ name }: { name: string }) {
-  return (
-    <div style={{
-      width: 34, height: 34, borderRadius: 8, flexShrink: 0,
-      backgroundColor: '#1A1814',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 14, fontWeight: 700, color: '#44423E',
-      textTransform: 'uppercase',
-    }}>
-      {name[0]}
-    </div>
-  )
-}
-
-// ── Supplier cards ────────────────────────────────────────────────────────────
-
-function BestPriceCard({ supplier, savings }: { supplier: SupplierRow; savings: number }) {
-  return (
-    <div style={{ backgroundColor: '#141414', border: '1px solid rgba(99,153,34,0.32)', borderRadius: 12, padding: 13 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{
-          backgroundColor: 'rgba(99,153,34,0.12)', border: '1px solid rgba(99,153,34,0.28)',
-          color: '#639922', fontSize: 9, fontWeight: 500,
-          padding: '2px 7px', borderRadius: 20, whiteSpace: 'nowrap',
-        }}>
-          Best price
-        </span>
-        {savings > 0 && (
-          <span style={{ fontSize: 11, fontWeight: 500, color: '#639922' }}>↓ ${savings} cheaper</span>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
-        <VendorLogo name={supplier.vendorName} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: '#F5F3EE', margin: 0, lineHeight: 1.3 }}>{supplier.vendorName}</p>
-          <div style={{ marginTop: 3 }}><StockIndicator status={supplier.stockStatus} /></div>
-          <p style={{ fontSize: 10, color: '#6A6860', margin: '2px 0 0' }}>{supplier.deliveryLabel}</p>
-        </div>
-        <span style={{
-          fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-          fontWeight: 900, fontSize: 22, color: '#F5F3EE', flexShrink: 0,
-        }}>
-          ${supplier.price}
-        </span>
-      </div>
-
-      <a
-        href={supplier.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          display: 'block', marginTop: 12, width: '100%',
-          backgroundColor: '#E8841A', color: '#0D0D0D',
-          border: 'none', borderRadius: 8, padding: '10px 0',
-          fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-          fontWeight: 900, fontSize: 12,
-          textTransform: 'uppercase', letterSpacing: '0.06em',
-          textAlign: 'center', textDecoration: 'none', cursor: 'pointer',
-          boxSizing: 'border-box',
-        }}
-      >
-        Buy now
-        <span style={{
-          display: 'block', fontSize: 10, fontWeight: 400,
-          fontFamily: 'system-ui, -apple-system, sans-serif',
-          textTransform: 'none', letterSpacing: 'normal',
-          color: 'rgba(0,0,0,0.5)', marginTop: 2,
-        }}>
-          opens retailer site ↗
-        </span>
-      </a>
-    </div>
-  )
-}
-
-function StandardSupplierCard({ supplier }: { supplier: SupplierRow }) {
-  return (
-    <div style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 13 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <VendorLogo name={supplier.vendorName} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: '#F5F3EE', margin: 0, lineHeight: 1.3 }}>{supplier.vendorName}</p>
-          <div style={{ marginTop: 3 }}><StockIndicator status={supplier.stockStatus} /></div>
-          <p style={{ fontSize: 10, color: '#6A6860', margin: '2px 0 0' }}>{supplier.deliveryLabel}</p>
-        </div>
-        <span style={{
-          fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-          fontWeight: 900, fontSize: 22, color: '#F5F3EE', flexShrink: 0,
-        }}>
-          ${supplier.price}
-        </span>
-      </div>
-
-      <a
-        href={supplier.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          display: 'block', marginTop: 12, width: '100%',
-          backgroundColor: 'transparent',
-          border: '1px solid rgba(255,255,255,0.1)', color: '#F5F3EE',
-          borderRadius: 8, padding: '10px 0',
-          fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-          fontWeight: 900, fontSize: 12,
-          textTransform: 'uppercase', letterSpacing: '0.06em',
-          textAlign: 'center', textDecoration: 'none', cursor: 'pointer',
-          boxSizing: 'border-box',
-        }}
-      >
-        Buy now
-        <span style={{
-          display: 'block', fontSize: 10, fontWeight: 400,
-          fontFamily: 'system-ui, -apple-system, sans-serif',
-          textTransform: 'none', letterSpacing: 'normal',
-          color: '#44423E', marginTop: 2,
-        }}>
-          opens retailer site ↗
-        </span>
-      </a>
-    </div>
-  )
-}
-
-// ── Sort pills ────────────────────────────────────────────────────────────────
-
-const SORT_PILLS: Array<{ id: SortMode; label: string }> = [
-  { id: 'best-price', label: 'Best price' },
-  { id: 'in-stock',   label: 'In stock first' },
-  { id: 'fastest',    label: 'Fastest delivery' },
-]
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function ShopProductPage() {
+export default function ProductDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const [sortMode, setSortMode] = useState<SortMode>('best-price')
+
+  const [fromSource, setFromSource]   = useState<'browse' | 'shop' | null>(null)
+  const [inBuild,    setInBuild]      = useState(false)
+  const [buildAdded, setBuildAdded]   = useState(false)
 
   const productId = parseInt(params?.productId as string, 10)
-  const product = useMemo(
+  const product   = useMemo(
     () => demoGarageProducts.find(p => p.id === productId) ?? demoGarageProducts[0],
     [productId]
   )
 
-  const suppliers = useMemo(() => {
-    const rows = buildDemoSuppliers(product)
-    return sortSuppliers(rows, sortMode)
-  }, [product, sortMode])
+  const basePrice = demoPrice(product.id)
 
-  const savings = suppliers.length >= 2 ? suppliers[1].price - suppliers[0].price : 0
+  // Read `?from` param and current build state
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const from = params.get('from')
+    setFromSource(from === 'browse' ? 'browse' : from === 'shop' ? 'shop' : null)
+
+    try {
+      const stored = sessionStorage.getItem(BUILD_KEY)
+      const list: number[] = stored ? JSON.parse(stored) : []
+      setInBuild(list.includes(product.id))
+    } catch { /* ignore */ }
+  }, [product.id])
+
+  // Expert build count
+  const expertBuildCount = useMemo(
+    () => demoExpertBuildCatalog.filter(
+      b => b.accessories.some(a => a.productId === product.id)
+    ).length,
+    [product.id]
+  )
+
+  function toggleBuild() {
+    try {
+      const stored = sessionStorage.getItem(BUILD_KEY)
+      const list: number[] = stored ? JSON.parse(stored) : []
+      const nowIn = !inBuild
+      const newList = nowIn ? [...list, product.id] : list.filter(id => id !== product.id)
+      sessionStorage.setItem(BUILD_KEY, JSON.stringify(newList))
+      setInBuild(nowIn)
+      if (nowIn) setBuildAdded(true)
+    } catch { /* ignore */ }
+  }
+
+  function handleBack() {
+    router.back()
+  }
+
+  const backLabel = fromSource === 'browse' ? 'Browse'
+                  : fromSource === 'shop'   ? 'Shop'
+                  : 'Back'
+
+  const accent    = CATEGORY_ACCENT[product.categoryId] ?? '#E8841A'
+  const catLabel  = getCategoryLabel(product.categoryId)
+
+  // Demo suppliers (3 per product)
+  const suppliers = useMemo(() => {
+    const realLink = product.affiliateLinks?.[0]
+    return [
+      {
+        name: realLink?.vendorName ?? product.brand,
+        url:  realLink?.url ?? product.supplierUrl ?? '#',
+        price: basePrice,
+        status: product.availabilityStatus ?? 'available',
+        delivery: '2–3 days',
+      },
+      {
+        name: 'Wunderlich',
+        url: '#',
+        price: basePrice + 17,
+        status: 'available' as ProductAvailabilityStatus,
+        delivery: '3–5 days',
+      },
+      {
+        name: 'Nippy Normans',
+        url: '#',
+        price: basePrice + 34,
+        status: 'limited' as ProductAvailabilityStatus,
+        delivery: '5–7 days',
+      },
+    ]
+  }, [product, basePrice])
 
   return (
-    <div style={{ backgroundColor: '#0D0D0D', minHeight: '100vh', paddingBottom: 40 }}>
+    <div style={{ backgroundColor: '#0D0D0D', minHeight: '100vh', paddingBottom: 48 }}>
 
-      {/* A — Back navigation */}
+      {/* ── Nav bar ──────────────────────────────────────────────────────── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '16px 20px 12px',
+        padding: '14px 20px 10px',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
         <button
-          onClick={() => router.back()}
+          onClick={handleBack}
           style={{
-            display: 'flex', alignItems: 'center', gap: 6,
+            display: 'flex', alignItems: 'center', gap: 5,
             background: 'none', border: 'none', cursor: 'pointer',
             color: '#E8841A', fontSize: 12, fontWeight: 500, padding: 0,
           }}
@@ -264,7 +172,7 @@ export default function ShopProductPage() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8841A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          Garage
+          {backLabel}
         </button>
 
         <span style={{
@@ -272,29 +180,60 @@ export default function ShopProductPage() {
           fontWeight: 900, fontSize: 12, color: '#F5F3EE',
           textTransform: 'uppercase', letterSpacing: '0.05em',
         }}>
-          Shop suppliers
+          Product detail
         </span>
 
         <div style={{ width: 52 }} />
       </div>
 
-      {/* B — Accessory summary card */}
-      <div style={{ padding: '12px 20px 0' }}>
+      <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 12, marginTop: 14 }}>
+
+        {/* ── Product image ─────────────────────────────────────────────── */}
+        <div style={{
+          width: '100%', height: 200,
+          backgroundColor: '#1A1814',
+          borderRadius: 12, overflow: 'hidden',
+          position: 'relative',
+        }}>
+          {product.image && (
+            <img
+              src={product.image}
+              alt={product.name}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          )}
+          {/* Category badge */}
+          <span style={{
+            position: 'absolute', top: 10, left: 10,
+            backgroundColor: `rgba(${hexToRgb(accent)},0.14)`,
+            border: `1px solid rgba(${hexToRgb(accent)},0.32)`,
+            color: accent,
+            borderRadius: 20, padding: '3px 9px',
+            fontSize: 10, fontWeight: 500,
+          }}>
+            {catLabel}
+          </span>
+        </div>
+
+        {/* ── Identity card ─────────────────────────────────────────────── */}
         <div style={{
           backgroundColor: '#141414',
           border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: 12, padding: 13,
-          display: 'flex', flexDirection: 'column', gap: 6,
+          borderRadius: 12, padding: '13px 14px',
+          display: 'flex', flexDirection: 'column', gap: 8,
         }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#F5F3EE', margin: 0, lineHeight: 1.3 }}>
-            {product.name}
-          </p>
+          <div>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#F5F3EE', lineHeight: 1.3 }}>
+              {product.name}
+            </p>
+            <p style={{ margin: '3px 0 0', fontSize: 11, color: '#6A6860' }}>{product.brand}</p>
+          </div>
 
+          {/* Fit badge */}
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 5,
             backgroundColor: 'rgba(29,158,117,0.08)',
-            borderRadius: 20, padding: '2px 8px',
-            width: 'fit-content',
+            borderRadius: 20, padding: '3px 9px', width: 'fit-content',
           }}>
             <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
               <circle cx="6" cy="6" r="5.5" stroke="#1D9E75" strokeWidth="1" />
@@ -305,54 +244,274 @@ export default function ShopProductPage() {
             </span>
           </span>
 
-          <div style={{ display: 'flex', gap: 12 }}>
-            <span style={{ fontSize: 11, color: '#6A6860' }}>From ${suppliers[0]?.price ?? '—'}</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{
+              fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+              fontWeight: 900, fontSize: 24, color: '#F5F3EE',
+            }}>
+              From ${basePrice}
+            </span>
             <span style={{ fontSize: 11, color: '#6A6860' }}>{suppliers.length} suppliers</span>
           </div>
         </div>
-      </div>
 
-      {/* C — Sort pills */}
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '12px 20px 0', scrollbarWidth: 'none' }}>
-        {SORT_PILLS.map(({ id, label }) => {
-          const active = sortMode === id
-          return (
-            <button
-              key={id}
-              onClick={() => setSortMode(id)}
+        {/* ── Primary actions ───────────────────────────────────────────── */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={toggleBuild}
+            style={{
+              flex: 1, padding: '12px 0',
+              backgroundColor: inBuild ? 'rgba(29,158,117,0.12)' : 'transparent',
+              border: inBuild ? '1px solid rgba(29,158,117,0.35)' : '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 8,
+              color: inBuild ? '#1D9E75' : '#F5F3EE',
+              fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              transition: 'all 0.15s',
+            }}
+          >
+            {inBuild ? (
+              <>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <circle cx="6" cy="6" r="5.5" stroke="#1D9E75" strokeWidth="1" />
+                  <polyline points="3,6 5,8.5 9,4" stroke="#1D9E75" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                In my build
+              </>
+            ) : '+ Add to build'}
+          </button>
+
+          <button
+            onClick={() => router.push(`/shop?productId=${product.id}`)}
+            style={{
+              flex: 1, padding: '12px 0',
+              backgroundColor: '#E8841A', border: 'none',
+              borderRadius: 8, color: '#0D0D0D',
+              fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+              fontWeight: 900, fontSize: 12,
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+              cursor: 'pointer',
+            }}
+          >
+            Shop →
+          </button>
+        </div>
+
+        {buildAdded && (
+          <p style={{ margin: 0, fontSize: 11, color: '#1D9E75', textAlign: 'center' }}>
+            Added to your build list ✓
+          </p>
+        )}
+
+        {/* ── Description ───────────────────────────────────────────────── */}
+        {product.description && (
+          <div style={{
+            backgroundColor: '#141414',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: 12, padding: '13px 14px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <div style={{ width: 3, height: 14, backgroundColor: accent, borderRadius: 2 }} />
+              <p style={{
+                margin: 0,
+                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+                fontWeight: 900, fontSize: 11, color: '#F5F3EE',
+                textTransform: 'uppercase', letterSpacing: '0.05em',
+              }}>
+                About
+              </p>
+            </div>
+            <p style={{ margin: 0, fontSize: 13, color: '#B8AFA6', lineHeight: 1.6 }}>
+              {product.description}
+            </p>
+          </div>
+        )}
+
+        {/* ── Product details ───────────────────────────────────────────── */}
+        <div style={{
+          backgroundColor: '#141414',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 12, padding: '13px 14px',
+          display: 'flex', flexDirection: 'column', gap: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <div style={{ width: 3, height: 14, backgroundColor: accent, borderRadius: 2 }} />
+            <p style={{
+              margin: 0,
+              fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+              fontWeight: 900, fontSize: 11, color: '#F5F3EE',
+              textTransform: 'uppercase', letterSpacing: '0.05em',
+            }}>
+              Product details
+            </p>
+          </div>
+
+          {[
+            { label: 'Brand',    value: product.brand },
+            { label: 'Category', value: catLabel },
+            { label: 'Type',     value: product.subcategory ?? '—' },
+            { label: 'Fitment',  value: product.fitmentConfidence ?? 'Exact fit' },
+          ].map(({ label, value }, i, arr) => (
+            <div
+              key={label}
               style={{
-                flexShrink: 0, borderRadius: 20, padding: '6px 13px',
-                fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap', cursor: 'pointer',
-                border: active ? '1px solid rgba(232,132,26,0.22)' : '1px solid rgba(255,255,255,0.07)',
-                backgroundColor: active ? 'rgba(232,132,26,0.1)' : '#141414',
-                color: active ? '#E8841A' : '#B8AFA6',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '9px 0',
+                borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
               }}
             >
-              {label}
-            </button>
-          )
-        })}
-      </div>
+              <span style={{ fontSize: 12, color: '#6A6860' }}>{label}</span>
+              <span style={{ fontSize: 12, fontWeight: 500, color: '#F5F3EE' }}>{value}</span>
+            </div>
+          ))}
+        </div>
 
-      {/* D — Supplier cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 20px 0' }}>
-        {suppliers.map((supplier, i) =>
-          i === 0 ? (
-            <BestPriceCard key={supplier.vendorName} supplier={supplier} savings={savings} />
+        {/* ── Expert builds ─────────────────────────────────────────────── */}
+        <div style={{
+          backgroundColor: '#141414',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 12, padding: '13px 14px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <div style={{ width: 3, height: 14, backgroundColor: '#7F77DD', borderRadius: 2 }} />
+            <p style={{
+              margin: 0,
+              fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+              fontWeight: 900, fontSize: 11, color: '#F5F3EE',
+              textTransform: 'uppercase', letterSpacing: '0.05em',
+            }}>
+              Expert builds
+            </p>
+          </div>
+
+          {expertBuildCount > 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <p style={{ margin: 0, fontSize: 13, color: '#B8AFA6' }}>
+                Featured in{' '}
+                <span style={{ color: '#F5F3EE', fontWeight: 600 }}>{expertBuildCount}</span>{' '}
+                expert {expertBuildCount === 1 ? 'build' : 'builds'}
+              </p>
+              <button
+                onClick={() => router.push('/expert')}
+                style={{
+                  background: 'none', border: 'none', padding: 0,
+                  fontSize: 11, fontWeight: 500, color: '#E8841A', cursor: 'pointer',
+                }}
+              >
+                View builds →
+              </button>
+            </div>
           ) : (
-            <StandardSupplierCard key={supplier.vendorName} supplier={supplier} />
-          )
-        )}
+            <p style={{ margin: 0, fontSize: 13, color: '#44423E' }}>
+              Not yet featured in any expert builds
+            </p>
+          )}
+        </div>
+
+        {/* ── Shop options summary ──────────────────────────────────────── */}
+        <div style={{
+          backgroundColor: '#141414',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 12, padding: '13px 14px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 3, height: 14, backgroundColor: '#639922', borderRadius: 2 }} />
+              <p style={{
+                margin: 0,
+                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+                fontWeight: 900, fontSize: 11, color: '#F5F3EE',
+                textTransform: 'uppercase', letterSpacing: '0.05em',
+              }}>
+                Shop options
+              </p>
+            </div>
+            <span style={{ fontSize: 11, color: '#6A6860' }}>{suppliers.length} suppliers</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {suppliers.map((s, i) => (
+              <div
+                key={s.name}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '8px 10px',
+                  backgroundColor: i === 0 ? 'rgba(99,153,34,0.06)' : '#1A1814',
+                  border: i === 0 ? '1px solid rgba(99,153,34,0.2)' : '1px solid rgba(255,255,255,0.04)',
+                  borderRadius: 8,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 6,
+                    backgroundColor: '#141414', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 700, color: '#44423E', textTransform: 'uppercase',
+                  }}>
+                    {s.name[0]}
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: '#F5F3EE' }}>{s.name}</p>
+                    <div style={{ marginTop: 2 }}><StockDot status={s.status} /></div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {i === 0 && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 500, color: '#639922',
+                      backgroundColor: 'rgba(99,153,34,0.12)',
+                      border: '1px solid rgba(99,153,34,0.28)',
+                      borderRadius: 20, padding: '1px 6px',
+                    }}>
+                      Best price
+                    </span>
+                  )}
+                  <span style={{
+                    fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+                    fontWeight: 900, fontSize: 15, color: '#F5F3EE',
+                  }}>
+                    ${s.price}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => router.push(`/shop?productId=${product.id}`)}
+            style={{
+              display: 'block', width: '100%', marginTop: 12,
+              backgroundColor: '#E8841A', border: 'none',
+              borderRadius: 8, padding: '11px 0',
+              fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+              fontWeight: 900, fontSize: 12,
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+              color: '#0D0D0D', cursor: 'pointer',
+              textAlign: 'center',
+            }}
+          >
+            Compare all suppliers
+            <span style={{
+              display: 'block', fontSize: 10, fontWeight: 400,
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              textTransform: 'none', letterSpacing: 'normal',
+              color: 'rgba(0,0,0,0.5)', marginTop: 2,
+            }}>
+              opens retailer site ↗
+            </span>
+          </button>
+        </div>
+
+        {/* ── Affiliate disclosure ──────────────────────────────────────── */}
+        <p style={{
+          textAlign: 'center', fontSize: 10, color: '#3A3830',
+          margin: 0, lineHeight: 1.5,
+        }}>
+          We may earn a commission on purchases made through links on this page. This doesn&apos;t affect the price you pay.
+        </p>
+
       </div>
-
-      {/* E — Affiliate disclosure */}
-      <p style={{
-        textAlign: 'center', fontSize: 10, color: '#3A3830',
-        padding: '24px 20px 0', margin: 0, lineHeight: 1.5,
-      }}>
-        We may earn a commission on purchases made through links on this page. This doesn&apos;t affect the price you pay.
-      </p>
-
     </div>
   )
 }

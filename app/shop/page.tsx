@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { demoGarageProducts } from '@/lib/demo-content/products'
 import type { Product, ProductAvailabilityStatus } from '@/types/garage'
 
@@ -287,10 +288,19 @@ const SORT_PILLS: Array<{ id: SortMode; label: string }> = [
 ]
 
 export default function ShopPage() {
+  const router = useRouter()
   const [selectedProductId, setSelectedProductId] = useState<number>(
     demoGarageProducts[0].id
   )
   const [sortMode, setSortMode] = useState<SortMode>('best-price')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const pid = parseInt(params.get('productId') ?? '', 10)
+    if (!isNaN(pid) && demoGarageProducts.find(p => p.id === pid)) {
+      setSelectedProductId(pid)
+    }
+  }, [])
 
   const product = useMemo(
     () => demoGarageProducts.find(p => p.id === selectedProductId) ?? demoGarageProducts[0],
@@ -374,13 +384,24 @@ export default function ShopPage() {
             </span>
           </span>
 
-          <div style={{ display: 'flex', gap: 12 }}>
-            <span style={{ fontSize: 11, color: '#6A6860' }}>
-              From ${suppliers[0]?.price ?? '—'}
-            </span>
-            <span style={{ fontSize: 11, color: '#6A6860' }}>
-              {suppliers.length} suppliers
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <span style={{ fontSize: 11, color: '#6A6860' }}>
+                From ${suppliers[0]?.price ?? '—'}
+              </span>
+              <span style={{ fontSize: 11, color: '#6A6860' }}>
+                {suppliers.length} suppliers
+              </span>
+            </div>
+            <button
+              onClick={() => router.push(`/shop/${selectedProductId}?from=shop`)}
+              style={{
+                background: 'none', border: 'none', padding: 0,
+                fontSize: 11, fontWeight: 500, color: '#E8841A', cursor: 'pointer',
+              }}
+            >
+              View details →
+            </button>
           </div>
         </div>
       </div>
