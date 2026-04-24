@@ -74,41 +74,59 @@ export default function LoginPage() {
     <main
       style={{
         minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
         background: "#0D0D0D",
-        padding: 20,
+        padding: "40px 20px",
       }}
     >
+      {/* Brand hero — visible above card on all screen sizes */}
+      <div style={{ marginBottom: 32, textAlign: "center" }}>
+        <p style={{
+          margin: "0 0 8px",
+          fontFamily: "system-ui, -apple-system, sans-serif",
+          fontSize: 10, fontWeight: 600, color: "#E8841A",
+          textTransform: "uppercase", letterSpacing: "0.1em",
+        }}>
+          For every bike
+        </p>
+        <h1 style={{
+          margin: 0,
+          fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+          fontWeight: 900, fontSize: 28,
+          textTransform: "uppercase", letterSpacing: "0.04em",
+          color: "#F5F3EE",
+        }}>
+          Accessorise <span style={{ color: "#E8841A" }}>It</span>
+        </h1>
+        <p style={{
+          margin: "8px 0 0",
+          fontSize: 12, color: "#7A7268", lineHeight: 1.5,
+        }}>
+          Accessories matched to your bike.
+        </p>
+      </div>
+
+      {/* Card */}
       <div
         style={{
           width: "100%",
           maxWidth: 420,
           background: "#141414",
           borderRadius: 12,
-          padding: 24,
+          padding: "28px 24px",
           border: "1px solid rgba(255,255,255,0.08)",
         }}
       >
-        <h1 style={{
-          marginTop: 0,
-          marginBottom: 8,
-          fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-          fontWeight: 900,
-          fontSize: 18,
-          textTransform: "uppercase",
-          letterSpacing: "0.04em",
-          color: "#E8841A",
-        }}>
-          Accessorise It
-        </h1>
-
         <p style={{ marginTop: 0, color: "#7A7268", marginBottom: 20, fontSize: 13 }}>
           {mode === "login"
             ? "Sign in with your email and password"
             : "Create your account"}
         </p>
 
+        {/* Mode toggle */}
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           <button
             type="button"
@@ -220,8 +238,8 @@ export default function LoginPage() {
             {loading
               ? "Please wait..."
               : mode === "login"
-              ? "Sign in"
-              : "Create account"}
+              ? "Log in →"
+              : "Create account →"}
           </button>
         </form>
 
