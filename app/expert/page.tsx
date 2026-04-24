@@ -218,11 +218,11 @@ function FilterPills({
                 ? '1px solid rgba(232,132,26,0.22)'
                 : '1px solid rgba(255,255,255,0.07)',
               backgroundColor: isActive ? 'rgba(232,132,26,0.1)' : '#141414',
-              color: isActive ? '#E8841A' : '#5A5852',
+              color: isActive ? '#E8841A' : '#B8AFA6',
               cursor: 'pointer',
             }}
           >
-            {icon && <SearchIcon size={10} color={isActive ? '#E8841A' : '#5A5852'} />}
+            {icon && <SearchIcon size={10} color={isActive ? '#E8841A' : '#B8AFA6'} />}
             {label}
           </button>
         )

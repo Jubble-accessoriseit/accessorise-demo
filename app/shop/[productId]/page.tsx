@@ -325,7 +325,7 @@ export default function ShopProductPage() {
                 fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap', cursor: 'pointer',
                 border: active ? '1px solid rgba(232,132,26,0.22)' : '1px solid rgba(255,255,255,0.07)',
                 backgroundColor: active ? 'rgba(232,132,26,0.1)' : '#141414',
-                color: active ? '#E8841A' : '#5A5852',
+                color: active ? '#E8841A' : '#B8AFA6',
               }}
             >
               {label}

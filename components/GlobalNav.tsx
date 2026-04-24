@@ -85,7 +85,7 @@ export default function GlobalNav() {
                 href={href}
                 className="no-underline text-xs whitespace-nowrap"
                 style={{
-                  color: active ? '#E8841A' : '#5A5852',
+                  color: active ? '#E8841A' : '#B8AFA6',
                   fontWeight: active ? 600 : 500,
                   fontFamily: 'system-ui, -apple-system, sans-serif',
                   borderBottom: active ? '2px solid #E8841A' : '2px solid transparent',
@@ -175,7 +175,7 @@ export default function GlobalNav() {
               href={href}
               className="flex-1 whitespace-nowrap text-center text-xs no-underline"
               style={{
-                color: active ? '#E8841A' : '#5A5852',
+                color: active ? '#E8841A' : '#B8AFA6',
                 fontWeight: active ? 600 : 500,
                 fontFamily: 'system-ui, -apple-system, sans-serif',
                 paddingTop: '13px',
