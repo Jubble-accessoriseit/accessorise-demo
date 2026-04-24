@@ -76,7 +76,7 @@ export default function LoginPage() {
         minHeight: "100vh",
         display: "grid",
         placeItems: "center",
-        background: "#f3f4f6",
+        background: "#0D0D0D",
         padding: 20,
       }}
     >
@@ -84,16 +84,26 @@ export default function LoginPage() {
         style={{
           width: "100%",
           maxWidth: 420,
-          background: "#ffffff",
-          borderRadius: 20,
+          background: "#141414",
+          borderRadius: 12,
           padding: 24,
-          boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-          border: "1px solid #e5e7eb",
+          border: "1px solid rgba(255,255,255,0.08)",
         }}
       >
-        <h1 style={{ marginTop: 0, marginBottom: 8 }}>Accessorise It</h1>
+        <h1 style={{
+          marginTop: 0,
+          marginBottom: 8,
+          fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+          fontWeight: 900,
+          fontSize: 18,
+          textTransform: "uppercase",
+          letterSpacing: "0.04em",
+          color: "#E8841A",
+        }}>
+          Accessorise It
+        </h1>
 
-        <p style={{ marginTop: 0, color: "#6b7280", marginBottom: 20 }}>
+        <p style={{ marginTop: 0, color: "#7A7268", marginBottom: 20, fontSize: 13 }}>
           {mode === "login"
             ? "Sign in with your email and password"
             : "Create your account"}
@@ -107,10 +117,12 @@ export default function LoginPage() {
               flex: 1,
               padding: "10px 14px",
               borderRadius: 999,
-              border: "1px solid #d1d5db",
-              background: mode === "login" ? "#111827" : "#ffffff",
-              color: mode === "login" ? "#ffffff" : "#111827",
+              border: mode === "login" ? "1px solid rgba(232,132,26,0.4)" : "1px solid rgba(255,255,255,0.08)",
+              background: mode === "login" ? "rgba(232,132,26,0.12)" : "transparent",
+              color: mode === "login" ? "#E8841A" : "#B8AFA6",
               cursor: "pointer",
+              fontSize: 13,
+              fontWeight: mode === "login" ? 600 : 500,
             }}
           >
             Sign in
@@ -123,10 +135,12 @@ export default function LoginPage() {
               flex: 1,
               padding: "10px 14px",
               borderRadius: 999,
-              border: "1px solid #d1d5db",
-              background: mode === "signup" ? "#111827" : "#ffffff",
-              color: mode === "signup" ? "#ffffff" : "#111827",
+              border: mode === "signup" ? "1px solid rgba(232,132,26,0.4)" : "1px solid rgba(255,255,255,0.08)",
+              background: mode === "signup" ? "rgba(232,132,26,0.12)" : "transparent",
+              color: mode === "signup" ? "#E8841A" : "#B8AFA6",
               cursor: "pointer",
+              fontSize: 13,
+              fontWeight: mode === "signup" ? 600 : 500,
             }}
           >
             Sign up
@@ -134,59 +148,73 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+          <label style={{ display: "block", marginBottom: 8, fontWeight: 600, fontSize: 12, color: "#F5F3EE" }}>
             Email
           </label>
 
           <input
-  type="email"
-  value={email}
-  onChange={(e) => setEmail(e.target.value)}
-  required
-  className="keeper-ignore"
-  autoComplete="email"
-  style={{
-    width: "100%",
-    padding: "12px 14px",
-    borderRadius: 12,
-    border: "1px solid #d1d5db",
-    marginBottom: 16,
-  }}
-/>
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="keeper-ignore"
+            autoComplete="email"
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              borderRadius: 8,
+              border: "1px solid rgba(255,255,255,0.1)",
+              marginBottom: 16,
+              background: "#1A1A1A",
+              color: "#F5F3EE",
+              fontSize: 14,
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
 
-          <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+          <label style={{ display: "block", marginBottom: 8, fontWeight: 600, fontSize: 12, color: "#F5F3EE" }}>
             Password
           </label>
 
           <input
-  type="password"
-  value={password}
-  onChange={(e) => setPassword(e.target.value)}
-  required
-  minLength={8}
-  className="keeper-ignore"
-  autoComplete={mode === "login" ? "current-password" : "new-password"}
-  style={{
-    width: "100%",
-    padding: "12px 14px",
-    borderRadius: 12,
-    border: "1px solid #d1d5db",
-    marginBottom: 16,
-  }}
-/>
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            className="keeper-ignore"
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              borderRadius: 8,
+              border: "1px solid rgba(255,255,255,0.1)",
+              marginBottom: 16,
+              background: "#1A1A1A",
+              color: "#F5F3EE",
+              fontSize: 14,
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
 
           <button
             type="submit"
             disabled={loading}
             style={{
               width: "100%",
-              padding: "12px 16px",
-              borderRadius: 12,
+              padding: "13px 16px",
+              borderRadius: 8,
               border: "none",
-              background: "#111827",
-              color: "#ffffff",
-              fontWeight: 600,
-              cursor: "pointer",
+              background: loading ? "rgba(232,132,26,0.5)" : "#E8841A",
+              color: "#0D0D0D",
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: loading ? "not-allowed" : "pointer",
+              fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
             }}
           >
             {loading
@@ -198,7 +226,7 @@ export default function LoginPage() {
         </form>
 
         {message ? (
-          <p style={{ marginTop: 16, color: "#374151" }}>{message}</p>
+          <p style={{ marginTop: 16, color: "#7A7268", fontSize: 12 }}>{message}</p>
         ) : null}
       </div>
     </main>
