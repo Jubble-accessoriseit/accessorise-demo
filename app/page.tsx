@@ -149,7 +149,6 @@ export default function HomePage() {
           .hero-cta-secondary { display: inline-block !important; }
           .explore-section { padding: 36px 60px 0 !important; }
           .explore-grid { grid-template-columns: repeat(4, 1fr) !important; }
-          .explore-lead { display: none !important; }
           .why-section { padding: 36px 60px 0 !important; }
           .why-panel { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; padding: 0 !important; }
           .why-row-inner { padding: 20px 18px !important; border-bottom: none !important; }
