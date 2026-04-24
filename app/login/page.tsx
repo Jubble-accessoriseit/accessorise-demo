@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
@@ -82,6 +83,28 @@ export default function LoginPage() {
         padding: "40px 20px",
       }}
     >
+      {/* Back link */}
+      <div style={{ width: "100%", maxWidth: 420, marginBottom: 4 }}>
+        <Link
+          href="/"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            minHeight: 44,
+            padding: "0 4px",
+            textDecoration: "none",
+            color: "#7A7268",
+            fontSize: 13,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Continue without signing in
+        </Link>
+      </div>
+
       {/* Brand hero — visible above card on all screen sizes */}
       <div style={{ marginBottom: 32, textAlign: "center" }}>
         <p style={{
