@@ -63,7 +63,7 @@ function BackBtn({ onClick }: { onClick: () => void }) {
       aria-label="Back"
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-        stroke="#1C69D4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        stroke="#E8841A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="15 18 9 12 15 6" />
       </svg>
     </button>
@@ -168,9 +168,9 @@ function CategoryPillsRow({
               style={{
                 flexShrink: 0, borderRadius: 20, padding: '6px 13px',
                 fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap', cursor: 'pointer',
-                border: active ? '1px solid rgba(28,105,212,0.22)' : '1px solid rgba(255,255,255,0.07)',
-                backgroundColor: active ? 'rgba(28,105,212,0.1)' : '#141414',
-                color: active ? '#1C69D4' : '#5A5852',
+                border: active ? '1px solid rgba(232,132,26,0.22)' : '1px solid rgba(255,255,255,0.07)',
+                backgroundColor: active ? 'rgba(232,132,26,0.1)' : '#141414',
+                color: active ? '#E8841A' : '#5A5852',
               }}
             >
               {catId === 'all' ? 'All' : getCategoryLabel(catId)}
@@ -249,7 +249,7 @@ function Step1Search({
             placeholder={`Search accessories for your ${bikeName}...`}
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
-              fontSize: 12, color: '#F5F3EE', caretColor: '#1C69D4',
+              fontSize: 12, color: '#F5F3EE', caretColor: '#E8841A',
             }}
           />
           {searchQuery && (
@@ -281,9 +281,9 @@ function Step1Search({
               <button type="button" key={product.id} onClick={() => onSelect(product)}
                 style={{
                   display: 'flex', gap: 12, alignItems: 'center',
-                  backgroundColor: isTopResult ? 'rgba(28,105,212,0.03)' : '#141414',
+                  backgroundColor: isTopResult ? 'rgba(232,132,26,0.03)' : '#141414',
                   border: isTopResult
-                    ? '1px solid rgba(28,105,212,0.22)'
+                    ? '1px solid rgba(232,132,26,0.22)'
                     : '1px solid rgba(255,255,255,0.06)',
                   borderRadius: 12, padding: 13,
                   cursor: 'pointer', textAlign: 'left', width: '100%',
@@ -344,7 +344,7 @@ function Step2Details({
     backgroundColor: '#1A1814', border: '1px solid rgba(255,255,255,0.06)',
     borderRadius: 6, padding: '8px 10px',
     fontSize: 12, color: '#F5F3EE',
-    outline: 'none', caretColor: '#1C69D4',
+    outline: 'none', caretColor: '#E8841A',
   }
 
   return (
@@ -360,7 +360,7 @@ function Step2Details({
       <div style={{ margin: '0 20px 16px' }}>
         <div style={{
           display: 'flex', gap: 12, alignItems: 'center',
-          backgroundColor: '#141414', border: '1px solid rgba(28,105,212,0.22)',
+          backgroundColor: '#141414', border: '1px solid rgba(232,132,26,0.22)',
           borderRadius: 12, padding: 13,
         }}>
           <div style={{ width: 44, height: 44, backgroundColor: '#1A1814', borderRadius: 8, flexShrink: 0, overflow: 'hidden', position: 'relative' }}>
@@ -444,11 +444,11 @@ function Step2Details({
         ) : (
           /* Info note */
           <div style={{
-            backgroundColor: 'rgba(28,105,212,0.06)',
-            border: '1px solid rgba(28,105,212,0.24)',
+            backgroundColor: 'rgba(232,132,26,0.06)',
+            border: '1px solid rgba(232,132,26,0.24)',
             borderRadius: 12, padding: 13,
           }}>
-            <p style={{ fontSize: 11, color: '#1C69D4', margin: 0, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 11, color: '#E8841A', margin: 0, lineHeight: 1.5 }}>
               This will be saved to your wish list. You can mark it as bought once you&apos;ve purchased it.
             </p>
           </div>
@@ -460,7 +460,7 @@ function Step2Details({
         <button type="button" onClick={onConfirm}
           style={{
             width: '100%',
-            backgroundColor: '#1C69D4', color: '#0D0D0D',
+            backgroundColor: '#E8841A', color: '#0D0D0D',
             border: 'none', borderRadius: 8,
             padding: '13px 20px',
             fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
@@ -540,7 +540,7 @@ function Step3Confirmation({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
           <button type="button" onClick={onViewBuild}
             style={{
-              width: '100%', backgroundColor: '#1C69D4', color: '#0D0D0D',
+              width: '100%', backgroundColor: '#E8841A', color: '#0D0D0D',
               border: 'none', borderRadius: 8, padding: '13px 20px',
               fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
               fontWeight: 900, fontSize: 13,

@@ -31,7 +31,7 @@ export function HomeHeroCtas() {
         href="/browse"
         style={{
           display: 'inline-block',
-          backgroundColor: '#1C69D4',
+          backgroundColor: '#E8841A',
           color: '#0D0D0D',
           borderRadius: 8,
           padding: '13px 20px',

@@ -50,7 +50,7 @@ export default function GaragePage() {
       >
         <div
           className="rounded-full animate-pulse"
-          style={{ width: 10, height: 10, backgroundColor: '#1C69D4' }}
+          style={{ width: 10, height: 10, backgroundColor: '#E8841A' }}
         />
         <span style={{ fontSize: 13 }}>Loading your garage…</span>
       </div>

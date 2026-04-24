@@ -14,7 +14,7 @@ import type { Product } from '@/types/garage'
 const SESSION_KEY = 'browse_bike'
 
 const CATEGORY_ACCENT: Record<string, string> = {
-  luggage:                   '#1C69D4',
+  luggage:                   '#E8841A',
   protection:                '#7F77DD',
   navigation:                '#1D9E75',
   tyres:                     '#BA7517',
@@ -52,7 +52,7 @@ function bikeDisplayName(bike: SelectedBike): string {
 }
 
 function getCategoryAccent(categoryId: string): string {
-  return CATEGORY_ACCENT[categoryId] ?? '#1C69D4'
+  return CATEGORY_ACCENT[categoryId] ?? '#E8841A'
 }
 
 function getCategoryLabel(categoryId: string): string {
@@ -411,7 +411,7 @@ export default function BrowsePage() {
         <style>{`@keyframes bp { 0%,100%{opacity:1} 50%{opacity:0.25} }`}</style>
         <div style={{
           width: 10, height: 10, borderRadius: '50%',
-          backgroundColor: '#1C69D4',
+          backgroundColor: '#E8841A',
           animation: 'bp 1.5s ease-in-out infinite',
         }} />
         <span style={{ fontSize: 13, color: '#6A6860' }}>Loading…</span>
@@ -450,7 +450,7 @@ export default function BrowsePage() {
               onClick={handleChange}
               style={{
                 flexShrink: 0, background: 'none', border: 'none', padding: 0,
-                fontSize: 11, fontWeight: 500, color: '#1C69D4', cursor: 'pointer',
+                fontSize: 11, fontWeight: 500, color: '#E8841A', cursor: 'pointer',
               }}
             >
               Change
@@ -544,7 +544,7 @@ export default function BrowsePage() {
               onClick={handleFindAccessories}
               disabled={!canActivate}
               style={{
-                backgroundColor: canActivate ? '#1C69D4' : 'rgba(28,105,212,0.25)',
+                backgroundColor: canActivate ? '#E8841A' : 'rgba(232,132,26,0.25)',
                 color: canActivate ? '#0D0D0D' : 'rgba(255,255,255,0.25)',
                 border: 'none', borderRadius: 8, padding: '12px 20px',
                 fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
@@ -599,10 +599,10 @@ export default function BrowsePage() {
                   flexShrink: 0, borderRadius: 20, padding: '6px 13px',
                   fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap', cursor: 'pointer',
                   border: isActive
-                    ? '1px solid rgba(28,105,212,0.22)'
+                    ? '1px solid rgba(232,132,26,0.22)'
                     : '1px solid rgba(255,255,255,0.07)',
-                  backgroundColor: isActive ? 'rgba(28,105,212,0.1)' : '#141414',
-                  color: isActive ? '#1C69D4' : '#5A5852',
+                  backgroundColor: isActive ? 'rgba(232,132,26,0.1)' : '#141414',
+                  color: isActive ? '#E8841A' : '#5A5852',
                 }}
               >
                 {label}
@@ -618,7 +618,7 @@ export default function BrowsePage() {
           </span>
           <button style={{
             background: 'none', border: 'none', padding: 0,
-            fontSize: 11, fontWeight: 500, color: '#1C69D4', cursor: 'pointer',
+            fontSize: 11, fontWeight: 500, color: '#E8841A', cursor: 'pointer',
           }}>
             Sort &amp; filter
           </button>

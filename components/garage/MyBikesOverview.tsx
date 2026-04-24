@@ -73,7 +73,7 @@ export function MyBikesOverview({ bikes, onSelectBike, activeBikeId }: Props) {
               style={{
                 backgroundColor: '#141414',
                 border: bike.id === activeBikeId
-                  ? '1px solid rgba(28,105,212,0.35)'
+                  ? '1px solid rgba(232,132,26,0.35)'
                   : '1px solid rgba(255,255,255,0.06)',
                 cursor: 'pointer',
               }}
@@ -143,12 +143,12 @@ export function MyBikesOverview({ bikes, onSelectBike, activeBikeId }: Props) {
         onClick={() => router.push('/garage/build')}
         className="w-full text-center"
         style={{
-          border: '1.5px dashed rgba(28,105,212,0.3)',
+          border: '1.5px dashed rgba(232,132,26,0.3)',
           borderRadius: 10,
           padding: '13px 14px',
           fontSize: 12,
           fontWeight: 500,
-          color: 'rgba(28,105,212,0.6)',
+          color: 'rgba(232,132,26,0.6)',
           backgroundColor: 'transparent',
           cursor: 'pointer',
         }}

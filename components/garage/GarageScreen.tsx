@@ -108,12 +108,12 @@ function BikeHeaderCard({
           return photoUrl ? (
             <img src={photoUrl} alt={bike.model} className="flex-shrink-0" style={{ width: 62, height: 62, borderRadius: 10, objectFit: 'cover', objectPosition: 'center' }} />
           ) : (
-            <div className="flex flex-col items-center justify-center gap-1 flex-shrink-0" style={{ width: 62, height: 62, border: '1.5px dashed rgba(28,105,212,0.25)', borderRadius: 10 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(28,105,212,0.4)" strokeWidth="1.5">
+            <div className="flex flex-col items-center justify-center gap-1 flex-shrink-0" style={{ width: 62, height: 62, border: '1.5px dashed rgba(232,132,26,0.25)', borderRadius: 10 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(232,132,26,0.4)" strokeWidth="1.5">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                 <circle cx="12" cy="13" r="4" />
               </svg>
-              <span style={{ fontSize: 9, color: 'rgba(28,105,212,0.4)', fontWeight: 500 }}>Add photo</span>
+              <span style={{ fontSize: 9, color: 'rgba(232,132,26,0.4)', fontWeight: 500 }}>Add photo</span>
             </div>
           )
         })()}
@@ -134,7 +134,7 @@ function BikeHeaderCard({
           <button
             onClick={otherBikes.length > 0 ? () => setShowBikePicker(true) : onSwitchBike}
             className="text-left mt-1"
-            style={{ fontSize: 11, color: '#1C69D4', fontWeight: 500, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+            style={{ fontSize: 11, color: '#E8841A', fontWeight: 500, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
           >
             Switch bike
           </button>
@@ -216,7 +216,7 @@ function BikeHeaderCard({
                   </button>
                   <button
                     onClick={() => { if (renameInput.trim()) setBuildNameOverride(renameInput.trim()); setBuildMenuOpen(false) }}
-                    style={{ flex: 2, padding: 13, borderRadius: 8, backgroundColor: '#1C69D4', border: 'none', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}
+                    style={{ flex: 2, padding: 13, borderRadius: 8, backgroundColor: '#E8841A', border: 'none', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}
                   >
                     Save
                   </button>
@@ -285,7 +285,7 @@ function BikeHeaderCard({
             <div style={{ height: 1, margin: '0 20px', backgroundColor: 'rgba(255,255,255,0.06)' }} />
             <button
               onClick={() => { setShowBikePicker(false); onSwitchBike() }}
-              style={{ display: 'block', width: '100%', padding: '12px 20px', fontSize: 12, fontWeight: 500, color: '#1C69D4', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' }}
+              style={{ display: 'block', width: '100%', padding: '12px 20px', fontSize: 12, fontWeight: 500, color: '#E8841A', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' }}
             >
               View all bikes →
             </button>
@@ -362,9 +362,9 @@ function FilterPills({ active, onChange }: { active: Filter; onChange: (f: Filte
             className="flex items-center gap-1.5 whitespace-nowrap rounded-full px-[13px] py-[6px] flex-shrink-0"
             style={{
               fontSize: 11, fontWeight: 500, cursor: 'pointer',
-              border: isActive ? '1px solid rgba(28,105,212,0.22)' : '1px solid rgba(255,255,255,0.07)',
-              backgroundColor: isActive ? 'rgba(28,105,212,0.1)' : '#141414',
-              color: isActive ? '#1C69D4' : '#5A5852',
+              border: isActive ? '1px solid rgba(232,132,26,0.22)' : '1px solid rgba(255,255,255,0.07)',
+              backgroundColor: isActive ? 'rgba(232,132,26,0.1)' : '#141414',
+              color: isActive ? '#E8841A' : '#5A5852',
             }}
           >
             {dot && <StateDot state={dot} size={8} />}
@@ -630,7 +630,7 @@ function AccessoryCard({
               <button
                 onClick={onShopNow}
                 className="mt-2 rounded-full px-3 py-1 flex-shrink-0"
-                style={{ fontSize: 11, fontWeight: 500, color: '#1C69D4', border: '1px solid rgba(28,105,212,0.35)', backgroundColor: 'transparent', cursor: 'pointer' }}
+                style={{ fontSize: 11, fontWeight: 500, color: '#E8841A', border: '1px solid rgba(232,132,26,0.35)', backgroundColor: 'transparent', cursor: 'pointer' }}
               >
                 Shop now →
               </button>
@@ -707,7 +707,7 @@ function AccessoryCard({
 function SectionHeader({ label, count }: { label: string; count: number }) {
   return (
     <div className="flex items-center gap-2">
-      <span style={{ display: 'inline-block', width: 3, height: 14, backgroundColor: '#1C69D4', borderRadius: 2, flexShrink: 0 }} />
+      <span style={{ display: 'inline-block', width: 3, height: 14, backgroundColor: '#E8841A', borderRadius: 2, flexShrink: 0 }} />
       <span className="uppercase tracking-[0.05em] text-[#F5F3EE]" style={{ fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif", fontWeight: 900, fontSize: 12 }}>
         {label}
       </span>
@@ -886,9 +886,9 @@ export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwi
         className="w-full text-center"
         onClick={() => { setModalKey(k => k + 1); setShowModal(true) }}
         style={{
-          border: '1.5px dashed rgba(28,105,212,0.25)', borderRadius: 10,
+          border: '1.5px dashed rgba(232,132,26,0.25)', borderRadius: 10,
           padding: '13px 14px', fontSize: 12, fontWeight: 500,
-          color: 'rgba(28,105,212,0.5)', backgroundColor: 'transparent', cursor: 'pointer',
+          color: 'rgba(232,132,26,0.5)', backgroundColor: 'transparent', cursor: 'pointer',
         }}
       >
         + Add accessory

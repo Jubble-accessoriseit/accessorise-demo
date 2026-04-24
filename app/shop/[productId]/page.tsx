@@ -145,7 +145,7 @@ function BestPriceCard({ supplier, savings }: { supplier: SupplierRow; savings: 
         rel="noopener noreferrer"
         style={{
           display: 'block', marginTop: 12, width: '100%',
-          backgroundColor: '#1C69D4', color: '#0D0D0D',
+          backgroundColor: '#E8841A', color: '#0D0D0D',
           border: 'none', borderRadius: 8, padding: '10px 0',
           fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
           fontWeight: 900, fontSize: 12,
@@ -258,10 +258,10 @@ export default function ShopProductPage() {
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             background: 'none', border: 'none', cursor: 'pointer',
-            color: '#1C69D4', fontSize: 12, fontWeight: 500, padding: 0,
+            color: '#E8841A', fontSize: 12, fontWeight: 500, padding: 0,
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C69D4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8841A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
           </svg>
           Garage
@@ -323,9 +323,9 @@ export default function ShopProductPage() {
               style={{
                 flexShrink: 0, borderRadius: 20, padding: '6px 13px',
                 fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap', cursor: 'pointer',
-                border: active ? '1px solid rgba(28,105,212,0.22)' : '1px solid rgba(255,255,255,0.07)',
-                backgroundColor: active ? 'rgba(28,105,212,0.1)' : '#141414',
-                color: active ? '#1C69D4' : '#5A5852',
+                border: active ? '1px solid rgba(232,132,26,0.22)' : '1px solid rgba(255,255,255,0.07)',
+                backgroundColor: active ? 'rgba(232,132,26,0.1)' : '#141414',
+                color: active ? '#E8841A' : '#5A5852',
               }}
             >
               {label}

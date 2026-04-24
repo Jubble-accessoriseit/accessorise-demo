@@ -20,8 +20,8 @@ export function ReturnPrompt({
   return (
     <div
       style={{
-        backgroundColor: 'rgba(28,105,212,0.06)',
-        border: '1px solid rgba(28,105,212,0.24)',
+        backgroundColor: 'rgba(232,132,26,0.06)',
+        border: '1px solid rgba(232,132,26,0.24)',
         borderRadius: 12,
         padding: 13,
         display: 'flex',
@@ -37,7 +37,7 @@ export function ReturnPrompt({
             width: 6,
             height: 6,
             borderRadius: '50%',
-            backgroundColor: '#1C69D4',
+            backgroundColor: '#E8841A',
             flexShrink: 0,
             animation: 'pulse 2s ease-in-out infinite',
           }}
@@ -82,7 +82,7 @@ export function ReturnPrompt({
           onClick={onBought}
           style={{
             flex: 1,
-            backgroundColor: '#1C69D4',
+            backgroundColor: '#E8841A',
             color: '#0D0D0D',
             border: 'none',
             borderRadius: 8,

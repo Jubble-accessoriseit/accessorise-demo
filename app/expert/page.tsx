@@ -84,7 +84,7 @@ function ChevronRight() {
 
 function ChevronLeft() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C69D4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E8841A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
       <polyline points="15 18 9 12 15 6" />
     </svg>
   )
@@ -97,9 +97,9 @@ function CategoryTag({ label }: { label: string }) {
     <span
       className="rounded-full whitespace-nowrap"
       style={{
-        backgroundColor: 'rgba(28,105,212,0.08)',
-        border: '1px solid rgba(28,105,212,0.16)',
-        color: '#1C69D4',
+        backgroundColor: 'rgba(232,132,26,0.08)',
+        border: '1px solid rgba(232,132,26,0.16)',
+        color: '#E8841A',
         fontSize: 9,
         fontWeight: 500,
         padding: '3px 9px',
@@ -115,9 +115,9 @@ function VerifiedBadge() {
     <span
       className="rounded-full whitespace-nowrap"
       style={{
-        backgroundColor: 'rgba(28,105,212,0.1)',
-        border: '1px solid rgba(28,105,212,0.2)',
-        color: '#1C69D4',
+        backgroundColor: 'rgba(232,132,26,0.1)',
+        border: '1px solid rgba(232,132,26,0.2)',
+        color: '#E8841A',
         fontSize: 9,
         fontWeight: 500,
         padding: '2px 8px',
@@ -170,7 +170,7 @@ function SearchBar({
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         className="flex-1 bg-transparent outline-none"
-        style={{ fontSize: 12, color: '#F5F3EE', caretColor: '#1C69D4' }}
+        style={{ fontSize: 12, color: '#F5F3EE', caretColor: '#E8841A' }}
       />
       {value && (
         <button
@@ -215,14 +215,14 @@ function FilterPills({
               fontWeight: 500,
               padding: '6px 13px',
               border: isActive
-                ? '1px solid rgba(28,105,212,0.22)'
+                ? '1px solid rgba(232,132,26,0.22)'
                 : '1px solid rgba(255,255,255,0.07)',
-              backgroundColor: isActive ? 'rgba(28,105,212,0.1)' : '#141414',
-              color: isActive ? '#1C69D4' : '#5A5852',
+              backgroundColor: isActive ? 'rgba(232,132,26,0.1)' : '#141414',
+              color: isActive ? '#E8841A' : '#5A5852',
               cursor: 'pointer',
             }}
           >
-            {icon && <SearchIcon size={10} color={isActive ? '#1C69D4' : '#5A5852'} />}
+            {icon && <SearchIcon size={10} color={isActive ? '#E8841A' : '#5A5852'} />}
             {label}
           </button>
         )
@@ -271,9 +271,9 @@ function FeaturedBuildCard({ build }: { build: ExpertBuild }) {
           <span
             className="absolute top-2 left-2 rounded-full"
             style={{
-              backgroundColor: 'rgba(28,105,212,0.15)',
-              border: '1px solid rgba(28,105,212,0.3)',
-              color: '#1C69D4',
+              backgroundColor: 'rgba(232,132,26,0.15)',
+              border: '1px solid rgba(232,132,26,0.3)',
+              color: '#E8841A',
               fontSize: 9,
               fontWeight: 500,
               padding: '2px 8px',
@@ -289,11 +289,11 @@ function FeaturedBuildCard({ build }: { build: ExpertBuild }) {
         {/* Rider info row */}
         <div className="flex items-center gap-2 flex-wrap">
           <div
-            className="flex items-center justify-center rounded-full flex-shrink-0 text-[#1C69D4] font-semibold"
+            className="flex items-center justify-center rounded-full flex-shrink-0 text-[#E8841A] font-semibold"
             style={{
               width: 26,
               height: 26,
-              backgroundColor: 'rgba(28,105,212,0.12)',
+              backgroundColor: 'rgba(232,132,26,0.12)',
               fontSize: 11,
             }}
           >
@@ -344,8 +344,8 @@ function FeaturedBuildCard({ build }: { build: ExpertBuild }) {
           href={`/expert/${build.id}`}
           className="block w-full text-center rounded-[8px] no-underline"
           style={{
-            border: '1px solid rgba(28,105,212,0.35)',
-            color: '#1C69D4',
+            border: '1px solid rgba(232,132,26,0.35)',
+            color: '#E8841A',
             fontSize: 12,
             fontWeight: 600,
             padding: '10px 0',
@@ -462,7 +462,7 @@ function ByAccessoryView({ builds }: { builds: ExpertBuild[] }) {
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: 'fit-content' }}
           >
             <ChevronLeft />
-            <span style={{ fontSize: 11, color: '#1C69D4', fontWeight: 500 }}>All accessories</span>
+            <span style={{ fontSize: 11, color: '#E8841A', fontWeight: 500 }}>All accessories</span>
           </button>
           <p className="text-[#F5F3EE] font-semibold" style={{ fontSize: 13 }}>
             Builds featuring {selectedAccessory.title}
@@ -503,7 +503,7 @@ function ByAccessoryView({ builds }: { builds: ExpertBuild[] }) {
                     display: 'inline-block',
                     width: 3,
                     height: 14,
-                    backgroundColor: '#1C69D4',
+                    backgroundColor: '#E8841A',
                     borderRadius: 2,
                     flexShrink: 0,
                   }}
@@ -637,7 +637,7 @@ export default function ExpertPage() {
           </div>
           <button
             onClick={() => router.push('/browse')}
-            style={{ flexShrink: 0, background: 'none', border: 'none', padding: 0, fontSize: 11, fontWeight: 500, color: '#1C69D4', cursor: 'pointer' }}
+            style={{ flexShrink: 0, background: 'none', border: 'none', padding: 0, fontSize: 11, fontWeight: 500, color: '#E8841A', cursor: 'pointer' }}
           >
             Change
           </button>
@@ -645,7 +645,7 @@ export default function ExpertPage() {
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <p style={{ margin: 0, fontSize: 11, color: '#6A6860' }}>Showing all expert builds</p>
-          <Link href="/browse" style={{ fontSize: 11, fontWeight: 500, color: '#1C69D4', textDecoration: 'none' }}>
+          <Link href="/browse" style={{ fontSize: 11, fontWeight: 500, color: '#E8841A', textDecoration: 'none' }}>
             Browse for your bike →
           </Link>
         </div>
@@ -672,9 +672,9 @@ export default function ExpertPage() {
           <button
             onClick={() => setBikeContext(null)}
             style={{
-              background: 'none', border: '1px solid rgba(28,105,212,0.35)',
+              background: 'none', border: '1px solid rgba(232,132,26,0.35)',
               borderRadius: 20, padding: '6px 14px',
-              fontSize: 11, fontWeight: 500, color: '#1C69D4', cursor: 'pointer',
+              fontSize: 11, fontWeight: 500, color: '#E8841A', cursor: 'pointer',
             }}
           >
             Show all builds
