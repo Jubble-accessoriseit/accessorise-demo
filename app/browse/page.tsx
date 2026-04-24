@@ -267,10 +267,12 @@ export default function BrowsePage() {
   // ── Fetch makes eagerly (ready before selector appears) ────────────────────
 
   useEffect(() => {
-    fetch('/api/bikes/options')
+    const controller = new AbortController()
+    fetch('/api/bikes/options', { signal: controller.signal })
       .then(r => r.json())
       .then(d => setMakes(d.makes ?? []))
       .catch(() => { /* ignore */ })
+    return () => controller.abort()
   }, [])
 
   // ── Cascade: fetch models when make changes ─────────────────────────────────
@@ -284,15 +286,17 @@ export default function BrowsePage() {
       setSelectedYear('')
       return
     }
+    const controller = new AbortController()
     setLoadingModels(true)
     setSelectedModelId('')
     setSelectedModelName('')
     setYears([])
     setSelectedYear('')
-    fetch(`/api/bikes/options?make=${encodeURIComponent(selectedMakeId)}`)
+    fetch(`/api/bikes/options?make=${encodeURIComponent(selectedMakeId)}`, { signal: controller.signal })
       .then(r => r.json())
       .then(d => { setModels(d.models ?? []); setLoadingModels(false) })
-      .catch(() => setLoadingModels(false))
+      .catch(err => { if (err.name !== 'AbortError') setLoadingModels(false) })
+    return () => controller.abort()
   }, [selectedMakeId])
 
   // ── Cascade: fetch variants when model changes ──────────────────────────────
@@ -306,19 +310,23 @@ export default function BrowsePage() {
       setLoadingVariants(false)
       return
     }
+    const controller = new AbortController()
     setLoadingVariants(true)
     setSelectedVariant('')
     setVariants([])
     setYears([])
     setSelectedYear('')
-    fetch(`/api/bikes/options?make=${encodeURIComponent(selectedMakeId)}&model=${encodeURIComponent(selectedModelId)}`)
+    fetch(`/api/bikes/options?make=${encodeURIComponent(selectedMakeId)}&model=${encodeURIComponent(selectedModelId)}`, { signal: controller.signal })
       .then(r => r.json())
-      .then(d => { setVariants(d.variants ?? []); setLoadingVariants(false) })
-      .catch(() => setLoadingVariants(false))
+      .then(d => {
+        setVariants(d.variants ?? [])
+        setLoadingVariants(false)
+      })
+      .catch(err => { if (err.name !== 'AbortError') setLoadingVariants(false) })
+    return () => controller.abort()
   }, [selectedModelId, selectedMakeId])
 
   // ── Cascade: fetch years when variant is ready ───────────────────────────────
-  // Fires when variants finish loading (no variant needed) or when user picks one
 
   useEffect(() => {
     const needsVar = variants.length > 1
@@ -330,13 +338,15 @@ export default function BrowsePage() {
       return
     }
 
+    const controller = new AbortController()
     const variantParam = needsVar ? selectedVariant : ''
     setLoadingYears(true)
     setSelectedYear('')
-    fetch(`/api/bikes/options?make=${encodeURIComponent(selectedMakeId)}&model=${encodeURIComponent(selectedModelId)}&variant=${encodeURIComponent(variantParam)}`)
+    fetch(`/api/bikes/options?make=${encodeURIComponent(selectedMakeId)}&model=${encodeURIComponent(selectedModelId)}&variant=${encodeURIComponent(variantParam)}`, { signal: controller.signal })
       .then(r => r.json())
       .then(d => { setYears(d.years ?? []); setLoadingYears(false) })
-      .catch(() => setLoadingYears(false))
+      .catch(err => { if (err.name !== 'AbortError') setLoadingYears(false) })
+    return () => controller.abort()
   }, [selectedVariant, variants, selectedModelId, selectedMakeId, loadingVariants])
 
   // ── Handlers ────────────────────────────────────────────────────────────────
