@@ -12,7 +12,7 @@ export default function RootLayout({
         className="bg-[#0D0D0D] text-[#F5F3EE]"
         style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
       >
-        <div style={{ maxWidth: 430, margin: '0 auto', backgroundColor: '#0D0D0D', minHeight: '100vh' }}>
+        <div className="max-w-[430px] md:max-w-[1200px] mx-auto bg-[#0D0D0D] min-h-screen">
           <GlobalNav />
           {children}
         </div>

@@ -106,7 +106,7 @@ function WhyRow({
 }) {
   return (
     <div>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '14px 0' }}>
+      <div className="why-row-inner" style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '14px 0' }}>
         <div style={{
           width: 36, height: 36, borderRadius: 9, flexShrink: 0,
           backgroundColor: `rgba(232,132,26,0.1)`,
@@ -129,7 +129,7 @@ function WhyRow({
         </div>
       </div>
       {!last && (
-        <div style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.05)', margin: '0 -14px' }} />
+        <div className="why-divider" style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.05)', margin: '0 -14px' }} />
       )}
     </div>
   )
@@ -140,9 +140,25 @@ function WhyRow({
 export default function HomePage() {
   return (
     <main style={{ backgroundColor: '#0D0D0D', minHeight: '100vh', paddingBottom: 40 }}>
+      <style>{`
+        @media (min-width: 768px) {
+          .hero-section { min-height: 420px !important; }
+          .hero-content { padding: 56px 60px 56px !important; max-width: 50% !important; }
+          .hero-headline { font-size: 52px !important; }
+          .hero-ctas { display: flex; gap: 12px; align-items: center; }
+          .hero-cta-secondary { display: inline-block !important; }
+          .explore-section { padding: 36px 60px 0 !important; }
+          .explore-grid { grid-template-columns: repeat(4, 1fr) !important; }
+          .explore-lead { display: none !important; }
+          .why-section { padding: 36px 60px 0 !important; }
+          .why-panel { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; padding: 0 !important; }
+          .why-row-inner { padding: 20px 18px !important; border-bottom: none !important; }
+          .why-divider { display: none !important; }
+        }
+      `}</style>
 
       {/* ── 1. Hero ─────────────────────────────────────────────────────────── */}
-      <section style={{ position: 'relative', overflow: 'hidden', minHeight: 280 }}>
+      <section className="hero-section" style={{ position: 'relative', overflow: 'hidden', minHeight: 280 }}>
         <img
           src={HOME_HERO_IMAGE_URL}
           alt=""
@@ -160,7 +176,7 @@ export default function HomePage() {
         }} />
 
         {/* Content */}
-        <div style={{ position: 'relative', zIndex: 1, padding: '32px 20px 36px', maxWidth: 260 }}>
+        <div className="hero-content" style={{ position: 'relative', zIndex: 1, padding: '32px 20px 36px', maxWidth: 260 }}>
           {/* Eyebrow */}
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -180,7 +196,7 @@ export default function HomePage() {
           </div>
 
           {/* Headline */}
-          <h1 style={{
+          <h1 className="hero-headline" style={{
             margin: '0 0 10px',
             fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
             fontWeight: 900, fontSize: 40, lineHeight: 1.0,
@@ -198,47 +214,68 @@ export default function HomePage() {
             Accessories matched<br />to your bike.
           </p>
 
-          {/* Primary CTA */}
-          <Link
-            href="/browse"
-            style={{
-              display: 'inline-block',
-              backgroundColor: ORANGE,
-              color: '#0D0D0D',
-              borderRadius: 8,
-              padding: '13px 20px',
-              fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-              fontWeight: 900, fontSize: 12,
-              textTransform: 'uppercase', letterSpacing: '0.06em',
-              textDecoration: 'none', whiteSpace: 'nowrap',
-            }}
-          >
-            Start with your bike
-          </Link>
+          {/* CTAs */}
+          <div className="hero-ctas">
+            <Link
+              href="/browse"
+              style={{
+                display: 'inline-block',
+                backgroundColor: ORANGE,
+                color: '#0D0D0D',
+                borderRadius: 8,
+                padding: '13px 20px',
+                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+                fontWeight: 900, fontSize: 12,
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+                textDecoration: 'none', whiteSpace: 'nowrap',
+              }}
+            >
+              Start with your bike
+            </Link>
+            <Link
+              href="/expert"
+              className="hero-cta-secondary"
+              style={{
+                display: 'none',
+                border: '1px solid rgba(245,243,238,0.2)',
+                color: '#F5F3EE',
+                borderRadius: 8,
+                padding: '13px 20px',
+                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+                fontWeight: 900, fontSize: 12,
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+                textDecoration: 'none', whiteSpace: 'nowrap',
+              }}
+            >
+              View expert builds
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* ── 2. Explore ──────────────────────────────────────────────────────── */}
-      <section style={{ padding: '24px 20px 0' }}>
+      <section className="explore-section" style={{ padding: '24px 20px 0' }}>
         <SectionHeading>Explore</SectionHeading>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {/* Full-width lead card */}
-          <ExploreCard
-            fullWidth
-            href="/browse"
-            title="Find Accessories"
-            subtitle="Build your list"
-            icon={
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={ORANGE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-            }
-          />
+          {/* Full-width lead card — hidden on desktop */}
+          <div className="explore-lead">
+            <ExploreCard
+              fullWidth
+              href="/browse"
+              title="Find Accessories"
+              subtitle="Build your list"
+              icon={
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={ORANGE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              }
+            />
+          </div>
 
-          {/* 2×2 grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {/* 2×2 grid on mobile → 4-col on desktop */}
+          <div className="explore-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <ExploreCard
               href="/expert"
               title="Expert Builds"
@@ -290,10 +327,10 @@ export default function HomePage() {
       </section>
 
       {/* ── 3. Why Accessorise It ───────────────────────────────────────────── */}
-      <section style={{ padding: '24px 20px 0' }}>
+      <section className="why-section" style={{ padding: '24px 20px 0' }}>
         <SectionHeading>Why Accessorise It</SectionHeading>
 
-        <div style={{
+        <div className="why-panel" style={{
           backgroundColor: '#141414',
           border: '1px solid rgba(255,255,255,0.06)',
           borderRadius: 12,

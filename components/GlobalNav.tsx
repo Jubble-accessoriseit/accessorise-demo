@@ -66,7 +66,7 @@ export default function GlobalNav() {
   return (
     <nav className="sticky top-0 z-50 w-full bg-[#0D0D0D]">
       {/* Logo row */}
-      <div className="flex items-center justify-between px-5 py-3">
+      <div className="flex items-center justify-between px-5 py-3 md:px-14 md:py-4 md:border-b md:border-white/[0.06]">
         <Link
           href="/"
           className="no-underline text-[#F5F3EE] text-sm uppercase tracking-[0.04em]"
@@ -74,6 +74,29 @@ export default function GlobalNav() {
         >
           ACCESSORISE <span className="text-[#E8841A]">IT</span>
         </Link>
+
+        {/* Desktop centre nav */}
+        <div className="hidden md:flex flex-1 items-center justify-center gap-7">
+          {TABS.filter(t => t.href !== '/').map(({ label, href }) => {
+            const active = isActive(href, pathname)
+            return (
+              <Link
+                key={href}
+                href={href}
+                className="no-underline text-xs whitespace-nowrap"
+                style={{
+                  color: active ? '#E8841A' : '#5A5852',
+                  fontWeight: active ? 600 : 500,
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  borderBottom: active ? '2px solid #E8841A' : '2px solid transparent',
+                  paddingBottom: 2,
+                }}
+              >
+                {label}
+              </Link>
+            )
+          })}
+        </div>
 
         {session ? (
           <div ref={avatarRef} style={{ position: 'relative' }}>
@@ -142,8 +165,8 @@ export default function GlobalNav() {
         )}
       </div>
 
-      {/* Tab row */}
-      <div className="flex" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      {/* Tab row — hidden on desktop */}
+      <div className="flex md:hidden" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         {TABS.map(({ label, href }) => {
           const active = isActive(href, pathname)
           return (
