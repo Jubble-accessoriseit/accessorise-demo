@@ -77,7 +77,7 @@ export default function GlobalNav() {
 
         {/* Desktop centre nav */}
         <div className="hidden md:flex flex-1 items-center justify-center gap-7">
-          {TABS.filter(t => t.href !== '/').map(({ label, href }) => {
+          {TABS.map(({ label, href }) => {
             const active = isActive(href, pathname)
             return (
               <Link
