@@ -141,7 +141,10 @@ import type {
   SavedBuildPhoto,
   SupabaseBike,
 } from "../../../types/garage";
+
 import { garageCategories as categories } from "../../../types/garage";
+
+const EXPERT_BIKE_CONTEXT_KEY = "expert_bike_context_v1";
 
 type GarageProductRow = {
   id: number | string;
@@ -1449,6 +1452,21 @@ const draftMatchedBike = useMemo(() => {
 
   return garageBikeCatalog.find((bike) => bike.id === activeBuildBikeId) ?? null;
 }, [activeBuildBikeId, garageBikeCatalog]);
+
+useEffect(() => {
+  if (!currentBike) return;
+
+  sessionStorage.setItem(
+    EXPERT_BIKE_CONTEXT_KEY,
+    JSON.stringify({
+      make: currentBike.make,
+      model: currentBike.model,
+      variant: currentBike.variant ?? undefined,
+      year: currentBike.year ? String(currentBike.year) : undefined,
+      image: currentBike.image ?? undefined,
+    })
+  );
+}, [currentBike]);
 
 const activeBikeId = currentBike?.id ?? null;
 
@@ -6051,4 +6069,3 @@ return (
     </main>
 );
 }
-

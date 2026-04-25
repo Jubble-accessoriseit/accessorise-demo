@@ -11,6 +11,7 @@ import { MyBikesOverview } from '@/components/garage/MyBikesOverview'
 import type { GarageBikeRecord, GarageBuildRecord } from '@/types/garage'
 
 type View = 'overview' | 'detail'
+const EXPERT_BIKE_CONTEXT_KEY = 'expert_bike_context_v1'
 
 type GarageState =
   | { status: 'loading' }
@@ -20,6 +21,19 @@ export default function GaragePage() {
   const router = useRouter()
   const [state, setState] = useState<GarageState>({ status: 'loading' })
   const [view, setView] = useState<View>('overview')
+
+  function writeExpertBikeContext(bike: GarageBikeRecord) {
+    sessionStorage.setItem(
+      EXPERT_BIKE_CONTEXT_KEY,
+      JSON.stringify({
+        make: bike.make,
+        model: bike.model,
+        variant: bike.variant ?? undefined,
+        year: bike.year ? String(bike.year) : undefined,
+        image: bike.image ?? bike.heroImageUrl ?? undefined,
+      }),
+    )
+  }
 
   useEffect(() => {
     async function load() {
@@ -99,6 +113,7 @@ export default function GaragePage() {
       getPreferredGarageBuildForBike({ garageBikes: state.bikes, selectedBikeId: bike.id }) ??
       bike.builds[0] ??
       null
+    writeExpertBikeContext(bike)
     setState({ status: 'loaded', bikes: state.bikes, selectedBike: bike, selectedBuild: build })
   }
 
@@ -109,6 +124,7 @@ export default function GaragePage() {
       getPreferredGarageBuildForBike({ garageBikes: state.bikes, selectedBikeId: bike.id }) ??
       bike.builds[0] ??
       null
+    writeExpertBikeContext(bike)
     setState({ status: 'loaded', bikes: state.bikes, selectedBike: bike, selectedBuild: resolvedBuild })
     setView('detail')
   }

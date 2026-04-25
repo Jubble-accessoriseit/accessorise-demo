@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { demoExpertBuildCatalog } from '@/lib/demo-content/expert-builds';
+import { expertBuildMatchesBikeMakeModel } from '@/lib/expert-builds/helpers';
 import { supabase } from '@/lib/supabase';
 import type { ExpertBuild } from '@/lib/expert-builds/types';
 
@@ -18,6 +19,7 @@ type ClassificationFilter = 'all' | 'touring' | 'adventure' | 'enduro' | 'expedi
 type SortMode = 'most-liked' | 'newest' | 'az';
 
 const BROWSE_BIKE_KEY = 'browse_bike_selection_v2';
+const EXPERT_BIKE_CONTEXT_KEY = 'expert_bike_context_v1';
 const EXPERT_LIKES_KEY = 'expert_build_likes_v1';
 
 const classificationFilters: Array<{ id: ClassificationFilter; label: string }> = [
@@ -28,17 +30,10 @@ const classificationFilters: Array<{ id: ClassificationFilter; label: string }> 
   { id: 'expedition', label: 'Expedition' },
 ];
 
-function normalize(value?: string | null) {
-  return (value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
 function buildMatchesBike(build: ExpertBuild, bike: SelectedBike | null) {
   if (!bike?.make || !bike.model) return true;
 
-  return (
-    normalize(build.bikeFitment.make) === normalize(bike.make) &&
-    normalize(build.bikeFitment.model) === normalize(bike.model)
-  );
+  return expertBuildMatchesBikeMakeModel(build, bike);
 }
 
 function getBuildClassification(build: ExpertBuild): ClassificationFilter {
@@ -113,7 +108,7 @@ export default function ExpertPage() {
   const [loginPromptBuild, setLoginPromptBuild] = useState<ExpertBuild | null>(null);
 
   useEffect(() => {
-    const rawBike = sessionStorage.getItem(BROWSE_BIKE_KEY);
+    const rawBike = sessionStorage.getItem(EXPERT_BIKE_CONTEXT_KEY) ?? sessionStorage.getItem(BROWSE_BIKE_KEY);
     if (rawBike) {
       try {
         setSelectedBike(JSON.parse(rawBike));

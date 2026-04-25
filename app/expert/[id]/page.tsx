@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { demoExpertBuildCatalog } from '@/lib/demo-content/expert-builds';
 import { demoGarageProducts } from '@/lib/demo-content/products';
 import { demoGarageBikes } from '@/lib/demo-content/bikes';
+import { expertBikeMakeModelMatches } from '@/lib/expert-builds/helpers';
 import { loadGarageFromSupabase, replaceGarageBuildItems } from '@/lib/garage/persistence';
 import { supabase } from '@/lib/supabase';
 import type { GarageBikeRecord, GarageBuildRecord, Product } from '@/types/garage';
@@ -43,17 +44,10 @@ type CompareReturnContext = {
 };
 
 const BROWSE_BIKE_KEY = 'browse_bike_selection_v2';
+const EXPERT_BIKE_CONTEXT_KEY = 'expert_bike_context_v1';
 const COMPARE_RETURN_KEY = 'expert_compare_return_v1';
 
 const productById = new Map(demoGarageProducts.map((product) => [product.id, product]));
-
-function normalize(value?: string | null) {
-  return (value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
-function sameBike(makeA?: string | null, modelA?: string | null, makeB?: string | null, modelB?: string | null) {
-  return normalize(makeA) === normalize(makeB) && normalize(modelA) === normalize(modelB);
-}
 
 function categoryLabel(categoryId: string) {
   return garageCategories.find((category) => category.id === categoryId)?.label ?? categoryId;
@@ -76,7 +70,7 @@ function formatBikeTitle(bike: SelectedBike | null, fallback: string) {
 function findComparisonBuild(bikes: GarageBikeRecord[], selectedBike: SelectedBike | null) {
   const bike =
     (selectedBike
-      ? bikes.find((candidate) => sameBike(candidate.make, candidate.model, selectedBike.make, selectedBike.model))
+      ? bikes.find((candidate) => expertBikeMakeModelMatches(candidate, selectedBike))
       : null) ?? bikes[0];
 
   if (!bike) return { bike: null, build: null };
@@ -107,7 +101,7 @@ export default function ExpertBuildComparePage() {
   const [pendingScrollY, setPendingScrollY] = useState<number | null>(null);
 
   useEffect(() => {
-    const rawBike = sessionStorage.getItem(BROWSE_BIKE_KEY);
+    const rawBike = sessionStorage.getItem(EXPERT_BIKE_CONTEXT_KEY) ?? sessionStorage.getItem(BROWSE_BIKE_KEY);
     if (rawBike) {
       try {
         setSelectedBike(JSON.parse(rawBike));

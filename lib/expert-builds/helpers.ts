@@ -14,16 +14,23 @@ import type {
   ResolvedExpertBuildCategoryGroup,
 } from "./types";
 
+type ExpertBikeMakeModel = Pick<SupabaseBike, "make" | "model"> &
+  Partial<Pick<SupabaseBike, "variant">>;
+
+export function normalizeExpertBikeText(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
+
 function normalizeText(value: string) {
   return value.trim().toLowerCase();
 }
 
-function normalizeModelSignature(value: string | null | undefined) {
-  return normalizeText(value ?? "").replace(/[^a-z0-9]/g, "");
+export function normalizeExpertBikeModel(value: string | null | undefined) {
+  return normalizeExpertBikeText(value).replace(/[^a-z0-9]/g, "");
 }
 
 function getBMWModelAliases(value: string | null | undefined) {
-  const normalized = normalizeModelSignature(value);
+  const normalized = normalizeExpertBikeModel(value);
 
   if (!normalized) {
     return new Set<string>();
@@ -45,42 +52,20 @@ function getBMWModelAliases(value: string | null | undefined) {
   return aliases;
 }
 
-function getBikeModelAliases(bike: SupabaseBike) {
-  if (normalizeText(bike.make) === "bmw") {
-    const aliases = new Set<string>([
-      ...getBMWModelAliases(bike.model),
-      ...getBMWModelAliases(`${bike.model} ${bike.variant ?? ""}`),
-      ...getBMWModelAliases(bike.variant),
-    ]);
-
-    return aliases;
+function getBikeModelAliases(bike: ExpertBikeMakeModel) {
+  if (normalizeExpertBikeText(bike.make) === "bmw") {
+    return getBMWModelAliases(bike.model);
   }
 
-  return new Set<string>([
-    normalizeModelSignature(bike.model),
-    normalizeModelSignature(`${bike.model} ${bike.variant ?? ""}`),
-  ]);
+  return new Set<string>([normalizeExpertBikeModel(bike.model)]);
 }
 
 function getBuildModelAliases(build: ExpertBuild) {
-  if (normalizeText(build.bikeFitment.make) === "bmw") {
-    const aliases = new Set<string>([
-      ...getBMWModelAliases(build.bikeFitment.model),
-      ...getBMWModelAliases(
-        `${build.bikeFitment.model} ${build.bikeFitment.variant ?? ""}`
-      ),
-      ...getBMWModelAliases(build.bikeFitment.variant),
-    ]);
-
-    return aliases;
+  if (normalizeExpertBikeText(build.bikeFitment.make) === "bmw") {
+    return getBMWModelAliases(build.bikeFitment.model);
   }
 
-  return new Set<string>([
-    normalizeModelSignature(build.bikeFitment.model),
-    normalizeModelSignature(
-      `${build.bikeFitment.model} ${build.bikeFitment.variant ?? ""}`
-    ),
-  ]);
+  return new Set<string>([normalizeExpertBikeModel(build.bikeFitment.model)]);
 }
 
 function setsIntersect(left: Set<string>, right: Set<string>) {
@@ -104,7 +89,7 @@ function createDeterministicNegativeId(value: string) {
 }
 
 function getBikeFamilySignature(bike: SupabaseBike) {
-  const normalizedModel = normalizeModelSignature(
+  const normalizedModel = normalizeExpertBikeModel(
     `${bike.model} ${bike.variant ?? ""}`
   );
 
@@ -137,25 +122,27 @@ function getBikeFamilySignature(bike: SupabaseBike) {
 }
 
 function isBikeWithinFitment(build: ExpertBuild, bike: SupabaseBike) {
-  const sameMake = normalizeText(build.bikeFitment.make) === normalizeText(bike.make);
-  const sameModel = setsIntersect(getBuildModelAliases(build), getBikeModelAliases(bike));
-  const inYearRange =
-    bike.year >= build.bikeFitment.yearStart && bike.year <= build.bikeFitment.yearEnd;
-
-  if (sameMake && sameModel && inYearRange) {
+  if (expertBuildMatchesBikeMakeModel(build, bike)) {
     return 2;
   }
 
-  if (
-    sameMake &&
-    build.bikeFitment.family &&
-    normalizeText(build.bikeFitment.family).replace(/\s+/g, "-") ===
-      getBikeFamilySignature(bike)
-  ) {
-    return 1;
-  }
-
   return 0;
+}
+
+export function expertBuildMatchesBikeMakeModel(
+  build: Pick<ExpertBuild, "bikeFitment">,
+  bike: ExpertBikeMakeModel
+) {
+  return expertBikeMakeModelMatches(build.bikeFitment, bike);
+}
+
+export function expertBikeMakeModelMatches(
+  left: ExpertBikeMakeModel,
+  right: ExpertBikeMakeModel
+) {
+  const sameMake = normalizeExpertBikeText(left.make) === normalizeExpertBikeText(right.make);
+
+  return sameMake && setsIntersect(getBikeModelAliases(left), getBikeModelAliases(right));
 }
 
 function getCategoryLabel(categoryId: string) {
