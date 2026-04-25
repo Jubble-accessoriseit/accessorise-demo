@@ -1,714 +1,807 @@
-'use client'
+'use client';
 
-import { useState, useMemo, useEffect } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { demoExpertBuildCatalog } from '@/lib/demo-content/expert-builds'
-import type { ExpertBuild, ExpertBuildAccessory } from '@/lib/expert-builds/types'
-import { garageCategories } from '@/types/garage'
-
-// ── Types ────────────────────────────────────────────────────────────────────
-
-type PurposeFilter = 'all' | 'touring' | 'adventure' | 'enduro' | 'by-accessory'
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import GlobalNav from '@/components/GlobalNav';
+import { demoExpertBuildCatalog } from '@/lib/demo-content/expert-builds';
+import { supabase } from '@/lib/supabase';
+import type { ExpertBuild } from '@/lib/expert-builds/types';
 
 type SelectedBike = {
-  id: string
-  make: string
-  model: string
-  variant: string | null
-  year: number
+  make: string;
+  model: string;
+  variant?: string;
+  year?: string;
+  image?: string;
+};
+
+type ClassificationFilter = 'all' | 'touring' | 'adventure' | 'enduro' | 'expedition';
+type SortMode = 'most-liked' | 'newest' | 'az';
+
+const BROWSE_BIKE_KEY = 'browse_bike_selection_v2';
+const EXPERT_LIKES_KEY = 'expert_build_likes_v1';
+
+const classificationFilters: Array<{ id: ClassificationFilter; label: string }> = [
+  { id: 'all', label: 'All builds' },
+  { id: 'touring', label: 'Touring' },
+  { id: 'adventure', label: 'Adventure' },
+  { id: 'enduro', label: 'Enduro' },
+  { id: 'expedition', label: 'Expedition' },
+];
+
+function normalize(value?: string | null) {
+  return (value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function getBikeLabel(build: ExpertBuild): string {
-  const { make, model, yearStart, yearEnd } = build.bikeFitment
-  const years = yearStart === yearEnd ? String(yearStart) : `${yearStart}–${yearEnd}`
-  return `${years} ${make} ${model}`
-}
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-  return (parts[0]?.[0] ?? '?').toUpperCase()
-}
-
-function purposeLabel(purpose: string): string {
-  const map: Record<string, string> = {
-    touring: 'Touring', adventure: 'Adventure', 'off-road': 'Enduro',
-    commuter: 'Commuter', performance: 'Performance', mixed: 'Mixed',
-  }
-  return map[purpose] ?? purpose
-}
-
-function getCategoryLabel(categoryId: string): string {
-  return garageCategories.find(c => c.id === categoryId)?.label ?? categoryId
-}
-
-function matchesPurpose(build: ExpertBuild, filter: PurposeFilter): boolean {
-  if (filter === 'all' || filter === 'by-accessory') return true
-  const purposeMap: Record<string, string> = { touring: 'touring', adventure: 'adventure', enduro: 'off-road' }
-  return build.dna.purpose === purposeMap[filter]
-}
-
-function matchesSearch(build: ExpertBuild, q: string): boolean {
-  if (!q) return true
-  const lower = q.toLowerCase()
-  return (
-    build.title.toLowerCase().includes(lower) ||
-    build.builderName.toLowerCase().includes(lower) ||
-    `${build.bikeFitment.make} ${build.bikeFitment.model}`.toLowerCase().includes(lower) ||
-    build.accessories.some(a => a.title.toLowerCase().includes(lower)) ||
-    build.tags.some(t => t.toLowerCase().includes(lower))
-  )
-}
-
-// ── SVG icons ────────────────────────────────────────────────────────────────
-
-function SearchIcon({ size = 14, color = '#44423E' }: { size?: number; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  )
-}
-
-function ChevronRight() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#44423E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-      <polyline points="9 18 15 12 9 6" />
-    </svg>
-  )
-}
-
-function ChevronLeft() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E8841A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
-  )
-}
-
-// ── Shared small components ───────────────────────────────────────────────────
-
-function CategoryTag({ label }: { label: string }) {
-  return (
-    <span
-      className="rounded-full whitespace-nowrap"
-      style={{
-        backgroundColor: 'rgba(232,132,26,0.08)',
-        border: '1px solid rgba(232,132,26,0.16)',
-        color: '#E8841A',
-        fontSize: 9,
-        fontWeight: 500,
-        padding: '3px 9px',
-      }}
-    >
-      {label}
-    </span>
-  )
-}
-
-function VerifiedBadge() {
-  return (
-    <span
-      className="rounded-full whitespace-nowrap"
-      style={{
-        backgroundColor: 'rgba(232,132,26,0.1)',
-        border: '1px solid rgba(232,132,26,0.2)',
-        color: '#E8841A',
-        fontSize: 9,
-        fontWeight: 500,
-        padding: '2px 8px',
-      }}
-    >
-      Verified
-    </span>
-  )
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-[#F5F3EE] font-semibold" style={{ fontSize: 12 }}>
-      {children}
-    </p>
-  )
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div
-      className="flex items-center justify-center rounded-[12px] py-10 px-5 text-center"
-      style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}
-    >
-      <p style={{ fontSize: 13, color: '#6A6860' }}>{message}</p>
-    </div>
-  )
-}
-
-// ── Search bar ────────────────────────────────────────────────────────────────
-
-function SearchBar({
-  value,
-  onChange,
-  placeholder = 'Search builds, bikes or accessories...',
-}: {
-  value: string
-  onChange: (v: string) => void
-  placeholder?: string
-}) {
-  return (
-    <div
-      className="flex items-center gap-2 rounded-[8px] px-3 py-2.5"
-      style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}
-    >
-      <SearchIcon size={14} color="#44423E" />
-      <input
-        type="text"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="flex-1 bg-transparent outline-none"
-        style={{ fontSize: 12, color: '#F5F3EE', caretColor: '#E8841A' }}
-      />
-      {value && (
-        <button
-          onClick={() => onChange('')}
-          style={{ fontSize: 14, color: '#44423E', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1, padding: 0 }}
-        >
-          ×
-        </button>
-      )}
-    </div>
-  )
-}
-
-// ── Filter pills ──────────────────────────────────────────────────────────────
-
-const FILTER_PILLS: Array<{ id: PurposeFilter; label: string; icon?: boolean }> = [
-  { id: 'all',          label: 'All builds' },
-  { id: 'touring',      label: 'Touring' },
-  { id: 'adventure',    label: 'Adventure' },
-  { id: 'enduro',       label: 'Enduro' },
-  { id: 'by-accessory', label: 'By accessory', icon: true },
-]
-
-function FilterPills({
-  active,
-  onChange,
-}: {
-  active: PurposeFilter
-  onChange: (f: PurposeFilter) => void
-}) {
-  return (
-    <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
-      {FILTER_PILLS.map(({ id, label, icon }) => {
-        const isActive = active === id
-        return (
-          <button
-            key={id}
-            onClick={() => onChange(id)}
-            className="flex items-center gap-1.5 whitespace-nowrap rounded-full flex-shrink-0"
-            style={{
-              fontSize: 11,
-              fontWeight: 500,
-              padding: '6px 13px',
-              border: isActive
-                ? '1px solid rgba(232,132,26,0.22)'
-                : '1px solid rgba(255,255,255,0.07)',
-              backgroundColor: isActive ? 'rgba(232,132,26,0.1)' : '#141414',
-              color: isActive ? '#E8841A' : '#B8AFA6',
-              cursor: 'pointer',
-            }}
-          >
-            {icon && <SearchIcon size={10} color={isActive ? '#E8841A' : '#B8AFA6'} />}
-            {label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-// ── Featured build card ───────────────────────────────────────────────────────
-
-function FeaturedBuildCard({ build }: { build: ExpertBuild }) {
-  const photoCount = 1 + build.galleryPhotos.length
-  const bikeLabel = getBikeLabel(build)
-  const initials = getInitials(build.builderName)
-  const uniqueCategories = new Set(build.accessories.map(a => a.categoryId)).size
+function buildMatchesBike(build: ExpertBuild, bike: SelectedBike | null) {
+  if (!bike?.make || !bike.model) return true;
 
   return (
-    <div
-      className="rounded-[12px] overflow-hidden"
-      style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}
-    >
-      {/* Photo area */}
-      <div style={{ position: 'relative', height: 136, backgroundColor: '#1A1814', overflow: 'hidden' }}>
-        {build.primaryPhoto?.imageUrl && (
-          <img
-            src={build.primaryPhoto.imageUrl}
-            alt={build.primaryPhoto.alt}
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
-          />
-        )}
-        {/* Photo count badge */}
-        <span
-          className="absolute top-2 right-2 rounded-full"
-          style={{
-            backgroundColor: 'rgba(0,0,0,0.55)',
-            color: '#F5F3EE',
-            fontSize: 9,
-            fontWeight: 500,
-            padding: '2px 8px',
-          }}
-        >
-          {photoCount} photos
-        </span>
-        {/* Real build photos badge */}
-        {build.credibility?.hasRealBuildPhotos && (
-          <span
-            className="absolute top-2 left-2 rounded-full"
-            style={{
-              backgroundColor: 'rgba(232,132,26,0.15)',
-              border: '1px solid rgba(232,132,26,0.3)',
-              color: '#E8841A',
-              fontSize: 9,
-              fontWeight: 500,
-              padding: '2px 8px',
-            }}
-          >
-            Owner photos · real bike
-          </span>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex flex-col gap-3 p-[13px]">
-        {/* Rider info row */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div
-            className="flex items-center justify-center rounded-full flex-shrink-0 text-[#E8841A] font-semibold"
-            style={{
-              width: 26,
-              height: 26,
-              backgroundColor: 'rgba(232,132,26,0.12)',
-              fontSize: 11,
-            }}
-          >
-            {initials}
-          </div>
-          <span className="text-[#F5F3EE] font-semibold" style={{ fontSize: 12 }}>
-            {build.builderName}
-          </span>
-          {build.credibility?.verifiedBuilder && <VerifiedBadge />}
-          <span style={{ fontSize: 11, color: '#6A6860' }}>{bikeLabel}</span>
-          <CategoryTag label={purposeLabel(build.dna.purpose)} />
-        </div>
-
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { value: build.accessories.length, label: 'accessories' },
-            { value: uniqueCategories, label: 'categories' },
-            { value: purposeLabel(build.dna.purpose), label: 'build type' },
-          ].map(({ value, label }) => (
-            <div key={label} className="flex flex-col items-center text-center">
-              <span
-                className="text-[#F5F3EE] leading-none"
-                style={{
-                  fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-                  fontWeight: 900,
-                  fontSize: typeof value === 'number' ? 20 : 13,
-                }}
-              >
-                {value}
-              </span>
-              <span style={{ fontSize: 10, color: '#6A6860', marginTop: 3 }}>{label}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Tags */}
-        {build.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {build.tags.slice(0, 3).map(tag => (
-              <CategoryTag key={tag} label={tag} />
-            ))}
-          </div>
-        )}
-
-        {/* CTA */}
-        <Link
-          href={`/expert/${build.id}`}
-          className="block w-full text-center rounded-[8px] no-underline"
-          style={{
-            border: '1px solid rgba(232,132,26,0.35)',
-            color: '#E8841A',
-            fontSize: 12,
-            fontWeight: 600,
-            padding: '10px 0',
-          }}
-        >
-          Compare build →
-        </Link>
-      </div>
-    </div>
-  )
+    normalize(build.bikeFitment.make) === normalize(bike.make) &&
+    normalize(build.bikeFitment.model) === normalize(bike.model)
+  );
 }
 
-// ── Compact build card ────────────────────────────────────────────────────────
+function getBuildClassification(build: ExpertBuild): ClassificationFilter {
+  const haystack = [
+    build.dna?.ridingStyle,
+    build.dna?.terrainFocus,
+    ...(build.tags ?? []),
+    build.title,
+    build.summary,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
 
-function CompactBuildCard({ build }: { build: ExpertBuild }) {
-  const bikeLabel = getBikeLabel(build)
-
-  return (
-    <Link
-      href={`/expert/${build.id}`}
-      className="flex gap-3 items-center rounded-[12px] p-[13px] no-underline"
-      style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}
-    >
-      {/* Photo */}
-      <div
-        style={{ width: 60, height: 60, backgroundColor: '#1A1814', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}
-      >
-        {build.primaryPhoto?.imageUrl && (
-          <img
-            src={build.primaryPhoto.imageUrl}
-            alt={build.primaryPhoto.alt}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', display: 'block' }}
-          />
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <p className="text-[#F5F3EE] font-semibold truncate" style={{ fontSize: 12 }}>
-          {build.title}
-        </p>
-        <p style={{ fontSize: 11, color: '#6A6860', marginTop: 2 }}>{bikeLabel}</p>
-        <div className="flex gap-1.5 flex-wrap mt-1.5">
-          {build.tags.slice(0, 2).map(tag => (
-            <CategoryTag key={tag} label={tag} />
-          ))}
-        </div>
-      </div>
-
-      <ChevronRight />
-    </Link>
-  )
+  if (haystack.includes('enduro')) return 'enduro';
+  if (haystack.includes('expedition') || haystack.includes('overland')) return 'expedition';
+  if (haystack.includes('adventure')) return 'adventure';
+  return 'touring';
 }
 
-// ── By-accessory view ─────────────────────────────────────────────────────────
+function formatBikeTitle(bike: SelectedBike | null) {
+  if (!bike) return '';
+  return [bike.year, bike.make, bike.model, bike.variant].filter(Boolean).join(' ');
+}
 
-type AccessoryEntry = ExpertBuildAccessory & { buildIds: string[] }
+function formatFitment(build: ExpertBuild) {
+  const years =
+    build.bikeFitment.yearStart === build.bikeFitment.yearEnd
+      ? String(build.bikeFitment.yearStart)
+      : `${build.bikeFitment.yearStart}-${build.bikeFitment.yearEnd}`;
 
-function ByAccessoryView({ builds }: { builds: ExpertBuild[] }) {
-  const [accessoryQuery, setAccessoryQuery] = useState('')
-  const [selectedAccessory, setSelectedAccessory] = useState<AccessoryEntry | null>(null)
+  return [years, build.bikeFitment.make, build.bikeFitment.model]
+    .filter(Boolean)
+    .join(' ');
+}
 
-  // Collect all unique accessories across all builds, merging buildIds
-  const allAccessories = useMemo<AccessoryEntry[]>(() => {
-    const map = new Map<string, AccessoryEntry>()
-    for (const build of builds) {
-      for (const acc of build.accessories) {
-        if (map.has(acc.id)) {
-          map.get(acc.id)!.buildIds.push(build.id)
-        } else {
-          map.set(acc.id, { ...acc, buildIds: [build.id] })
-        }
-      }
-    }
-    return Array.from(map.values())
-  }, [builds])
-
-  const filteredAccessories = useMemo(() => {
-    if (!accessoryQuery) return allAccessories
-    const lower = accessoryQuery.toLowerCase()
-    return allAccessories.filter(
-      a => a.title.toLowerCase().includes(lower) || a.brand.toLowerCase().includes(lower)
-    )
-  }, [allAccessories, accessoryQuery])
-
-  // Group by categoryId
-  const grouped = useMemo(() => {
-    const order: string[] = []
-    const map = new Map<string, AccessoryEntry[]>()
-    for (const acc of filteredAccessories) {
-      if (!map.has(acc.categoryId)) {
-        order.push(acc.categoryId)
-        map.set(acc.categoryId, [])
-      }
-      map.get(acc.categoryId)!.push(acc)
-    }
-    return order.map(catId => ({ catId, label: getCategoryLabel(catId), items: map.get(catId)! }))
-  }, [filteredAccessories])
-
-  // Builds that include the selected accessory
-  const matchingBuilds = useMemo(() => {
-    if (!selectedAccessory) return []
-    return builds.filter(b => b.accessories.some(a => a.id === selectedAccessory.id))
-  }, [builds, selectedAccessory])
-
-  if (selectedAccessory) {
-    return (
-      <div className="flex flex-col gap-4">
-        {/* Back + heading */}
-        <div className="flex flex-col gap-1">
-          <button
-            onClick={() => setSelectedAccessory(null)}
-            className="flex items-center gap-1"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: 'fit-content' }}
-          >
-            <ChevronLeft />
-            <span style={{ fontSize: 11, color: '#E8841A', fontWeight: 500 }}>All accessories</span>
-          </button>
-          <p className="text-[#F5F3EE] font-semibold" style={{ fontSize: 13 }}>
-            Builds featuring {selectedAccessory.title}
-          </p>
-        </div>
-
-        {matchingBuilds.length === 0 ? (
-          <EmptyState message="No builds include this accessory." />
-        ) : (
-          <div className="flex flex-col gap-2">
-            {matchingBuilds.map(b => (
-              <CompactBuildCard key={b.id} build={b} />
-            ))}
-          </div>
-        )}
-      </div>
-    )
+function formatLikes(count: number) {
+  if (count >= 1000) {
+    const value = count / 1000;
+    return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}k`;
   }
 
-  return (
-    <div className="flex flex-col gap-4">
-      <SearchBar
-        value={accessoryQuery}
-        onChange={setAccessoryQuery}
-        placeholder="Search accessories..."
-      />
-
-      {grouped.length === 0 ? (
-        <EmptyState message="No accessories match your search." />
-      ) : (
-        <div className="flex flex-col gap-5">
-          {grouped.map(({ catId, label, items }) => (
-            <div key={catId} className="flex flex-col gap-2">
-              {/* Section header */}
-              <div className="flex items-center gap-2">
-                <span
-                  style={{
-                    display: 'inline-block',
-                    width: 3,
-                    height: 14,
-                    backgroundColor: '#E8841A',
-                    borderRadius: 2,
-                    flexShrink: 0,
-                  }}
-                />
-                <span
-                  className="uppercase tracking-[0.05em] text-[#F5F3EE]"
-                  style={{
-                    fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-                    fontWeight: 900,
-                    fontSize: 12,
-                  }}
-                >
-                  {label}
-                </span>
-                <span style={{ fontSize: 11, color: '#44423E' }}>{items.length}</span>
-              </div>
-
-              {/* Accessory rows */}
-              {items.map(acc => (
-                <button
-                  key={acc.id}
-                  onClick={() => setSelectedAccessory(acc)}
-                  className="flex items-center justify-between rounded-[12px] p-[13px] w-full text-left"
-                  style={{
-                    backgroundColor: '#141414',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div className="min-w-0">
-                    <p className="text-[#F5F3EE] font-semibold truncate" style={{ fontSize: 12 }}>
-                      {acc.title}
-                    </p>
-                    <p style={{ fontSize: 11, color: '#6A6860', marginTop: 2 }}>{acc.brand}</p>
-                  </div>
-                  <span
-                    className="flex-shrink-0 ml-3 whitespace-nowrap"
-                    style={{ fontSize: 11, color: '#1456B0', fontWeight: 500 }}
-                  >
-                    ↗ {acc.buildIds.length} {acc.buildIds.length === 1 ? 'build' : 'builds'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
+  return String(count);
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+function getBuildSearchText(build: ExpertBuild) {
+  return [
+    build.title,
+    build.builderName,
+    build.summary,
+    build.description,
+    build.bikeFitment.make,
+    build.bikeFitment.model,
+    build.dna?.ridingStyle,
+    build.dna?.terrainFocus,
+    ...(build.tags ?? []),
+    ...build.accessories.map((item) => `${item.title} ${item.brand} ${item.categoryId}`),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
 
 export default function ExpertPage() {
-  const router = useRouter()
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeFilter, setActiveFilter] = useState<PurposeFilter>('all')
-  const [bikeContext, setBikeContext] = useState<SelectedBike | null>(null)
+  const router = useRouter();
+  const [selectedBike, setSelectedBike] = useState<SelectedBike | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [classification, setClassification] = useState<ClassificationFilter>('all');
+  const [sortMode, setSortMode] = useState<SortMode>('most-liked');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [likedBuildIds, setLikedBuildIds] = useState<string[]>([]);
+  const [loginPromptBuild, setLoginPromptBuild] = useState<ExpertBuild | null>(null);
 
-  // Read selected bike from sessionStorage (set by the Browse screen)
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem('browse_bike')
-      if (raw) {
-        const parsed = JSON.parse(raw) as SelectedBike
-        if (parsed?.make && parsed?.model) setBikeContext(parsed)
+    const rawBike = sessionStorage.getItem(BROWSE_BIKE_KEY);
+    if (rawBike) {
+      try {
+        setSelectedBike(JSON.parse(rawBike));
+      } catch {
+        sessionStorage.removeItem(BROWSE_BIKE_KEY);
       }
-    } catch { /* ignore */ }
-  }, [])
+    }
 
-  const publishedBuilds = useMemo(
-    () => demoExpertBuildCatalog.filter(b => b.published),
-    []
-  )
+    const rawLikes = localStorage.getItem(EXPERT_LIKES_KEY);
+    if (rawLikes) {
+      try {
+        const parsed = JSON.parse(rawLikes);
+        if (Array.isArray(parsed)) setLikedBuildIds(parsed.filter((id) => typeof id === 'string'));
+      } catch {
+        localStorage.removeItem(EXPERT_LIKES_KEY);
+      }
+    }
 
-  // Builds matching the selected bike (make + model, case-insensitive)
-  const buildsForBike = useMemo(() => {
-    if (!bikeContext) return publishedBuilds
-    return publishedBuilds.filter(b =>
-      b.bikeFitment.make.toLowerCase() === bikeContext.make.toLowerCase() &&
-      b.bikeFitment.model.toLowerCase() === bikeContext.model.toLowerCase()
-    )
-  }, [publishedBuilds, bikeContext])
+    supabase.auth.getSession().then(({ data }) => {
+      setIsLoggedIn(Boolean(data.session));
+    });
+  }, []);
 
-  const filteredBuilds = useMemo(
+  const buildsWithLikes = useMemo(
     () =>
-      buildsForBike
-        .filter(b => matchesPurpose(b, activeFilter))
-        .filter(b => matchesSearch(b, searchQuery)),
-    [buildsForBike, activeFilter, searchQuery]
-  )
+      demoExpertBuildCatalog
+        .filter((build) => build.published)
+        .map((build) => ({
+          build,
+          likeCount: (build.likeCount ?? 0) + (likedBuildIds.includes(build.id) ? 1 : 0),
+          liked: likedBuildIds.includes(build.id),
+          classification: getBuildClassification(build),
+        })),
+    [likedBuildIds],
+  );
 
-  const featuredBuild = useMemo(
-    () => filteredBuilds.find(b => b.featured) ?? filteredBuilds[0] ?? null,
-    [filteredBuilds]
-  )
+  const bikeMatchedBuilds = useMemo(
+    () => buildsWithLikes.filter(({ build }) => buildMatchesBike(build, selectedBike)),
+    [buildsWithLikes, selectedBike],
+  );
 
-  const moreBuilds = useMemo(
-    () => filteredBuilds.filter(b => b.id !== featuredBuild?.id),
-    [filteredBuilds, featuredBuild]
-  )
+  const filteredBuilds = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
 
-  const bikeLabel = bikeContext
-    ? [bikeContext.year, bikeContext.make, bikeContext.model, bikeContext.variant].filter(Boolean).join(' ')
-    : null
+    const filtered = bikeMatchedBuilds.filter(({ build, classification: buildClassification }) => {
+      const matchesSearch = !query || getBuildSearchText(build).includes(query);
+      const matchesClassification = classification === 'all' || buildClassification === classification;
+      return matchesSearch && matchesClassification;
+    });
 
-  // True when bike is set but no builds match (before search/filter applied)
-  const noBuildsForBike = !!bikeContext && buildsForBike.length === 0
+    return [...filtered].sort((a, b) => {
+      if (sortMode === 'az') return a.build.title.localeCompare(b.build.title);
+      if (sortMode === 'newest') return b.build.id.localeCompare(a.build.id);
+      return b.likeCount - a.likeCount;
+    });
+  }, [bikeMatchedBuilds, classification, searchQuery, sortMode]);
+
+  const hasActiveFilters = Boolean(searchQuery.trim()) || classification !== 'all';
+  const noBikeMatches = selectedBike && bikeMatchedBuilds.length === 0;
+
+  function toggleLike(build: ExpertBuild) {
+    if (!isLoggedIn) {
+      setLoginPromptBuild(build);
+      return;
+    }
+
+    setLikedBuildIds((current) => {
+      const next = current.includes(build.id)
+        ? current.filter((id) => id !== build.id)
+        : [...current, build.id];
+      localStorage.setItem(EXPERT_LIKES_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function clearFilters() {
+    setSearchQuery('');
+    setClassification('all');
+    setSortMode('most-liked');
+  }
 
   return (
-    <div className="flex flex-col gap-4 px-5 pt-4 pb-8 min-h-screen bg-[#0D0D0D]">
+    <main className="expert-page">
+      <GlobalNav />
 
-      {/* A0 — Bike context banner */}
-      {bikeContext ? (
-        <div style={{
-          backgroundColor: '#141414',
-          border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: 12, padding: '11px 13px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-        }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{
-              margin: 0, fontSize: 13, fontWeight: 600, color: '#F5F3EE',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              {bikeLabel}
-            </p>
-            <p style={{ margin: '3px 0 0', fontSize: 10, color: '#6A6860' }}>
-              {noBuildsForBike ? 'No builds found for this bike' : `${buildsForBike.length} expert ${buildsForBike.length === 1 ? 'build' : 'builds'} for your bike`}
-            </p>
+      <section className="expert-shell">
+        <section className={`bike-context ${selectedBike ? 'selected' : 'empty'}`}>
+          <div className="bike-thumb" aria-hidden="true">
+            {selectedBike?.image ? <img src={selectedBike.image} alt="" /> : <span>EX</span>}
           </div>
-          <button
-            onClick={() => router.push('/browse')}
-            style={{ flexShrink: 0, background: 'none', border: 'none', padding: 0, fontSize: 11, fontWeight: 500, color: '#E8841A', cursor: 'pointer' }}
-          >
+          <div>
+            <p className="eyebrow">Selected bike</p>
+            {selectedBike ? (
+              <>
+                <h1>{formatBikeTitle(selectedBike)}</h1>
+                <p>
+                  {bikeMatchedBuilds.length} expert {bikeMatchedBuilds.length === 1 ? 'build' : 'builds'} for
+                  your bike
+                </p>
+              </>
+            ) : (
+              <>
+                <h1>Choose a bike to focus Expert Builds</h1>
+                <p>Browse all expert builds now, or choose your bike for make and model matches.</p>
+              </>
+            )}
+          </div>
+          <button type="button" onClick={() => router.push('/browse')} className="change-bike">
             Change
           </button>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <p style={{ margin: 0, fontSize: 11, color: '#6A6860' }}>Showing all expert builds</p>
-          <Link href="/browse" style={{ fontSize: 11, fontWeight: 500, color: '#E8841A', textDecoration: 'none' }}>
-            Browse for your bike →
-          </Link>
-        </div>
-      )}
+        </section>
 
-      {/* A — Search */}
-      <SearchBar value={searchQuery} onChange={setSearchQuery} />
+        <section className="controls-panel">
+          <label className="search-box">
+            <span>Search</span>
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search expert builds..."
+            />
+          </label>
 
-      {/* B — Filter pills */}
-      <FilterPills active={activeFilter} onChange={setActiveFilter} />
+          <div className="filter-row">
+            <label>
+              <span>Sort by likes</span>
+              <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
+                <option value="most-liked">Most liked</option>
+                <option value="newest">Newest</option>
+                <option value="az">A-Z</option>
+              </select>
+            </label>
+          </div>
 
-      {/* E — By-accessory mode */}
-      {activeFilter === 'by-accessory' ? (
-        <ByAccessoryView builds={publishedBuilds} />
-      ) : noBuildsForBike ? (
-        /* No builds for selected bike — offer to show all */
-        <div
-          className="flex flex-col items-center gap-3 rounded-[12px] py-10 px-5 text-center"
-          style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}
-        >
-          <p style={{ fontSize: 13, color: '#6A6860', margin: 0 }}>
-            No expert builds found for {bikeLabel}.
+          <div className="classification-chips" aria-label="Classification filters">
+            {classificationFilters.map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => setClassification(filter.id)}
+                className={classification === filter.id ? 'active' : ''}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+
+          <p className="sort-note">
+            {sortMode === 'most-liked' ? 'Ordered by likes (highest first)' : 'Filtered builds update live'}
           </p>
-          <button
-            onClick={() => setBikeContext(null)}
-            style={{
-              background: 'none', border: '1px solid rgba(232,132,26,0.35)',
-              borderRadius: 20, padding: '6px 14px',
-              fontSize: 11, fontWeight: 500, color: '#E8841A', cursor: 'pointer',
-            }}
-          >
-            Show all builds
-          </button>
-        </div>
-      ) : (
-        <>
-          {filteredBuilds.length === 0 ? (
-            <EmptyState message="No builds match your search." />
-          ) : (
-            <>
-              {/* C — Featured build */}
-              {featuredBuild && (
-                <div className="flex flex-col gap-2">
-                  <SectionLabel>Featured build</SectionLabel>
-                  <FeaturedBuildCard build={featuredBuild} />
-                </div>
-              )}
+        </section>
 
-              {/* D — More builds */}
-              {moreBuilds.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  <SectionLabel>More builds</SectionLabel>
-                  <div className="flex flex-col gap-2">
-                    {moreBuilds.map(build => (
-                      <CompactBuildCard key={build.id} build={build} />
-                    ))}
-                  </div>
+        {filteredBuilds.length > 0 ? (
+          <section className="build-list" aria-label="Expert build list">
+            {filteredBuilds.map(({ build, likeCount, liked, classification: buildClassification }) => (
+              <article key={build.id} className="build-card">
+                <div className="build-image">
+                  <img src={build.primaryPhoto.imageUrl} alt={build.primaryPhoto.alt} />
+                  <button
+                    type="button"
+                    onClick={() => toggleLike(build)}
+                    className={`like-badge ${liked ? 'liked' : ''}`}
+                    aria-label={liked ? `Unlike ${build.title}` : `Like ${build.title}`}
+                  >
+                    <span aria-hidden="true">{liked ? '♥' : '♡'}</span>
+                    <strong>{formatLikes(likeCount)}</strong>
+                    <small>likes</small>
+                  </button>
                 </div>
-              )}
-            </>
-          )}
-        </>
-      )}
-    </div>
-  )
+
+                <div className="build-card-body">
+                  <div className="build-title-row">
+                    <div>
+                      <p className="eyebrow">{build.builderName}</p>
+                      <h2>{build.title}</h2>
+                    </div>
+                    <span className="classification-badge">{buildClassification}</span>
+                  </div>
+
+                  <p className="fitment-line">{formatFitment(build)}</p>
+                  <p className="summary">{build.summary}</p>
+
+                  <div className="build-meta">
+                    <span>{build.accessories.length} accessories</span>
+                    <span>{new Set(build.accessories.map((item) => item.categoryId)).size} categories</span>
+                    <span>{formatLikes(likeCount)} likes</span>
+                  </div>
+
+                  <button type="button" className="compare-button" onClick={() => router.push(`/expert/${build.id}`)}>
+                    Compare build
+                  </button>
+                </div>
+              </article>
+            ))}
+          </section>
+        ) : (
+          <section className="no-match-card">
+            <div className="no-match-illustration" aria-hidden="true">
+              <span />
+            </div>
+            <p className="eyebrow">Expert builds</p>
+            <h2>{noBikeMatches ? 'No expert builds match this bike yet' : 'No expert builds match this filter yet'}</h2>
+            <p>
+              {noBikeMatches
+                ? 'Try another bike or browse all expert builds.'
+                : 'Try another classification or sort option. Liked builds can be sorted by popularity.'}
+            </p>
+
+            {hasActiveFilters ? (
+              <div className="active-filter-summary">
+                {searchQuery.trim() ? <span>Search: {searchQuery.trim()}</span> : null}
+                <span>Classification: {classificationFilters.find((item) => item.id === classification)?.label}</span>
+                <span>Sort: {sortMode === 'most-liked' ? 'Most liked' : sortMode === 'newest' ? 'Newest' : 'A-Z'}</span>
+              </div>
+            ) : null}
+
+            <div className="empty-actions">
+              <button type="button" onClick={clearFilters}>
+                Clear all filters
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedBike(null);
+                  clearFilters();
+                }}
+              >
+                Show all
+              </button>
+            </div>
+          </section>
+        )}
+      </section>
+
+      {loginPromptBuild ? (
+        <div className="modal-backdrop" role="presentation">
+          <section className="signin-modal" role="dialog" aria-modal="true" aria-labelledby="signin-title">
+            <h2 id="signin-title">Sign in to like expert builds.</h2>
+            <p>{loginPromptBuild.title} will be waiting when you return.</p>
+            <div>
+              <button type="button" onClick={() => router.push('/login?returnTo=/expert')}>
+                Sign in
+              </button>
+              <button type="button" onClick={() => setLoginPromptBuild(null)}>
+                Cancel
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      <style jsx>{`
+        .expert-page {
+          min-height: 100vh;
+          background: #0d0d0d;
+          color: #f5f3ee;
+          padding-bottom: 48px;
+        }
+
+        .expert-shell {
+          width: min(1080px, 100%);
+          margin: 0 auto;
+          padding: 18px 16px 32px;
+          display: grid;
+          gap: 16px;
+        }
+
+        .bike-context,
+        .controls-panel,
+        .build-card,
+        .no-match-card {
+          background: #141414;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 22px;
+          box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+        }
+
+        .bike-context {
+          display: grid;
+          grid-template-columns: 58px 1fr auto;
+          align-items: center;
+          gap: 14px;
+          padding: 16px;
+        }
+
+        .bike-thumb {
+          width: 58px;
+          height: 58px;
+          border-radius: 18px;
+          overflow: hidden;
+          background: #1a1a1a;
+          border: 1px solid rgba(232, 132, 26, 0.24);
+          display: grid;
+          place-items: center;
+          color: #e8841a;
+          font-weight: 900;
+        }
+
+        .bike-thumb img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .eyebrow {
+          margin: 0 0 5px;
+          color: #e8841a;
+          font-size: 0.72rem;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        h1,
+        h2,
+        p {
+          margin: 0;
+        }
+
+        .bike-context h1 {
+          font-size: clamp(1.18rem, 4vw, 1.8rem);
+          line-height: 1.08;
+        }
+
+        .bike-context p:not(.eyebrow) {
+          margin-top: 6px;
+          color: #b8afa6;
+          font-size: 0.9rem;
+        }
+
+        .change-bike {
+          border: 1px solid rgba(232, 132, 26, 0.44);
+          background: rgba(232, 132, 26, 0.12);
+          color: #f5f3ee;
+          border-radius: 999px;
+          padding: 10px 13px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .controls-panel {
+          padding: 16px;
+          display: grid;
+          gap: 14px;
+        }
+
+        label {
+          display: grid;
+          gap: 8px;
+          color: #b8afa6;
+          font-size: 0.78rem;
+          font-weight: 800;
+        }
+
+        input,
+        select {
+          width: 100%;
+          min-height: 48px;
+          border-radius: 15px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: #1a1a1a;
+          color: #f5f3ee;
+          padding: 0 14px;
+          font: inherit;
+          outline: none;
+        }
+
+        input:focus,
+        select:focus {
+          border-color: rgba(232, 132, 26, 0.72);
+          box-shadow: 0 0 0 3px rgba(232, 132, 26, 0.16);
+        }
+
+        .classification-chips {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          padding-bottom: 2px;
+        }
+
+        .classification-chips button {
+          flex: 0 0 auto;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: #1a1a1a;
+          color: #b8afa6;
+          border-radius: 999px;
+          padding: 11px 14px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .classification-chips button.active {
+          border-color: rgba(232, 132, 26, 0.62);
+          background: rgba(232, 132, 26, 0.16);
+          color: #f5f3ee;
+        }
+
+        .sort-note {
+          color: #7a7268;
+          font-size: 0.82rem;
+        }
+
+        .build-list {
+          display: grid;
+          gap: 14px;
+        }
+
+        .build-card {
+          overflow: hidden;
+        }
+
+        .build-image {
+          position: relative;
+          aspect-ratio: 16 / 10;
+          background: #1a1a1a;
+        }
+
+        .build-image img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        .build-image::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, rgba(13, 13, 13, 0.12), rgba(13, 13, 13, 0.5));
+          pointer-events: none;
+        }
+
+        .like-badge {
+          position: absolute;
+          top: 12px;
+          left: 12px;
+          z-index: 2;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          background: rgba(13, 13, 13, 0.82);
+          color: #f5f3ee;
+          border-radius: 999px;
+          padding: 8px 10px;
+          cursor: pointer;
+          backdrop-filter: blur(10px);
+        }
+
+        .like-badge span {
+          color: #e8841a;
+          font-size: 1.05rem;
+          line-height: 1;
+        }
+
+        .like-badge small {
+          color: #b8afa6;
+          font-size: 0.72rem;
+        }
+
+        .like-badge.liked {
+          border-color: rgba(232, 132, 26, 0.62);
+          background: rgba(232, 132, 26, 0.2);
+        }
+
+        .build-card-body {
+          padding: 16px;
+          display: grid;
+          gap: 12px;
+        }
+
+        .build-title-row {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          align-items: flex-start;
+        }
+
+        .build-title-row h2 {
+          font-size: 1.28rem;
+          line-height: 1.1;
+        }
+
+        .classification-badge {
+          flex: 0 0 auto;
+          border-radius: 999px;
+          border: 1px solid rgba(232, 132, 26, 0.32);
+          background: rgba(232, 132, 26, 0.12);
+          color: #f5f3ee;
+          padding: 7px 10px;
+          font-size: 0.75rem;
+          font-weight: 900;
+          text-transform: capitalize;
+        }
+
+        .fitment-line {
+          color: #d9d0c6;
+          font-weight: 800;
+        }
+
+        .summary {
+          color: #9f968d;
+          line-height: 1.45;
+          font-size: 0.92rem;
+        }
+
+        .build-meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .build-meta span {
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: #1a1a1a;
+          color: #b8afa6;
+          border-radius: 999px;
+          padding: 8px 10px;
+          font-size: 0.78rem;
+          font-weight: 800;
+        }
+
+        .compare-button,
+        .empty-actions button,
+        .signin-modal button:first-child {
+          min-height: 48px;
+          border: 0;
+          border-radius: 16px;
+          background: #e8841a;
+          color: #17110b;
+          font-weight: 950;
+          cursor: pointer;
+        }
+
+        .no-match-card {
+          padding: 28px 18px;
+          text-align: center;
+          display: grid;
+          justify-items: center;
+          gap: 13px;
+        }
+
+        .no-match-illustration {
+          width: 94px;
+          height: 94px;
+          border-radius: 28px;
+          background:
+            radial-gradient(circle at 50% 45%, rgba(232, 132, 26, 0.24), transparent 38%),
+            #1a1a1a;
+          border: 1px solid rgba(232, 132, 26, 0.2);
+          display: grid;
+          place-items: center;
+        }
+
+        .no-match-illustration span {
+          width: 52px;
+          height: 28px;
+          border-bottom: 5px solid #e8841a;
+          border-radius: 50%;
+          position: relative;
+        }
+
+        .no-match-illustration span::before,
+        .no-match-illustration span::after {
+          content: '';
+          position: absolute;
+          bottom: -12px;
+          width: 18px;
+          height: 18px;
+          border: 4px solid #b8afa6;
+          border-radius: 50%;
+        }
+
+        .no-match-illustration span::before {
+          left: -5px;
+        }
+
+        .no-match-illustration span::after {
+          right: -5px;
+        }
+
+        .no-match-card h2 {
+          font-size: 1.35rem;
+        }
+
+        .no-match-card p:not(.eyebrow) {
+          color: #b8afa6;
+          max-width: 440px;
+          line-height: 1.5;
+        }
+
+        .active-filter-summary {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 8px;
+        }
+
+        .active-filter-summary span {
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: #1a1a1a;
+          color: #b8afa6;
+          border-radius: 999px;
+          padding: 8px 10px;
+          font-size: 0.78rem;
+        }
+
+        .empty-actions {
+          width: 100%;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          max-width: 380px;
+        }
+
+        .empty-actions button:last-child,
+        .signin-modal button:last-child {
+          background: #1a1a1a;
+          color: #f5f3ee;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .modal-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 40;
+          background: rgba(0, 0, 0, 0.72);
+          display: grid;
+          place-items: end center;
+          padding: 16px;
+        }
+
+        .signin-modal {
+          width: min(440px, 100%);
+          background: #141414;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 22px;
+          padding: 18px;
+          display: grid;
+          gap: 12px;
+        }
+
+        .signin-modal p {
+          color: #b8afa6;
+        }
+
+        .signin-modal div {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+
+        @media (min-width: 760px) {
+          .expert-shell {
+            padding: 28px 24px 48px;
+          }
+
+          .controls-panel {
+            grid-template-columns: 1fr 260px;
+            align-items: end;
+          }
+
+          .classification-chips,
+          .sort-note {
+            grid-column: 1 / -1;
+          }
+
+          .build-list {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 520px) {
+          .bike-context {
+            grid-template-columns: 52px 1fr;
+          }
+
+          .change-bike {
+            grid-column: 1 / -1;
+            width: 100%;
+          }
+
+          .empty-actions,
+          .signin-modal div {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+    </main>
+  );
 }

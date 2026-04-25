@@ -244,6 +244,7 @@ export const demoExpertBuildCatalog: ExpertBuild[] = [
     tags: ["touring", "electronics", "long-distance", "safety"],
     featured: true,
     published: true,
+    likeCount: 1240,
     credibility: {
       featuredBuild: true,
       hasRealBuildPhotos: true,
@@ -357,6 +358,7 @@ export const demoExpertBuildCatalog: ExpertBuild[] = [
     tags: ["touring", "clean cockpit", "premium daily touring"],
     featured: true,
     published: true,
+    likeCount: 752,
     credibility: {
       featuredBuild: true,
       installNotesAvailable: true,
@@ -478,6 +480,7 @@ export const demoExpertBuildCatalog: ExpertBuild[] = [
     tags: ["expedition", "bmw r1300gsa", "remote touring"],
     featured: true,
     published: true,
+    likeCount: 489,
     credibility: {
       featuredBuild: true,
       editorsPick: true,
@@ -568,6 +571,7 @@ export const demoExpertBuildCatalog: ExpertBuild[] = [
     tags: ["commuter", "lightweight", "practical"],
     featured: false,
     published: true,
+    likeCount: 312,
     credibility: {
       installNotesAvailable: true,
     },
@@ -674,6 +678,7 @@ export const demoExpertBuildCatalog: ExpertBuild[] = [
     tags: ["real photo", "tenere 700", "lightweight adventure"],
     featured: true,
     published: true,
+    likeCount: 268,
     credibility: {
       hasRealBuildPhotos: true,
       featuredBuild: true,

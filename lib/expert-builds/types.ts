@@ -126,6 +126,7 @@ export type ExpertBuild = {
   tags: string[];
   featured: boolean;
   published: boolean;
+  likeCount?: number;
   credibility?: ExpertBuildCredibility;
   dna: ExpertBuildDNA;
   bike_make?: string;

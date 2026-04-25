@@ -1,904 +1,838 @@
-'use client'
+'use client';
 
-import { use, useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { demoExpertBuildCatalog } from '@/lib/demo-content/expert-builds'
-import { demoGarageProducts } from '@/lib/demo-content/products'
-import type { ExpertBuild } from '@/lib/expert-builds/types'
-import { garageCategories } from '@/types/garage'
-import { supabase } from '@/lib/supabase'
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import GlobalNav from '@/components/GlobalNav';
+import { demoExpertBuildCatalog } from '@/lib/demo-content/expert-builds';
+import { demoGarageProducts } from '@/lib/demo-content/products';
+import { demoGarageBikes } from '@/lib/demo-content/bikes';
+import { loadGarageFromSupabase, replaceGarageBuildItems } from '@/lib/garage/persistence';
+import { supabase } from '@/lib/supabase';
+import type { GarageBikeRecord, GarageBuildRecord, Product } from '@/types/garage';
+import { garageCategories } from '@/types/garage';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+type SelectedBike = {
+  make: string;
+  model: string;
+  variant?: string;
+  year?: string;
+};
 
-type GarageItemState = 'wishlist' | 'fitted' | null
+type RowStatus = 'Matched' | 'In my build' | 'Not in my build';
 
-type TableRow = {
-  key: string
-  title: string
-  brand: string
-  categoryId: string
-  productId: number | null
-  photoUrl: string | null
-  expertNotes: string | null
-  inExpert: boolean
+type CompareRow = {
+  key: string;
+  categoryId: string;
+  title: string;
+  brand: string;
+  product: Product | null;
+  status: RowStatus;
+};
+
+type CompareGroup = {
+  id: string;
+  label: string;
+  rows: CompareRow[];
+};
+
+type CompareReturnContext = {
+  expertBuildId: string;
+  showAllCategories: boolean;
+  collapsedCategoryIds: string[];
+  selectedItemId: string;
+  scrollY: number;
+};
+
+const BROWSE_BIKE_KEY = 'browse_bike_selection_v2';
+const COMPARE_RETURN_KEY = 'expert_compare_return_v1';
+
+const productById = new Map(demoGarageProducts.map((product) => [product.id, product]));
+
+function normalize(value?: string | null) {
+  return (value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function getBikeLabel(build: ExpertBuild): string {
-  const { make, model, yearStart, yearEnd } = build.bikeFitment
-  const years = yearStart === yearEnd ? String(yearStart) : `${yearStart}–${yearEnd}`
-  return `${years} ${make} ${model}`
+function sameBike(makeA?: string | null, modelA?: string | null, makeB?: string | null, modelB?: string | null) {
+  return normalize(makeA) === normalize(makeB) && normalize(modelA) === normalize(modelB);
 }
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-  return (parts[0]?.[0] ?? '?').toUpperCase()
+function categoryLabel(categoryId: string) {
+  return garageCategories.find((category) => category.id === categoryId)?.label ?? categoryId;
 }
 
-function purposeLabel(purpose: string): string {
-  const map: Record<string, string> = {
-    touring: 'Touring', adventure: 'Adventure', 'off-road': 'Enduro',
-    commuter: 'Commuter', performance: 'Performance', mixed: 'Mixed',
-  }
-  return map[purpose] ?? purpose
+function categoryIcon(categoryId: string) {
+  if (categoryId.includes('luggage')) return 'LG';
+  if (categoryId.includes('protection')) return 'PR';
+  if (categoryId.includes('navigation') || categoryId.includes('connectivity')) return 'NV';
+  if (categoryId.includes('lighting') || categoryId.includes('visibility')) return 'LT';
+  if (categoryId.includes('electrical') || categoryId.includes('power')) return 'EL';
+  return 'IT';
 }
 
-function getCategoryLabel(categoryId: string): string {
-  return garageCategories.find(c => c.id === categoryId)?.label ?? categoryId
+function formatBikeTitle(bike: SelectedBike | null, fallback: string) {
+  if (!bike) return fallback;
+  return [bike.year, bike.make, bike.model, bike.variant].filter(Boolean).join(' ');
 }
 
-function getDemoGarageState(productId: number): 'wishlist' | 'fitted' | null {
-  const n = productId % 3
-  if (n === 0) return null
-  if (n === 1) return 'wishlist'
-  return 'fitted'
+function findComparisonBuild(bikes: GarageBikeRecord[], selectedBike: SelectedBike | null) {
+  const bike =
+    (selectedBike
+      ? bikes.find((candidate) => sameBike(candidate.make, candidate.model, selectedBike.make, selectedBike.model))
+      : null) ?? bikes[0];
+
+  if (!bike) return { bike: null, build: null };
+
+  const build = bike.builds.find((candidate) => candidate.isPrimary) ?? bike.builds[0] ?? null;
+  return { bike, build };
 }
 
-function getAccPrice(productId: number): number {
-  return 140 + ((productId * 7) % 180)
-}
+export default function ExpertBuildComparePage() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const buildId = Array.isArray(params.id) ? params.id[0] : params.id;
 
-function groupTableRows(rows: TableRow[]) {
-  const order: string[] = []
-  const map = new Map<string, TableRow[]>()
-  for (const row of rows) {
-    if (!map.has(row.categoryId)) {
-      order.push(row.categoryId)
-      map.set(row.categoryId, [])
-    }
-    map.get(row.categoryId)!.push(row)
-  }
-  return order.map(catId => ({
-    catId,
-    label: getCategoryLabel(catId),
-    rows: map.get(catId)!,
-  }))
-}
+  const expertBuild =
+    demoExpertBuildCatalog.find((build) => build.id === buildId || build.slug === buildId) ?? null;
 
-// ── Shared sheet pieces ───────────────────────────────────────────────────────
-
-const SHEET_STYLE: React.CSSProperties = {
-  position: 'fixed', bottom: 0, left: 0, right: 0,
-  backgroundColor: '#141414',
-  borderTop: '1px solid rgba(255,255,255,0.06)',
-  borderRadius: '12px 12px 0 0',
-  zIndex: 200,
-  maxHeight: '90vh',
-  overflowY: 'auto',
-  paddingBottom: 'env(safe-area-inset-bottom, 16px)',
-}
-
-function SheetBackdrop({ onClose }: { onClose: () => void }) {
-  return (
-    <div
-      onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 199, backgroundColor: 'rgba(0,0,0,0.55)' }}
-    />
-  )
-}
-
-function SheetDragHandle() {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 6 }}>
-      <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.12)' }} />
-    </div>
-  )
-}
-
-function FitBadge() {
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      backgroundColor: 'rgba(29,158,117,0.08)', borderRadius: 20,
-      padding: '2px 8px', fontSize: 9, fontWeight: 500, color: '#1D9E75',
-    }}>
-      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="20 6 9 17 4 12" />
-      </svg>
-      Guaranteed fit
-    </span>
-  )
-}
-
-// ── ProductDetailSheet ────────────────────────────────────────────────────────
-
-function ProductDetailSheet({
-  row, garageState, onAddWishlist, onAddFitted, onClose,
-}: {
-  row: TableRow
-  garageState: GarageItemState
-  onAddWishlist: () => void
-  onAddFitted: () => void
-  onClose: () => void
-}) {
-  const price = row.productId ? getAccPrice(row.productId) : null
-  const inBuild = garageState !== null
-
-  return (
-    <>
-      <SheetBackdrop onClose={onClose} />
-      <div style={SHEET_STYLE}>
-        <SheetDragHandle />
-
-        {/* Large photo — 160px */}
-        <div style={{ height: 160, backgroundColor: '#1A1814', overflow: 'hidden', flexShrink: 0 }}>
-          {row.photoUrl ? (
-            <img
-              src={row.photoUrl}
-              alt={row.title}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
-            />
-          ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-            </div>
-          )}
-        </div>
-
-        {/* Product info */}
-        <div style={{ padding: '14px 20px 12px' }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#F5F3EE', margin: '0 0 3px', lineHeight: 1.3 }}>
-            {row.title}
-          </p>
-          <p style={{ fontSize: 11, color: '#6A6860', margin: '0 0 9px' }}>{row.brand}</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <FitBadge />
-            {price !== null && (
-              <span style={{ fontSize: 11, color: '#6A6860' }}>From ${price}</span>
-            )}
-          </div>
-        </div>
-
-        {/* Expert notes */}
-        {row.expertNotes && (
-          <>
-            <div style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', margin: '0 20px' }} />
-            <div style={{ padding: '12px 20px' }}>
-              <p style={{
-                fontSize: 9, fontWeight: 700, color: '#44423E',
-                textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 5px',
-              }}>
-                Expert&apos;s note
-              </p>
-              <p style={{ fontSize: 12, color: '#6A6860', lineHeight: 1.6, margin: 0 }}>
-                {row.expertNotes}
-              </p>
-            </div>
-          </>
-        )}
-
-        <div style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', margin: '0 20px' }} />
-
-        {/* Actions */}
-        <div style={{ padding: '14px 20px 8px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {row.productId && (
-            <Link
-              href={`/shop/${row.productId}`}
-              style={{
-                display: 'block', textAlign: 'center', padding: 13, borderRadius: 8,
-                backgroundColor: '#E8841A', textDecoration: 'none',
-                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-                fontWeight: 900, fontSize: 13, color: '#fff',
-                textTransform: 'uppercase', letterSpacing: '0.06em',
-              }}
-            >
-              Shop now ↗
-            </Link>
-          )}
-
-          {inBuild ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
-              <span style={{
-                width: 28, height: 28, borderRadius: '50%', backgroundColor: '#1D9E75',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </span>
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#F5F3EE', margin: 0 }}>In your build</p>
-                <p style={{ fontSize: 11, color: '#6A6860', margin: '2px 0 0' }}>
-                  {garageState === 'fitted' ? 'Fitted' : 'On your wish list'}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <>
-              <button
-                onClick={() => { onAddWishlist(); onClose() }}
-                style={{
-                  width: '100%', padding: 12, borderRadius: 8,
-                  backgroundColor: 'transparent',
-                  border: '1px solid rgba(232,132,26,0.4)',
-                  fontSize: 12, fontWeight: 600, color: '#E8841A', cursor: 'pointer',
-                }}
-              >
-                Add to wish list
-              </button>
-              <button
-                onClick={() => { onAddFitted(); onClose() }}
-                style={{
-                  width: '100%', padding: 11, borderRadius: 8,
-                  backgroundColor: 'transparent',
-                  border: '1px solid rgba(29,158,117,0.35)',
-                  fontSize: 12, fontWeight: 600, color: '#1D9E75', cursor: 'pointer',
-                }}
-              >
-                Already fitted
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </>
-  )
-}
-
-// ── SaveBuildSheet ────────────────────────────────────────────────────────────
-
-function SaveBuildSheet({
-  build, toAddCount, onSave, onClose, saved,
-}: {
-  build: ExpertBuild
-  toAddCount: number
-  onSave: () => void
-  onClose: () => void
-  saved: boolean
-}) {
-  const [snapCount] = useState(toAddCount)
-
-  return (
-    <>
-      <SheetBackdrop onClose={onClose} />
-      <div style={SHEET_STYLE}>
-        <SheetDragHandle />
-
-        {saved ? (
-          <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
-            <span style={{
-              width: 52, height: 52, borderRadius: '50%',
-              backgroundColor: 'rgba(29,158,117,0.12)', border: '1px solid rgba(29,158,117,0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </span>
-            <div>
-              <p style={{
-                fontSize: 14, fontWeight: 900, color: '#F5F3EE', margin: '0 0 4px',
-                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-                textTransform: 'uppercase', letterSpacing: '0.03em',
-              }}>
-                Added to your garage
-              </p>
-              <p style={{ fontSize: 12, color: '#6A6860', margin: 0 }}>
-                {snapCount} {snapCount === 1 ? 'accessory' : 'accessories'} added to your wish list
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              style={{
-                width: '100%', padding: 13, borderRadius: 8, marginTop: 4,
-                backgroundColor: '#E8841A', border: 'none',
-                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-                fontWeight: 900, fontSize: 13, color: '#fff',
-                textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer',
-              }}
-            >
-              Done
-            </button>
-          </div>
-        ) : (
-          <>
-            <div style={{ padding: '12px 20px 16px' }}>
-              <p style={{
-                fontSize: 14, fontWeight: 900, color: '#F5F3EE', margin: '0 0 6px',
-                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-                textTransform: 'uppercase', letterSpacing: '0.03em',
-              }}>
-                Save this build?
-              </p>
-              <p style={{ fontSize: 12, color: '#6A6860', margin: 0, lineHeight: 1.55 }}>
-                Add {snapCount} {snapCount === 1 ? 'accessory' : 'accessories'} from {build.title} to your wish list.
-              </p>
-            </div>
-            <div style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', margin: '0 20px' }} />
-            <div style={{ padding: '14px 20px 8px', display: 'flex', gap: 10 }}>
-              <button
-                onClick={onClose}
-                style={{
-                  flex: 1, padding: 12, borderRadius: 8,
-                  backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.12)',
-                  fontSize: 12, fontWeight: 500, color: '#F5F3EE', cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={onSave}
-                style={{
-                  flex: 2, padding: 13, borderRadius: 8,
-                  backgroundColor: '#E8841A', border: 'none',
-                  fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-                  fontWeight: 900, fontSize: 13, color: '#fff',
-                  textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer',
-                }}
-              >
-                Add {snapCount} {snapCount === 1 ? 'accessory' : 'accessories'}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </>
-  )
-}
-
-// ── Shared small components ───────────────────────────────────────────────────
-
-function CategoryTag({ label }: { label: string }) {
-  return (
-    <span style={{
-      backgroundColor: 'rgba(232,132,26,0.08)', border: '1px solid rgba(232,132,26,0.16)',
-      color: '#E8841A', fontSize: 9, fontWeight: 500,
-      padding: '3px 9px', borderRadius: 20, whiteSpace: 'nowrap',
-    }}>
-      {label}
-    </span>
-  )
-}
-
-function VerifiedBadge() {
-  return (
-    <span style={{
-      backgroundColor: 'rgba(232,132,26,0.1)', border: '1px solid rgba(232,132,26,0.2)',
-      color: '#E8841A', fontSize: 9, fontWeight: 500,
-      padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap',
-    }}>
-      Verified
-    </span>
-  )
-}
-
-function BackArrow() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8841A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
-  )
-}
-
-function ShareIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-    </svg>
-  )
-}
-
-function BookmarkIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-    </svg>
-  )
-}
-
-// ── ComparisonTable ───────────────────────────────────────────────────────────
-
-function ComparisonTable({
-  tableGroups, garageItems, isLoggedIn, onRowTap, onQuickAdd,
-}: {
-  tableGroups: Array<{ catId: string; label: string; rows: TableRow[] }>
-  garageItems: Partial<Record<number, 'wishlist' | 'fitted'>>
-  isLoggedIn: boolean
-  onRowTap: (row: TableRow) => void
-  onQuickAdd: (productId: number) => void
-}) {
-  const totalCount = tableGroups.reduce((n, g) => n + g.rows.length, 0)
-
-  return (
-    <div style={{ padding: '0 20px' }}>
-      {/* Section header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-        <span style={{
-          display: 'inline-block', width: 3, height: 14,
-          backgroundColor: '#E8841A', borderRadius: 2, flexShrink: 0,
-        }} />
-        <span style={{
-          fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-          fontWeight: 900, fontSize: 12, textTransform: 'uppercase',
-          letterSpacing: '0.05em', color: '#F5F3EE',
-        }}>
-          Gear comparison
-        </span>
-        <span style={{ fontSize: 11, color: '#44423E' }}>{totalCount}</span>
-      </div>
-
-      <div style={{
-        backgroundColor: '#141414',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: 12,
-        overflow: 'hidden',
-      }}>
-        {/* Column headers */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 44px 68px',
-          alignItems: 'center',
-          padding: '9px 13px',
-          backgroundColor: 'rgba(255,255,255,0.02)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-        }}>
-          <span style={{ fontSize: 9, fontWeight: 700, color: '#44423E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Accessory
-          </span>
-          <span style={{ fontSize: 9, fontWeight: 700, color: '#44423E', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>
-            Expert
-          </span>
-          <span style={{ fontSize: 9, fontWeight: 700, color: '#44423E', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>
-            My build
-          </span>
-        </div>
-
-        {/* Sign-in prompt for logged-out riders */}
-        {!isLoggedIn && (
-          <div style={{
-            margin: '10px 13px 4px',
-            backgroundColor: 'rgba(232,132,26,0.06)',
-            border: '1px solid rgba(232,132,26,0.24)',
-            borderRadius: 10,
-            padding: '10px 13px',
-          }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: '#F5F3EE', margin: '0 0 4px' }}>
-              Sign in to see your build
-            </p>
-            <p style={{ fontSize: 11, color: '#6A6860', margin: '0 0 10px', lineHeight: 1.5 }}>
-              See which of these you already have fitted or on your wish list.
-            </p>
-            <Link
-              href="/login"
-              style={{
-                display: 'inline-block', padding: '7px 14px', borderRadius: 8,
-                backgroundColor: '#E8841A', textDecoration: 'none',
-                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-                fontWeight: 900, fontSize: 11, color: '#fff',
-                textTransform: 'uppercase', letterSpacing: '0.06em',
-              }}
-            >
-              Sign in
-            </Link>
-          </div>
-        )}
-
-        {/* Category groups */}
-        {tableGroups.map(({ catId, label, rows }, gIdx) => (
-          <div key={catId}>
-            {/* Category header row */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 7,
-              padding: '7px 13px',
-              backgroundColor: 'rgba(255,255,255,0.025)',
-              borderTop: gIdx === 0 && isLoggedIn
-                ? '1px solid rgba(255,255,255,0.06)'
-                : '1px solid rgba(255,255,255,0.06)',
-            }}>
-              <span style={{
-                width: 3, height: 11,
-                backgroundColor: '#E8841A', borderRadius: 1, flexShrink: 0,
-              }} />
-              <span style={{
-                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-                fontWeight: 900, fontSize: 10,
-                textTransform: 'uppercase', letterSpacing: '0.05em', color: '#F5F3EE',
-              }}>
-                {label}
-              </span>
-              <span style={{ fontSize: 10, color: '#44423E' }}>{rows.length}</span>
-            </div>
-
-            {/* Accessory rows */}
-            {rows.map((row, rIdx) => {
-              const myState = row.productId != null ? (garageItems[row.productId] ?? null) : null
-              const showPlus = isLoggedIn && row.productId != null && myState === null
-              const isLast = rIdx === rows.length - 1
-
-              return (
-                <div
-                  key={row.key}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 44px 68px',
-                    alignItems: 'center',
-                    borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.04)',
-                  }}
-                >
-                  {/* Accessory name cell — tappable */}
-                  <button
-                    onClick={() => onRowTap(row)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 9,
-                      padding: '10px 0 10px 13px',
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      textAlign: 'left', minWidth: 0,
-                    }}
-                  >
-                    {/* 36px thumbnail */}
-                    <div style={{
-                      width: 36, height: 36, borderRadius: 6,
-                      backgroundColor: '#1A1814', flexShrink: 0, overflow: 'hidden',
-                    }}>
-                      {row.photoUrl && (
-                        <img
-                          src={row.photoUrl}
-                          alt=""
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      )}
-                    </div>
-                    {/* Name + brand */}
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{
-                        fontSize: 11, fontWeight: 500, color: '#F5F3EE',
-                        margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
-                        {row.title}
-                      </p>
-                      <p style={{ fontSize: 10, color: '#6A6860', margin: '1px 0 0' }}>
-                        {row.brand}
-                      </p>
-                    </div>
-                  </button>
-
-                  {/* Expert column */}
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    {row.inExpert ? (
-                      <span style={{
-                        width: 20, height: 20, borderRadius: '50%',
-                        backgroundColor: '#E8841A',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        flexShrink: 0,
-                      }}>
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: 14, color: '#44423E', lineHeight: 1 }}>—</span>
-                    )}
-                  </div>
-
-                  {/* My Build column */}
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    {!isLoggedIn ? (
-                      <span style={{ fontSize: 14, color: '#3A3830', lineHeight: 1 }}>—</span>
-                    ) : myState === 'fitted' ? (
-                      <span style={{
-                        width: 20, height: 20, borderRadius: '50%',
-                        backgroundColor: '#1D9E75',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        flexShrink: 0,
-                      }}>
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      </span>
-                    ) : myState === 'wishlist' ? (
-                      <span style={{
-                        width: 18, height: 18, borderRadius: '50%',
-                        border: '1.5px solid #888780',
-                        backgroundColor: 'transparent',
-                        display: 'inline-block', flexShrink: 0,
-                      }} />
-                    ) : showPlus ? (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onQuickAdd(row.productId!) }}
-                        style={{
-                          width: 24, height: 24, borderRadius: '50%',
-                          border: '1px solid rgba(232,132,26,0.4)',
-                          color: '#E8841A', backgroundColor: 'transparent',
-                          fontSize: 16, fontWeight: 300, lineHeight: 1,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          cursor: 'pointer', flexShrink: 0,
-                        }}
-                        aria-label={`Add ${row.title} to wish list`}
-                      >
-                        +
-                      </button>
-                    ) : (
-                      <span style={{ fontSize: 14, color: '#44423E', lineHeight: 1 }}>—</span>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ── Main page ─────────────────────────────────────────────────────────────────
-
-export default function ExpertBuildDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
-  const router = useRouter()
-
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [garageItems, setGarageItems] = useState<Partial<Record<number, 'wishlist' | 'fitted'>>>({})
-  const [detailRow, setDetailRow] = useState<TableRow | null>(null)
-  const [saveSheetOpen, setSaveSheetOpen] = useState(false)
-  const [saveSuccess, setSaveSuccess] = useState(false)
-
-  const build = useMemo(
-    () => demoExpertBuildCatalog.find(b => b.id === id || b.slug === id) ?? null,
-    [id]
-  )
+  const [selectedBike, setSelectedBike] = useState<SelectedBike | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [garageBike, setGarageBike] = useState<GarageBikeRecord | null>(null);
+  const [garageBuild, setGarageBuild] = useState<GarageBuildRecord | null>(null);
+  const [myBuildProducts, setMyBuildProducts] = useState<Product[]>([]);
+  const [message, setMessage] = useState<string | null>(null);
+  const [isAddingId, setIsAddingId] = useState<number | null>(null);
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<string[]>([]);
+  const [pendingScrollTarget, setPendingScrollTarget] = useState<string | null>(null);
+  const [pendingScrollY, setPendingScrollY] = useState<number | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setIsLoggedIn(!!data.session))
-
-    // Seed garage state from ALL demo products (not just this build's accessories)
-    const initial: Partial<Record<number, 'wishlist' | 'fitted'>> = {}
-    for (const product of demoGarageProducts) {
-      const s = getDemoGarageState(product.id)
-      if (s !== null) initial[product.id] = s
-    }
-    setGarageItems(initial)
-  }, [id])
-
-  const uniqueCategories = useMemo(
-    () => (build ? new Set(build.accessories.map(a => a.categoryId)).size : 0),
-    [build]
-  )
-
-  const photoCount = build ? 1 + build.galleryPhotos.length : 0
-
-  // Build unified comparison rows: expert accessories + garage-only products
-  const tableRows = useMemo((): TableRow[] => {
-    if (!build) return []
-    const rows: TableRow[] = []
-    const expertProductIds = new Set<number>()
-
-    for (const acc of build.accessories) {
-      if (acc.productId != null) expertProductIds.add(acc.productId)
-      const hasPhoto = (acc.installedPhotoIds?.length ?? 0) > 0
-      rows.push({
-        key: `expert-${acc.id}`,
-        title: acc.title,
-        brand: acc.brand,
-        categoryId: acc.categoryId,
-        productId: acc.productId ?? null,
-        photoUrl: hasPhoto ? build.primaryPhoto?.imageUrl ?? null : null,
-        expertNotes: acc.notes ?? null,
-        inExpert: true,
-      })
+    const rawBike = sessionStorage.getItem(BROWSE_BIKE_KEY);
+    if (rawBike) {
+      try {
+        setSelectedBike(JSON.parse(rawBike));
+      } catch {
+        sessionStorage.removeItem(BROWSE_BIKE_KEY);
+      }
     }
 
-    // Garage-only: demo products the rider has that aren't in this expert build
-    for (const product of demoGarageProducts) {
-      if (expertProductIds.has(product.id)) continue
-      if (getDemoGarageState(product.id) === null) continue
-      rows.push({
-        key: `garage-${product.id}`,
-        title: product.name,
-        brand: product.brand,
-        categoryId: product.categoryId,
-        productId: product.id,
-        photoUrl: product.image,
-        expertNotes: null,
-        inExpert: false,
-      })
-    }
+    supabase.auth.getSession().then(async ({ data }) => {
+      const signedIn = Boolean(data.session);
+      setIsLoggedIn(signedIn);
 
-    return rows
-  }, [build])
+      if (!signedIn) return;
 
-  const tableGroups = useMemo(() => groupTableRows(tableRows), [tableRows])
+      const snapshot = await loadGarageFromSupabase(demoGarageBikes);
+      if (!snapshot?.bikes?.length) return;
 
-  // Count expert accessories not yet in garageItems (for save sheet)
-  const toAddCount = useMemo(
-    () => build?.accessories.filter(a => a.productId != null && !garageItems[a.productId!]).length ?? 0,
-    [build, garageItems]
-  )
-
-  function handleAddWishlist(productId: number) {
-    setGarageItems(prev => ({ ...prev, [productId]: 'wishlist' }))
-  }
-
-  function handleAddFitted(productId: number) {
-    setGarageItems(prev => ({ ...prev, [productId]: 'fitted' }))
-  }
-
-  function handleSaveAll() {
-    if (!build) return
-    setGarageItems(prev => {
-      const next = { ...prev }
-      for (const acc of build.accessories) {
-        if (acc.productId != null && !next[acc.productId]) {
-          next[acc.productId] = 'wishlist'
+      let bikeForContext: SelectedBike | null = null;
+      if (rawBike) {
+        try {
+          bikeForContext = JSON.parse(rawBike) as SelectedBike;
+        } catch {
+          bikeForContext = null;
         }
       }
-      return next
-    })
-    setSaveSuccess(true)
+      const { bike, build } = findComparisonBuild(snapshot.bikes, bikeForContext);
+      setGarageBike(bike);
+      setGarageBuild(build);
+      setMyBuildProducts(build?.buildItems.map((item) => item.product) ?? []);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!expertBuild || searchParams.get('restoreCompare') !== '1') return;
+
+    const rawContext = sessionStorage.getItem(COMPARE_RETURN_KEY);
+    if (!rawContext) return;
+
+    try {
+      const context = JSON.parse(rawContext) as CompareReturnContext;
+      if (context.expertBuildId !== expertBuild.id) return;
+      setShowAllCategories(context.showAllCategories);
+      setCollapsedCategoryIds(context.collapsedCategoryIds);
+      setPendingScrollTarget(context.selectedItemId);
+      setPendingScrollY(context.scrollY);
+      router.replace(`/expert/${expertBuild.id}`, { scroll: false });
+    } catch {
+      sessionStorage.removeItem(COMPARE_RETURN_KEY);
+    }
+  }, [expertBuild, router, searchParams]);
+
+  const myBuildProductIds = useMemo(() => new Set(myBuildProducts.map((product) => product.id)), [myBuildProducts]);
+
+  const groups = useMemo<CompareGroup[]>(() => {
+    if (!expertBuild) return [];
+
+    const grouped = new Map<string, CompareRow[]>();
+    const expertProductIds = new Set<number>();
+
+    function pushRow(row: CompareRow) {
+      const rows = grouped.get(row.categoryId) ?? [];
+      rows.push(row);
+      grouped.set(row.categoryId, rows);
+    }
+
+    expertBuild.accessories.forEach((accessory) => {
+      const product = accessory.productId ? productById.get(accessory.productId) ?? null : null;
+      if (product) expertProductIds.add(product.id);
+      const matched = Boolean(product && myBuildProductIds.has(product.id));
+      pushRow({
+        key: accessory.productId ? String(accessory.productId) : accessory.id,
+        categoryId: accessory.categoryId,
+        title: product?.name ?? accessory.title,
+        brand: product?.brand ?? accessory.brand,
+        product,
+        status: matched ? 'Matched' : 'Not in my build',
+      });
+    });
+
+    myBuildProducts
+      .filter((product) => !expertProductIds.has(product.id))
+      .forEach((product) => {
+        pushRow({
+          key: `mine-${product.id}`,
+          categoryId: product.categoryId,
+          title: product.name,
+          brand: product.brand,
+          product,
+          status: 'In my build',
+        });
+    });
+
+    return Array.from(grouped.entries()).map(([id, rows]) => ({
+      id,
+      label: categoryLabel(id),
+      rows,
+    }));
+  }, [expertBuild, myBuildProductIds, myBuildProducts]);
+
+  useEffect(() => {
+    if (!pendingScrollTarget) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.getElementById(`compare-row-${pendingScrollTarget}`);
+      if (target) {
+        target.scrollIntoView({ block: 'center' });
+      } else if (pendingScrollY !== null) {
+        window.scrollTo({ top: pendingScrollY });
+      }
+
+      setPendingScrollTarget(null);
+      setPendingScrollY(null);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [groups, pendingScrollTarget, pendingScrollY]);
+
+  const summary = useMemo(() => {
+    const rows = groups.flatMap((group) => group.rows);
+    return {
+      expertItems: rows.length,
+      matched: rows.filter((row) => row.status === 'Matched').length,
+      inMyBuild: rows.filter((row) => row.status === 'In my build').length,
+      missing: rows.filter((row) => row.status === 'Not in my build').length,
+    };
+  }, [groups]);
+
+  const visibleGroups = showAllCategories ? groups : groups.slice(0, 3);
+
+  function toggleCategory(categoryId: string) {
+    setCollapsedCategoryIds((current) =>
+      current.includes(categoryId)
+        ? current.filter((id) => id !== categoryId)
+        : [...current, categoryId],
+    );
   }
 
-  if (!build) {
+  function openItem(row: CompareRow) {
+    if (!row.product) {
+      setMessage('Product detail is not available until this expert item is linked to a catalogue product.');
+      return;
+    }
+
+    const context: CompareReturnContext = {
+      expertBuildId: expertBuild?.id ?? buildId,
+      showAllCategories,
+      collapsedCategoryIds,
+      selectedItemId: row.key,
+      scrollY: window.scrollY,
+    };
+
+    sessionStorage.setItem(COMPARE_RETURN_KEY, JSON.stringify(context));
+    router.push(`/shop/${row.product.id}?from=compare&buildId=${expertBuild?.id ?? buildId}`);
+  }
+
+  async function addToBuild(row: CompareRow) {
+    if (!row.product) {
+      setMessage('This expert item is not linked to a catalogue product yet.');
+      return;
+    }
+
+    if (!isLoggedIn) {
+      setMessage('Sign in to add expert items to your saved build.');
+      return;
+    }
+
+    if (!garageBuild) {
+      setMessage('Create or select a saved Garage build before adding comparison items.');
+      return;
+    }
+
+    if (myBuildProductIds.has(row.product.id)) return;
+
+    const previousProducts = myBuildProducts;
+    const nextProducts = [...previousProducts, row.product];
+    setIsAddingId(row.product.id);
+    setMyBuildProducts(nextProducts);
+    setMessage(null);
+
+    try {
+      await replaceGarageBuildItems(
+        garageBuild.id,
+        nextProducts.map((product, index) => ({ product, sortOrder: index })),
+      );
+      setMessage(`Added ${row.product.name} to ${garageBuild.name}.`);
+    } catch (error) {
+      setMyBuildProducts(previousProducts);
+      setMessage(error instanceof Error ? error.message : 'Could not update your saved build.');
+    } finally {
+      setIsAddingId(null);
+    }
+  }
+
+  if (!expertBuild) {
     return (
-      <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-        <div style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 32 }}>
-          <p style={{ fontSize: 13, color: '#6A6860', margin: '0 0 16px' }}>Build not found.</p>
-          <Link href="/expert" style={{ fontSize: 12, color: '#E8841A', fontWeight: 500 }}>
-            ← Back to Expert builds
-          </Link>
-        </div>
-      </div>
-    )
+      <main className="compare-page">
+        <GlobalNav />
+        <section className="not-found">
+          <h1>Expert build not found</h1>
+          <button type="button" onClick={() => router.push('/expert')}>
+            Back to builds
+          </button>
+        </section>
+        <style jsx>{`
+          .compare-page {
+            min-height: 100vh;
+            background: #0d0d0d;
+            color: #f5f3ee;
+          }
+          .not-found {
+            padding: 32px 16px;
+            display: grid;
+            gap: 16px;
+          }
+        `}</style>
+      </main>
+    );
   }
-
-  const bikeLabel = getBikeLabel(build)
-  const initials = getInitials(build.builderName)
 
   return (
-    <div style={{ backgroundColor: '#0D0D0D', minHeight: '100vh', paddingBottom: 32 }}>
+    <main className="compare-page">
+      <GlobalNav />
 
-      {/* A — Back nav */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
-          <button
-            onClick={() => router.back()}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', flexShrink: 0 }}
-            aria-label="Go back"
-          >
-            <BackArrow />
+      <section className="compare-shell">
+        <button type="button" className="back-button" onClick={() => router.push('/expert')}>
+          Back to builds
+        </button>
+
+        <section className="compare-header">
+          <div>
+            <p className="eyebrow">Compare builds</p>
+            <h1>{expertBuild.title}</h1>
+            <p>See how this expert build compares to your current build.</p>
+          </div>
+          <div className="comparison-card">
+            <span>Expert build</span>
+            <strong>{expertBuild.builderName}</strong>
+            <em>vs</em>
+            <span>My build</span>
+            <strong>{garageBuild?.name ?? 'No saved build selected'}</strong>
+          </div>
+        </section>
+
+        <section className="bike-strip">
+          <div>
+            <span>Expert bike</span>
+            <strong>
+              {[
+                expertBuild.bikeFitment.yearStart === expertBuild.bikeFitment.yearEnd
+                  ? String(expertBuild.bikeFitment.yearStart)
+                  : `${expertBuild.bikeFitment.yearStart}-${expertBuild.bikeFitment.yearEnd}`,
+                expertBuild.bikeFitment.make,
+                expertBuild.bikeFitment.model,
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            </strong>
+          </div>
+          <div>
+            <span>My Garage</span>
+            <strong>{garageBike ? `${garageBike.year} ${garageBike.make} ${garageBike.model}` : formatBikeTitle(selectedBike, 'No saved Garage build')}</strong>
+          </div>
+        </section>
+
+        <section className="summary-grid" aria-label="Comparison summary">
+          <article className="expert">
+            <strong>{summary.expertItems}</strong>
+            <span>Expert items</span>
+          </article>
+          <article className="matched">
+            <strong>{summary.matched}</strong>
+            <span>Matched</span>
+          </article>
+          <article className="mine">
+            <strong>{summary.inMyBuild}</strong>
+            <span>In my build</span>
+          </article>
+          <article className="missing">
+            <strong>{summary.missing}</strong>
+            <span>Not in my build</span>
+          </article>
+        </section>
+
+        {message ? (
+          <section className="message-card">
+            <p>{message}</p>
+            {message.includes('Sign in') ? (
+              <button type="button" onClick={() => router.push(`/login?returnTo=/expert/${expertBuild.id}`)}>
+                Sign in
+              </button>
+            ) : null}
+            {message.includes('Garage build') ? (
+              <button type="button" onClick={() => router.push('/garage/build')}>
+                Open Garage builder
+              </button>
+            ) : null}
+          </section>
+        ) : null}
+
+        <section className="category-list">
+          {visibleGroups.map((group) => {
+            const collapsed = collapsedCategoryIds.includes(group.id);
+
+            return (
+              <article key={group.id} className="category-group">
+                <button type="button" className="category-header" onClick={() => toggleCategory(group.id)}>
+                  <span className="category-icon" aria-hidden="true">
+                    {categoryIcon(group.id)}
+                  </span>
+                  <span>
+                    <strong>{group.label}</strong>
+                    <small>{group.rows.length} {group.rows.length === 1 ? 'item' : 'items'}</small>
+                  </span>
+                  <em>{collapsed ? '+' : '-'}</em>
+                </button>
+
+                {!collapsed ? (
+                  <div className="comparison-rows">
+                    {group.rows.map((row) => (
+                      <article key={row.key} id={`compare-row-${row.key}`} className="comparison-row">
+                        <img src={row.product?.image ?? expertBuild.primaryPhoto.imageUrl} alt="" />
+                        <div className="item-copy">
+                          <strong>{row.title}</strong>
+                          <p>
+                            {row.brand}
+                            <button type="button" onClick={() => openItem(row)}>
+                              View item -&gt;
+                            </button>
+                          </p>
+                        </div>
+                        <span className={`status-pill ${row.status.toLowerCase().replaceAll(' ', '-')}`}>
+                          {row.status}
+                        </span>
+                        {row.status === 'Not in my build' ? (
+                          <button
+                            type="button"
+                            className="add-button"
+                            onClick={() => addToBuild(row)}
+                            disabled={isAddingId === row.product?.id}
+                            aria-label={`Add ${row.product?.name ?? row.title} to build`}
+                          >
+                            +
+                          </button>
+                        ) : null}
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
+        </section>
+
+        {groups.length > 3 ? (
+          <button type="button" className="view-all-button" onClick={() => setShowAllCategories((value) => !value)}>
+            {showAllCategories ? 'Show fewer categories' : 'View all categories'}
           </button>
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#F5F3EE', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>
-            {build.title}
-          </span>
-        </div>
-        <button
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#44423E', display: 'flex', alignItems: 'center', flexShrink: 0 }}
-          aria-label="Share"
-        >
-          <ShareIcon />
-        </button>
-      </div>
+        ) : null}
+      </section>
 
-      {/* B — Photo area */}
-      <div style={{ position: 'relative', height: 158, backgroundColor: '#1A1814', overflow: 'hidden' }}>
-        {build.primaryPhoto?.imageUrl && (
-          <img
-            src={build.primaryPhoto.imageUrl}
-            alt={build.primaryPhoto.alt}
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
-          />
-        )}
-        {build.credibility?.hasRealBuildPhotos && (
-          <span style={{ position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(232,132,26,0.15)', border: '1px solid rgba(232,132,26,0.3)', color: '#E8841A', fontSize: 9, fontWeight: 500, padding: '2px 8px', borderRadius: 20 }}>
-            Owner photos · real bike
-          </span>
-        )}
-        <span style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.55)', color: '#F5F3EE', fontSize: 9, fontWeight: 500, padding: '2px 8px', borderRadius: 20 }}>
-          {photoCount} photos
-        </span>
-      </div>
+      <style jsx>{`
+        .compare-page {
+          min-height: 100vh;
+          background: #0d0d0d;
+          color: #f5f3ee;
+          padding-bottom: 48px;
+        }
 
-      {/* C — Rider info row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '12px 20px 8px' }}>
-        <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: 'rgba(232,132,26,0.12)', color: '#E8841A', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          {initials}
-        </div>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#F5F3EE' }}>{build.builderName}</span>
-        {build.credibility?.verifiedBuilder && <VerifiedBadge />}
-        <span style={{ fontSize: 11, color: '#6A6860' }}>{bikeLabel}</span>
-        <CategoryTag label={purposeLabel(build.dna.purpose)} />
-      </div>
+        .compare-shell {
+          width: min(980px, 100%);
+          margin: 0 auto;
+          padding: 18px 16px 32px;
+          display: grid;
+          gap: 14px;
+        }
 
-      {/* D — Stats row */}
-      <div style={{ padding: '0 20px 12px' }}>
-        <div style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }}>
-          {[
-            { value: build.accessories.length, label: 'accessories' },
-            { value: uniqueCategories, label: 'categories' },
-            { value: purposeLabel(build.dna.purpose), label: 'build type' },
-          ].map(({ value, label }, i) => (
-            <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 8px', borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-              <span style={{ fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif", fontWeight: 900, fontSize: typeof value === 'number' ? 20 : 13, color: '#F5F3EE', lineHeight: 1 }}>
-                {value}
-              </span>
-              <span style={{ fontSize: 10, color: '#6A6860', marginTop: 4 }}>{label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+        .back-button {
+          justify-self: start;
+          border: 0;
+          background: transparent;
+          color: #b8afa6;
+          font-weight: 900;
+          cursor: pointer;
+          padding: 8px 0;
+        }
 
-      {/* E — Save + Share buttons */}
-      <div style={{ display: 'flex', gap: 8, padding: '0 20px 20px' }}>
-        <button
-          onClick={() => { setSaveSuccess(false); setSaveSheetOpen(true) }}
-          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: '1px solid rgba(232,132,26,0.35)', color: '#E8841A', backgroundColor: 'transparent', borderRadius: 8, padding: '10px 0', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-        >
-          <BookmarkIcon />
-          Save this build
-        </button>
-        <button
-          style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.1)', color: '#F5F3EE', backgroundColor: 'transparent', borderRadius: 8, cursor: 'pointer', flexShrink: 0 }}
-          aria-label="Share"
-        >
-          <ShareIcon />
-        </button>
-      </div>
+        .compare-header,
+        .bike-strip,
+        .summary-grid article,
+        .message-card,
+        .category-group {
+          background: #141414;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 22px;
+          box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+        }
 
-      {/* F — Unified comparison table */}
-      <ComparisonTable
-        tableGroups={tableGroups}
-        garageItems={garageItems}
-        isLoggedIn={isLoggedIn}
-        onRowTap={setDetailRow}
-        onQuickAdd={handleAddWishlist}
-      />
+        .compare-header {
+          padding: 17px;
+          display: grid;
+          gap: 14px;
+        }
 
-      {/* G — Shop all CTA */}
-      <div style={{ padding: '24px 20px 0' }}>
-        <button
-          style={{ width: '100%', backgroundColor: '#E8841A', color: '#fff', border: 'none', borderRadius: 8, padding: '13px 20px', fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif", fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer' }}
-        >
-          Shop all accessories
-        </button>
-      </div>
+        .eyebrow {
+          margin: 0 0 6px;
+          color: #e8841a;
+          font-size: 0.72rem;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
 
-      {/* Sheets */}
-      {detailRow && (
-        <ProductDetailSheet
-          row={detailRow}
-          garageState={detailRow.productId != null ? (garageItems[detailRow.productId] ?? null) : null}
-          onAddWishlist={() => detailRow.productId != null && handleAddWishlist(detailRow.productId)}
-          onAddFitted={() => detailRow.productId != null && handleAddFitted(detailRow.productId)}
-          onClose={() => setDetailRow(null)}
-        />
-      )}
+        h1,
+        p {
+          margin: 0;
+        }
 
-      {saveSheetOpen && (
-        <SaveBuildSheet
-          build={build}
-          toAddCount={toAddCount}
-          onSave={handleSaveAll}
-          onClose={() => { setSaveSheetOpen(false); setSaveSuccess(false) }}
-          saved={saveSuccess}
-        />
-      )}
+        h1 {
+          font-size: clamp(1.45rem, 6vw, 2.2rem);
+          line-height: 1.04;
+        }
 
-    </div>
-  )
+        .compare-header p {
+          margin-top: 8px;
+          color: #b8afa6;
+          line-height: 1.45;
+        }
+
+        .comparison-card {
+          background: #1a1a1a;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 18px;
+          padding: 13px;
+          display: grid;
+          gap: 4px;
+        }
+
+        .comparison-card span {
+          color: #7a7268;
+          font-size: 0.72rem;
+          font-weight: 900;
+          text-transform: uppercase;
+        }
+
+        .comparison-card strong {
+          color: #f5f3ee;
+        }
+
+        .comparison-card em {
+          color: #e8841a;
+          font-style: normal;
+          font-weight: 900;
+        }
+
+        .bike-strip {
+          padding: 14px;
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+
+        .bike-strip div {
+          display: grid;
+          gap: 4px;
+        }
+
+        .bike-strip span {
+          color: #7a7268;
+          font-size: 0.72rem;
+          font-weight: 900;
+          text-transform: uppercase;
+        }
+
+        .summary-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .summary-grid article {
+          padding: 14px;
+          display: grid;
+          gap: 5px;
+        }
+
+        .summary-grid strong {
+          font-size: 1.55rem;
+        }
+
+        .summary-grid span {
+          color: #b8afa6;
+          font-size: 0.8rem;
+          font-weight: 850;
+        }
+
+        .summary-grid .expert strong {
+          color: #e8841a;
+        }
+
+        .summary-grid .matched strong {
+          color: #72d69a;
+        }
+
+        .summary-grid .mine strong {
+          color: #9bb8d8;
+        }
+
+        .summary-grid .missing strong {
+          color: #f28b82;
+        }
+
+        .message-card {
+          padding: 14px;
+          display: grid;
+          gap: 10px;
+        }
+
+        .message-card p {
+          color: #d9d0c6;
+        }
+
+        .message-card button,
+        .view-all-button,
+        .add-button {
+          border: 0;
+          background: #e8841a;
+          color: #17110b;
+          font-weight: 950;
+          cursor: pointer;
+        }
+
+        .message-card button,
+        .view-all-button {
+          min-height: 46px;
+          border-radius: 15px;
+        }
+
+        .category-list {
+          display: grid;
+          gap: 12px;
+        }
+
+        .category-group {
+          overflow: hidden;
+        }
+
+        .category-header {
+          width: 100%;
+          min-height: 62px;
+          border: 0;
+          background: #141414;
+          color: #f5f3ee;
+          display: grid;
+          grid-template-columns: 42px 1fr auto;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 14px;
+          text-align: left;
+          cursor: pointer;
+        }
+
+        .category-icon {
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
+          display: grid;
+          place-items: center;
+          background: rgba(232, 132, 26, 0.13);
+          border: 1px solid rgba(232, 132, 26, 0.24);
+          color: #e8841a;
+          font-weight: 950;
+        }
+
+        .category-header small {
+          display: block;
+          margin-top: 3px;
+          color: #7a7268;
+          font-weight: 800;
+        }
+
+        .category-header em {
+          color: #b8afa6;
+          font-style: normal;
+          font-weight: 950;
+          font-size: 1.2rem;
+        }
+
+        .comparison-rows {
+          display: grid;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .comparison-row {
+          min-height: 86px;
+          display: grid;
+          grid-template-columns: 56px 1fr auto;
+          gap: 10px;
+          align-items: center;
+          padding: 12px 14px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .comparison-row:first-child {
+          border-top: 0;
+        }
+
+        .comparison-row img {
+          width: 56px;
+          height: 56px;
+          border-radius: 14px;
+          object-fit: cover;
+          background: #1a1a1a;
+        }
+
+        .item-copy {
+          min-width: 0;
+        }
+
+        .item-copy strong {
+          display: block;
+          line-height: 1.2;
+        }
+
+        .item-copy p {
+          margin-top: 5px;
+          color: #b8afa6;
+          font-size: 0.82rem;
+        }
+
+        .item-copy button {
+          border: 0;
+          background: transparent;
+          color: #e8841a;
+          font-weight: 900;
+          cursor: pointer;
+          padding: 0 0 0 6px;
+        }
+
+        .status-pill {
+          justify-self: end;
+          border-radius: 999px;
+          padding: 7px 9px;
+          font-size: 0.72rem;
+          font-weight: 950;
+          white-space: nowrap;
+        }
+
+        .status-pill.matched {
+          color: #d9ffe5;
+          background: rgba(114, 214, 154, 0.16);
+          border: 1px solid rgba(114, 214, 154, 0.28);
+        }
+
+        .status-pill.in-my-build {
+          color: #d8e9ff;
+          background: rgba(155, 184, 216, 0.14);
+          border: 1px solid rgba(155, 184, 216, 0.24);
+        }
+
+        .status-pill.not-in-my-build {
+          color: #ffe2de;
+          background: rgba(242, 139, 130, 0.14);
+          border: 1px solid rgba(242, 139, 130, 0.24);
+        }
+
+        .add-button {
+          grid-column: 3;
+          justify-self: end;
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          font-size: 1.25rem;
+          line-height: 1;
+        }
+
+        .add-button:disabled {
+          opacity: 0.6;
+          cursor: wait;
+        }
+
+        .view-all-button {
+          width: 100%;
+        }
+
+        @media (min-width: 760px) {
+          .compare-shell {
+            padding: 28px 24px 48px;
+          }
+
+          .compare-header {
+            grid-template-columns: 1fr 280px;
+            align-items: start;
+          }
+
+          .bike-strip {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .summary-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 540px) {
+          .comparison-row {
+            grid-template-columns: 52px 1fr auto;
+          }
+
+          .comparison-row img {
+            width: 52px;
+            height: 52px;
+          }
+
+          .status-pill {
+            grid-column: 2 / 4;
+            justify-self: start;
+          }
+
+          .add-button {
+            grid-column: 3;
+            grid-row: 1;
+          }
+        }
+      `}</style>
+    </main>
+  );
 }
