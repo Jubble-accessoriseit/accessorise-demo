@@ -10,6 +10,7 @@ import type { ProductAvailabilityStatus } from '@/types/garage'
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const BUILD_KEY = 'browse_build'
+const BROWSE_BIKE_KEY = 'browse_bike_selection_v2'
 
 const CATEGORY_ACCENT: Record<string, string> = {
   luggage:                   '#E8841A',
@@ -71,6 +72,7 @@ export default function ProductDetailPage() {
   const [fromSource, setFromSource]   = useState<'browse' | 'shop' | null>(null)
   const [inBuild,    setInBuild]      = useState(false)
   const [buildAdded, setBuildAdded]   = useState(false)
+  const [selectedBikeLabel, setSelectedBikeLabel] = useState<string | null>(null)
 
   const productId = parseInt(params?.productId as string, 10)
   const product   = useMemo(
@@ -90,6 +92,22 @@ export default function ProductDetailPage() {
       const stored = sessionStorage.getItem(BUILD_KEY)
       const list: number[] = stored ? JSON.parse(stored) : []
       setInBuild(list.includes(product.id))
+    } catch { /* ignore */ }
+
+    try {
+      const storedBike = sessionStorage.getItem(BROWSE_BIKE_KEY)
+      const bike = storedBike ? JSON.parse(storedBike) as {
+        make?: string
+        model?: string
+        variant?: string | null
+        year?: number
+        userSelected?: boolean
+      } : null
+      if (bike?.userSelected && bike.make && bike.model && bike.year) {
+        setSelectedBikeLabel([bike.make, bike.model, bike.variant, bike.year].filter(Boolean).join(' '))
+      } else {
+        setSelectedBikeLabel(null)
+      }
     } catch { /* ignore */ }
   }, [product.id])
 
@@ -114,11 +132,19 @@ export default function ProductDetailPage() {
   }
 
   function handleBack() {
+    if (fromSource === 'browse') {
+      router.push('/browse')
+      return
+    }
+    if (fromSource === 'shop') {
+      router.push(`/shop?productId=${product.id}`)
+      return
+    }
     router.back()
   }
 
-  const backLabel = fromSource === 'browse' ? 'Browse'
-                  : fromSource === 'shop'   ? 'Shop'
+  const backLabel = fromSource === 'browse' ? 'Back to Browse'
+                  : fromSource === 'shop'   ? 'Back to Shop'
                   : 'Back'
 
   const accent    = CATEGORY_ACCENT[product.categoryId] ?? '#E8841A'
@@ -244,6 +270,21 @@ export default function ProductDetailPage() {
             </span>
           </span>
 
+          {selectedBikeLabel && (
+            <p style={{
+              margin: 0,
+              padding: '8px 10px',
+              borderRadius: 10,
+              backgroundColor: '#1A1814',
+              border: '1px solid rgba(255,255,255,0.06)',
+              color: '#B8AFA6',
+              fontSize: 11,
+              lineHeight: 1.4,
+            }}>
+              Fitment checked for <span style={{ color: '#F5F3EE', fontWeight: 600 }}>{selectedBikeLabel}</span>
+            </p>
+          )}
+
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
             <span style={{
               fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
@@ -277,9 +318,9 @@ export default function ProductDetailPage() {
                   <circle cx="6" cy="6" r="5.5" stroke="#1D9E75" strokeWidth="1" />
                   <polyline points="3,6 5,8.5 9,4" stroke="#1D9E75" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                In my build
+                In Build
               </>
-            ) : '+ Add to build'}
+            ) : 'Add to Build'}
           </button>
 
           <button
@@ -300,7 +341,7 @@ export default function ProductDetailPage() {
 
         {buildAdded && (
           <p style={{ margin: 0, fontSize: 11, color: '#1D9E75', textAlign: 'center' }}>
-            Added to your build list ✓
+            Added to this temporary build list
           </p>
         )}
 
@@ -319,7 +360,7 @@ export default function ProductDetailPage() {
                 fontWeight: 900, fontSize: 11, color: '#F5F3EE',
                 textTransform: 'uppercase', letterSpacing: '0.05em',
               }}>
-                About
+                Description
               </p>
             </div>
             <p style={{ margin: 0, fontSize: 13, color: '#B8AFA6', lineHeight: 1.6 }}>

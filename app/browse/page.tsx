@@ -1,34 +1,30 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { loadGarageFromSupabase } from '@/lib/garage/persistence'
-import { demoGarageProducts } from '@/lib/demo-content/products'
 import { demoGarageBikes } from '@/lib/demo-content/bikes'
+import { demoGarageProducts } from '@/lib/demo-content/products'
 import { garageCategories } from '@/types/garage'
 import type { Product } from '@/types/garage'
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const SESSION_KEY = 'browse_bike'
+const BROWSE_BIKE_KEY = 'browse_bike_selection_v2'
 
 const CATEGORY_ACCENT: Record<string, string> = {
-  luggage:                   '#E8841A',
-  protection:                '#7F77DD',
-  navigation:                '#1D9E75',
-  tyres:                     '#BA7517',
-  lighting:                  '#639922',
-  comfort:                   '#1456B0',
-  ergonomics:                '#1456B0',
-  electrical:                '#7F77DD',
+  luggage: '#E8841A',
+  protection: '#7F77DD',
+  navigation: '#1D9E75',
+  lighting: '#639922',
+  electrical: '#7F77DD',
+  'safety-visibility': '#639922',
   'connectivity-navigation': '#1D9E75',
-  'safety-visibility':       '#639922',
-  'rider-tech-recording':    '#7F77DD',
-  'power-support':           '#BA7517',
+  'rider-tech-recording': '#7F77DD',
+  'power-support': '#BA7517',
+  ergonomics: '#1456B0',
+  tyres: '#BA7517',
 }
-
-// ── Types ─────────────────────────────────────────────────────────────────────
 
 type SelectedBike = {
   id: string
@@ -36,22 +32,33 @@ type SelectedBike = {
   model: string
   variant: string | null
   year: number
+  source: 'manual' | 'garage'
 }
 
+type PersistedBrowseBike = SelectedBike & { userSelected: true }
 type GarageBike = SelectedBike & { nickname: string | null }
-
-type ApiMake  = { id: string; name: string; slug: string }
+type ApiMake = { id: string; name: string; slug: string }
 type ApiModel = { id: string; name: string; slug: string; category: string }
 type SortMode = 'default' | 'price-asc' | 'price-desc' | 'brand-az' | 'brand-za'
 
-// ── Utilities ─────────────────────────────────────────────────────────────────
+const quickCategories = [
+  { id: 'luggage', label: 'Luggage' },
+  { id: 'protection', label: 'Protection' },
+  { id: 'lighting', label: 'Lighting' },
+  { id: 'navigation', label: 'Navigation' },
+  { id: 'safety-visibility', label: 'Safety & Visibility' },
+  { id: 'electrical', label: 'Electrical' },
+]
 
 function demoPrice(productId: number): number {
   return 140 + ((productId * 7) % 180)
 }
 
-function bikeDisplayName(bike: SelectedBike): string {
-  return [bike.year, bike.make, bike.model, bike.variant].filter(Boolean).join(' ')
+function hexToRgb(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `${r},${g},${b}`
 }
 
 function getCategoryAccent(categoryId: string): string {
@@ -62,822 +69,965 @@ function getCategoryLabel(categoryId: string): string {
   return garageCategories.find(c => c.id === categoryId)?.label ?? categoryId
 }
 
-function hexToRgb(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `${r},${g},${b}`
+function bikeDisplayName(bike: Pick<SelectedBike, 'make' | 'model' | 'variant' | 'year'>): string {
+  return [bike.make, bike.model, bike.variant, bike.year].filter(Boolean).join(' ')
 }
 
-// ── FitBadge ──────────────────────────────────────────────────────────────────
+function slugify(value: string): string {
+  return value.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
 
-function FitBadge() {
+function buildBikeId(make: string, model: string, variant: string | null, year: number): string {
+  const normalizedMake = slugify(make)
+  const compactModel = model.replace(/\s+/g, '')
+  const variantPart = variant && variant !== 'Base' ? `-${slugify(variant)}` : ''
+  return `${normalizedMake}-${slugify(compactModel)}${variantPart}-${year}`
+}
+
+function normalizeBikeSignature(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '')
+}
+
+function isProductCompatible(product: Product, bike: SelectedBike): boolean {
+  if (product.compatibility.universal) return true
+  if (product.compatibility.bikeIds.includes(bike.id)) return true
+
+  const bikeModel = normalizeBikeSignature(bike.model)
+  const bikeMake = normalizeBikeSignature(bike.make)
+  if (bikeMake === 'bmw' && bikeModel.includes('r1300gs')) {
+    return product.compatibility.bikeIds.some(id => id.includes('bmw-r1300gs') || id.includes('bmw-r1300gsa'))
+  }
+  if (bikeMake === 'yamaha' && bikeModel.includes('tenere700')) {
+    return product.compatibility.bikeIds.some(id => id.includes('yamaha-tenere-700'))
+  }
+  return false
+}
+
+function FitBadge({ label = 'Guaranteed fit' }: { label?: string }) {
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      backgroundColor: 'rgba(29,158,117,0.08)',
-      borderRadius: 20, padding: '2px 7px', width: 'fit-content',
-    }}>
-      <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+    <span className="fit-badge">
+      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
         <circle cx="6" cy="6" r="5.5" stroke="#1D9E75" strokeWidth="1" />
         <polyline points="3,6 5,8.5 9,4" stroke="#1D9E75" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      <span style={{ fontSize: 9, fontWeight: 500, color: '#1D9E75' }}>Guaranteed fit</span>
+      {label}
     </span>
   )
 }
 
-// ── ProductCard ───────────────────────────────────────────────────────────────
-
-function ProductCard({
-  product,
-  onDetails,
-  onShop,
+function SelectField({
+  label,
+  value,
+  disabled,
+  children,
+  onChange,
 }: {
-  product: Product
-  onDetails: () => void
-  onShop: () => void
+  label: string
+  value: string
+  disabled?: boolean
+  children: ReactNode
+  onChange: (value: string) => void
 }) {
-  const price    = demoPrice(product.id)
-  const accent   = getCategoryAccent(product.categoryId)
-  const catLabel = getCategoryLabel(product.categoryId)
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <select value={value} disabled={disabled} onChange={event => onChange(event.target.value)}>
+        {children}
+      </select>
+    </label>
+  )
+}
+
+function ProductCard({ product, onDetails, onShop }: { product: Product; onDetails: () => void; onShop: () => void }) {
+  const accent = getCategoryAccent(product.categoryId)
+  const price = product.price > 0 ? product.price : demoPrice(product.id)
 
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column',
-      backgroundColor: '#141414',
-      border: '1px solid rgba(255,255,255,0.06)',
-      borderRadius: 12, overflow: 'hidden',
-    }}>
-      {/* Photo area */}
-      <div style={{ position: 'relative', width: '100%', height: 90, backgroundColor: '#1A1814', flexShrink: 0 }}>
-        {product.image && (
-          <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        )}
-        <span style={{
-          position: 'absolute', top: 7, left: 7,
-          backgroundColor: `rgba(${hexToRgb(accent)},0.12)`,
-          border: `1px solid rgba(${hexToRgb(accent)},0.28)`,
-          color: accent,
-          borderRadius: 20, padding: '2px 7px',
-          fontSize: 9, fontWeight: 500, lineHeight: 1.4,
-        }}>
-          {catLabel}
-        </span>
-        <span style={{ position: 'absolute', top: 7, right: 7 }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#44423E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-          </svg>
+    <article className="product-card">
+      <div className="product-image">
+        {product.image ? <img src={product.image} alt={product.name} /> : null}
+        <span className="category-pill" style={{ '--accent': accent, '--accent-rgb': hexToRgb(accent) } as CSSProperties}>
+          {getCategoryLabel(product.categoryId)}
         </span>
       </div>
-
-      {/* Content */}
-      <div style={{ padding: '9px 10px 10px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
-        <p style={{
-          margin: 0, fontSize: 12, fontWeight: 600, color: '#F5F3EE', lineHeight: 1.3,
-          overflow: 'hidden', display: '-webkit-box',
-          WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-        }}>
-          {product.name}
-        </p>
-        <p style={{ margin: 0, fontSize: 10, color: '#6A6860' }}>{product.brand}</p>
-        <p style={{ margin: '2px 0 4px', fontSize: 11, fontWeight: 500, color: '#F5F3EE' }}>
-          From ${price}
-        </p>
-        <FitBadge />
-
-        {/* Action row */}
-        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-          <button
-            onClick={onDetails}
-            style={{
-              flex: 1, padding: '7px 0',
-              backgroundColor: 'transparent',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 7, color: '#F5F3EE',
-              fontSize: 10, fontWeight: 600, cursor: 'pointer',
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-            }}
-          >
-            Details
-          </button>
-          <button
-            onClick={onShop}
-            style={{
-              flex: 1, padding: '7px 0',
-              backgroundColor: '#E8841A',
-              border: 'none',
-              borderRadius: 7, color: '#0D0D0D',
-              fontSize: 10, fontWeight: 700, cursor: 'pointer',
-              fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-              textTransform: 'uppercase', letterSpacing: '0.04em',
-            }}
-          >
-            Shop
-          </button>
+      <div className="product-body">
+        <h3>{product.name}</h3>
+        <p>{product.brand || 'Supplier to be confirmed'}</p>
+        <strong>{price > 0 ? `$${price}` : '$Unknown'}</strong>
+        <FitBadge label={product.fitmentConfidence ?? 'Guaranteed fit'} />
+        <div className="product-actions">
+          <button type="button" className="secondary-action" onClick={onDetails}>View details</button>
+          <button type="button" className="primary-action" onClick={onShop}>Shop</button>
         </div>
       </div>
-    </div>
+    </article>
   )
 }
-
-// ── DropdownChevron ───────────────────────────────────────────────────────────
-
-function DropdownChevron({ disabled = false }: { disabled?: boolean }) {
-  return (
-    <svg
-      width="12" height="12" viewBox="0 0 24 24" fill="none"
-      stroke={disabled ? '#3A3830' : '#6A6860'}
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
-    >
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  )
-}
-
-// ── Shared select style ───────────────────────────────────────────────────────
-
-const selectStyle = (enabled: boolean): React.CSSProperties => ({
-  width: '100%',
-  padding: '10px 36px 10px 12px',
-  backgroundColor: '#141414',
-  border: '1px solid rgba(255,255,255,0.1)',
-  borderRadius: 8,
-  color: enabled ? '#F5F3EE' : '#3A3830',
-  fontSize: 13,
-  fontWeight: 500,
-  outline: 'none',
-  cursor: enabled ? 'pointer' : 'not-allowed',
-  appearance: 'none',
-  opacity: enabled ? 1 : 0.5,
-})
-
-// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function BrowsePage() {
   const router = useRouter()
 
-  // Bike context
-  const [selectedBike,    setSelectedBike]    = useState<SelectedBike | null>(null)
-  const [showingSelector, setShowingSelector] = useState(false)
-  const [initialising,    setInitialising]    = useState(true)
-
-  // Garage bikes (logged-in users)
+  const [initialising, setInitialising] = useState(true)
+  const [selectedBike, setSelectedBike] = useState<SelectedBike | null>(null)
   const [garageBikes, setGarageBikes] = useState<GarageBike[]>([])
 
-  // Dropdown data
-  const [makes,  setMakes]  = useState<ApiMake[]>([])
+  const [makes, setMakes] = useState<ApiMake[]>([])
   const [models, setModels] = useState<ApiModel[]>([])
-  const [years,  setYears]  = useState<number[]>([])
-
-  // Dropdown selections
-  const [selectedMakeId,    setSelectedMakeId]    = useState('')
-  const [selectedModelId,   setSelectedModelId]   = useState('')
-  const [selectedYear,      setSelectedYear]      = useState('')
-  const [selectedVariant,   setSelectedVariant]   = useState('')
-  const [selectedMakeName,  setSelectedMakeName]  = useState('')
-  const [selectedModelName, setSelectedModelName] = useState('')
-
-  // Loading states
-  const [loadingModels,   setLoadingModels]   = useState(false)
-  const [loadingYears,    setLoadingYears]    = useState(false)
-  const [loadingVariants, setLoadingVariants] = useState(false)
-
-  // Variant options (only shown when > 1 distinct variant exists)
   const [variants, setVariants] = useState<string[]>([])
+  const [years, setYears] = useState<number[]>([])
 
-  // Filters
+  const [selectedMakeId, setSelectedMakeId] = useState('')
+  const [selectedMakeName, setSelectedMakeName] = useState('')
+  const [selectedModelId, setSelectedModelId] = useState('')
+  const [selectedModelName, setSelectedModelName] = useState('')
+  const [selectedVariant, setSelectedVariant] = useState('')
+  const [selectedYear, setSelectedYear] = useState('')
+
+  const [loadingModels, setLoadingModels] = useState(false)
+  const [loadingVariants, setLoadingVariants] = useState(false)
+  const [loadingYears, setLoadingYears] = useState(false)
+
+  const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState('')
-  const [searchQuery,    setSearchQuery]    = useState('')
-  const [sortMode,       setSortMode]       = useState<SortMode>('default')
-
-  // ── Initialise: sessionStorage → auth → show selector ──────────────────────
-
-  useEffect(() => {
-    async function init() {
-      try {
-        const raw = sessionStorage.getItem(SESSION_KEY)
-        if (raw) {
-          const parsed = JSON.parse(raw) as SelectedBike
-          if (parsed?.id && parsed?.make && parsed?.model && parsed?.year) {
-            setSelectedBike(parsed)
-            setInitialising(false)
-            return
-          }
-        }
-      } catch { /* ignore */ }
-
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          const snapshot = await loadGarageFromSupabase(demoGarageBikes)
-          const firstBike = snapshot?.bikes?.[0]
-          if (firstBike) {
-            const bike: SelectedBike = {
-              id: firstBike.id,
-              make: firstBike.make,
-              model: firstBike.model,
-              variant: firstBike.variant ?? null,
-              year: firstBike.year,
-            }
-            setSelectedBike(bike)
-            try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(bike)) } catch { /* ignore */ }
-            setInitialising(false)
-            return
-          }
-        }
-      } catch { /* ignore */ }
-
-      setShowingSelector(true)
-      setInitialising(false)
-    }
-
-    init()
-  }, [])
-
-  // ── Load garage bikes in parallel (non-blocking) ───────────────────────────
+  const [sortMode, setSortMode] = useState<SortMode>('default')
 
   useEffect(() => {
     let cancelled = false
-    async function load() {
+
+    async function init() {
+      try {
+        const raw = sessionStorage.getItem(BROWSE_BIKE_KEY)
+        const parsed = raw ? JSON.parse(raw) as PersistedBrowseBike : null
+        if (parsed?.userSelected && parsed.id && parsed.make && parsed.model && parsed.year && !cancelled) {
+          setSelectedBike(parsed)
+          setSelectedMakeId(parsed.make)
+          setSelectedMakeName(parsed.make)
+          setSelectedModelId(parsed.model)
+          setSelectedModelName(parsed.model)
+          setSelectedVariant(parsed.variant ?? '')
+          setSelectedYear(String(parsed.year))
+        }
+      } catch { /* ignore stale local state */ }
+
       try {
         const { data: { session } } = await supabase.auth.getSession()
-        if (!session || cancelled) return
-        const snapshot = await loadGarageFromSupabase(demoGarageBikes)
-        if (cancelled) return
-        setGarageBikes(
-          (snapshot?.bikes ?? []).map(b => ({
-            id: b.id,
-            make: b.make,
-            model: b.model,
-            variant: b.variant ?? null,
-            year: b.year,
-            nickname: b.nickname ?? null,
-          }))
-        )
-      } catch { /* ignore */ }
+        if (session && !cancelled) {
+          const snapshot = await loadGarageFromSupabase(demoGarageBikes)
+          if (!cancelled) {
+            setGarageBikes(
+              (snapshot?.bikes ?? []).map(bike => ({
+                id: bike.sourceBikeId ?? bike.id,
+                make: bike.make,
+                model: bike.model,
+                variant: bike.variant ?? null,
+                year: bike.year,
+                nickname: bike.nickname ?? bike.garageBikeName ?? null,
+                source: 'garage',
+              }))
+            )
+          }
+        }
+      } catch { /* signed-out or garage unavailable */ }
+
+      if (!cancelled) setInitialising(false)
     }
-    load()
+
+    init()
     return () => { cancelled = true }
   }, [])
-
-  // ── Fetch makes eagerly ────────────────────────────────────────────────────
 
   useEffect(() => {
     const controller = new AbortController()
     fetch('/api/bikes/options', { signal: controller.signal })
-      .then(r => r.json())
-      .then(d => setMakes(d.makes ?? []))
-      .catch(() => { /* ignore */ })
+      .then(response => response.json())
+      .then(data => setMakes(data.makes ?? []))
+      .catch(() => {})
     return () => controller.abort()
   }, [])
-
-  // ── Cascade: fetch models when make changes ────────────────────────────────
 
   useEffect(() => {
     if (!selectedMakeId) {
       setModels([])
-      setSelectedModelId('')
-      setSelectedModelName('')
+      setVariants([])
       setYears([])
-      setSelectedYear('')
       return
     }
+
     const controller = new AbortController()
     setLoadingModels(true)
-    setSelectedModelId('')
-    setSelectedModelName('')
+    setModels([])
+    setVariants([])
     setYears([])
-    setSelectedYear('')
     fetch(`/api/bikes/options?make=${encodeURIComponent(selectedMakeId)}`, { signal: controller.signal })
-      .then(r => r.json())
-      .then(d => { setModels(d.models ?? []); setLoadingModels(false) })
-      .catch(err => { if (err.name !== 'AbortError') setLoadingModels(false) })
+      .then(response => response.json())
+      .then(data => setModels(data.models ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingModels(false))
     return () => controller.abort()
   }, [selectedMakeId])
 
-  // ── Cascade: fetch variants when model changes ─────────────────────────────
-
   useEffect(() => {
-    if (!selectedModelId) {
+    if (!selectedMakeId || !selectedModelId) {
       setVariants([])
-      setSelectedVariant('')
       setYears([])
-      setSelectedYear('')
-      setLoadingVariants(false)
       return
     }
+
     const controller = new AbortController()
     setLoadingVariants(true)
-    setSelectedVariant('')
     setVariants([])
     setYears([])
-    setSelectedYear('')
     fetch(`/api/bikes/options?make=${encodeURIComponent(selectedMakeId)}&model=${encodeURIComponent(selectedModelId)}`, { signal: controller.signal })
-      .then(r => r.json())
-      .then(d => {
-        setVariants(d.variants ?? [])
-        setLoadingVariants(false)
-      })
-      .catch(err => { if (err.name !== 'AbortError') setLoadingVariants(false) })
+      .then(response => response.json())
+      .then(data => setVariants(data.variants ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingVariants(false))
     return () => controller.abort()
-  }, [selectedModelId, selectedMakeId])
-
-  // ── Cascade: fetch years when variant is ready ─────────────────────────────
+  }, [selectedMakeId, selectedModelId])
 
   useEffect(() => {
-    const needsVar    = variants.length > 1
-    const variantReady = !needsVar || !!selectedVariant
-
-    if (!selectedModelId || loadingVariants || !variantReady) {
+    if (!selectedMakeId || !selectedModelId || loadingVariants) {
       setYears([])
-      setSelectedYear('')
+      return
+    }
+
+    const needsVariant = variants.length > 0
+    if (needsVariant && !selectedVariant) {
+      setYears([])
       return
     }
 
     const controller = new AbortController()
-    const variantParam = needsVar ? selectedVariant : ''
     setLoadingYears(true)
-    setSelectedYear('')
-    fetch(
-      `/api/bikes/options?make=${encodeURIComponent(selectedMakeId)}&model=${encodeURIComponent(selectedModelId)}&variant=${encodeURIComponent(variantParam)}`,
-      { signal: controller.signal }
-    )
-      .then(r => r.json())
-      .then(d => { setYears(d.years ?? []); setLoadingYears(false) })
-      .catch(err => { if (err.name !== 'AbortError') setLoadingYears(false) })
+    const variantParam = needsVariant ? selectedVariant : ''
+    fetch(`/api/bikes/options?make=${encodeURIComponent(selectedMakeId)}&model=${encodeURIComponent(selectedModelId)}&variant=${encodeURIComponent(variantParam)}`, { signal: controller.signal })
+      .then(response => response.json())
+      .then(data => setYears(data.years ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingYears(false))
     return () => controller.abort()
-  }, [selectedVariant, variants, selectedModelId, selectedMakeId, loadingVariants])
+  }, [selectedMakeId, selectedModelId, selectedVariant, variants, loadingVariants])
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
-
-  const handleFindAccessories = useCallback(() => {
-    if (!selectedMakeId || !selectedModelId || !selectedYear) return
-    if (variants.length > 1 && !selectedVariant) return
-    const variant = variants.length > 1 ? selectedVariant : (variants[0] ?? null)
-    const bike: SelectedBike = {
-      id: `${selectedModelId}-${selectedYear}${variant ? `-${variant}` : ''}`,
-      make: selectedMakeName,
-      model: selectedModelName,
-      variant: variant || null,
-      year: parseInt(selectedYear, 10),
-    }
+  const commitBikeSelection = useCallback((bike: SelectedBike) => {
     setSelectedBike(bike)
-    setShowingSelector(false)
-    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(bike)) } catch { /* ignore */ }
-  }, [selectedMakeId, selectedModelId, selectedYear, selectedVariant, selectedMakeName, selectedModelName, variants])
+    setSearchQuery('')
+    setActiveCategory('')
+    setSortMode('default')
+    try {
+      const persisted: PersistedBrowseBike = { ...bike, userSelected: true }
+      sessionStorage.setItem(BROWSE_BIKE_KEY, JSON.stringify(persisted))
+    } catch { /* ignore */ }
+  }, [])
 
-  const handleGarageBikeSelect = useCallback((bikeId: string) => {
-    const bike = garageBikes.find(b => b.id === bikeId)
-    if (!bike) return
-    const { nickname: _n, ...rest } = bike
-    void _n
-    setSelectedBike(rest)
-    setShowingSelector(false)
-    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(rest)) } catch { /* ignore */ }
-  }, [garageBikes])
+  useEffect(() => {
+    if (!selectedMakeId || !selectedModelId || !selectedYear) return
+    if (variants.length > 0 && !selectedVariant) return
 
-  const handleChange = useCallback(() => {
-    setSelectedBike(null)
-    setShowingSelector(true)
-    setSelectedMakeId('')
+    const variant = variants.length > 0 ? selectedVariant : null
+    commitBikeSelection({
+      id: buildBikeId(selectedMakeName || selectedMakeId, selectedModelName || selectedModelId, variant, Number(selectedYear)),
+      make: selectedMakeName || selectedMakeId,
+      model: selectedModelName || selectedModelId,
+      variant,
+      year: Number(selectedYear),
+      source: 'manual',
+    })
+  }, [commitBikeSelection, selectedMakeId, selectedMakeName, selectedModelId, selectedModelName, selectedVariant, selectedYear, variants])
+
+  function handleMakeChange(value: string) {
+    const make = makes.find(item => item.id === value)
+    setSelectedMakeId(value)
+    setSelectedMakeName(make?.name ?? value)
     setSelectedModelId('')
+    setSelectedModelName('')
     setSelectedVariant('')
-    setVariants([])
-    setYears([])
     setSelectedYear('')
-    setLoadingVariants(false)
-    setLoadingYears(false)
-    try { sessionStorage.removeItem(SESSION_KEY) } catch { /* ignore */ }
-  }, [])
+    setSelectedBike(null)
+    setSearchQuery('')
+    setActiveCategory('')
+  }
 
-  // ── Derived data ───────────────────────────────────────────────────────────
+  function handleModelChange(value: string) {
+    const model = models.find(item => item.id === value)
+    setSelectedModelId(value)
+    setSelectedModelName(model?.name ?? value)
+    setSelectedVariant('')
+    setSelectedYear('')
+    setSelectedBike(null)
+    setSearchQuery('')
+    setActiveCategory('')
+  }
 
-  const categoryOptions = useMemo(() => {
-    const seen = new Set<string>()
-    const result: Array<{ id: string; label: string }> = []
-    for (const p of demoGarageProducts) {
-      if (!seen.has(p.categoryId)) {
-        seen.add(p.categoryId)
-        result.push({ id: p.categoryId, label: getCategoryLabel(p.categoryId) })
-      }
-    }
-    return result
-  }, [])
+  function handleGarageBikeSelect(value: string) {
+    const bike = garageBikes.find(item => item.id === value)
+    if (!bike) return
+    setSelectedMakeId(bike.make)
+    setSelectedMakeName(bike.make)
+    setSelectedModelId(bike.model)
+    setSelectedModelName(bike.model)
+    setSelectedVariant(bike.variant ?? '')
+    setSelectedYear(String(bike.year))
+    commitBikeSelection(bike)
+  }
+
+  function clearBike() {
+    setSelectedBike(null)
+    setSelectedMakeId('')
+    setSelectedMakeName('')
+    setSelectedModelId('')
+    setSelectedModelName('')
+    setSelectedVariant('')
+    setSelectedYear('')
+    setSearchQuery('')
+    setActiveCategory('')
+    setSortMode('default')
+    try { sessionStorage.removeItem(BROWSE_BIKE_KEY) } catch { /* ignore */ }
+  }
+
+  const categoryOptions = useMemo(
+    () => garageCategories.filter(category => category.id !== 'all' && demoGarageProducts.some(product => product.categoryId === category.id)),
+    []
+  )
+
+  const hasActiveResults = Boolean(selectedBike && (searchQuery.trim() || activeCategory))
 
   const filteredProducts = useMemo(() => {
-    let list = demoGarageProducts
-    if (activeCategory) {
-      list = list.filter(p => p.categoryId === activeCategory)
-    }
+    if (!selectedBike || !hasActiveResults) return []
+
+    let products = demoGarageProducts.filter(product => isProductCompatible(product, selectedBike))
+    if (activeCategory) products = products.filter(product => product.categoryId === activeCategory)
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      list = list.filter(p =>
-        p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q)
+      const query = searchQuery.trim().toLowerCase()
+      products = products.filter(product =>
+        product.name.toLowerCase().includes(query) ||
+        product.brand.toLowerCase().includes(query) ||
+        (product.subcategory ?? '').toLowerCase().includes(query)
       )
     }
-    if (sortMode === 'price-asc')  list = [...list].sort((a, b) => demoPrice(a.id) - demoPrice(b.id))
-    if (sortMode === 'price-desc') list = [...list].sort((a, b) => demoPrice(b.id) - demoPrice(a.id))
-    if (sortMode === 'brand-az')   list = [...list].sort((a, b) => a.brand.localeCompare(b.brand))
-    if (sortMode === 'brand-za')   list = [...list].sort((a, b) => b.brand.localeCompare(a.brand))
-    return list
-  }, [activeCategory, searchQuery, sortMode])
 
-  const needsVariant = variants.length > 1
-  const canActivate  = !!selectedMakeId && !!selectedModelId && !!selectedYear && (!needsVariant || !!selectedVariant)
-  const bikeNameForPlaceholder = selectedBike ? bikeDisplayName(selectedBike) : 'your bike'
-  const hasFilter = searchQuery.trim() !== '' || activeCategory !== ''
+    if (sortMode === 'price-asc') products = [...products].sort((a, b) => demoPrice(a.id) - demoPrice(b.id))
+    if (sortMode === 'price-desc') products = [...products].sort((a, b) => demoPrice(b.id) - demoPrice(a.id))
+    if (sortMode === 'brand-az') products = [...products].sort((a, b) => a.brand.localeCompare(b.brand))
+    if (sortMode === 'brand-za') products = [...products].sort((a, b) => b.brand.localeCompare(a.brand))
 
-  // ── Loading state ──────────────────────────────────────────────────────────
+    return products
+  }, [activeCategory, hasActiveResults, searchQuery, selectedBike, sortMode])
+
+  const selectedBikeLabel = selectedBike ? bikeDisplayName(selectedBike) : ''
 
   if (initialising) {
     return (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', gap: 12, minHeight: '50vh',
-      }}>
-        <style>{`@keyframes bp { 0%,100%{opacity:1} 50%{opacity:0.25} }`}</style>
-        <div style={{
-          width: 10, height: 10, borderRadius: '50%',
-          backgroundColor: '#E8841A',
-          animation: 'bp 1.5s ease-in-out infinite',
-        }} />
-        <span style={{ fontSize: 13, color: '#6A6860' }}>Loading…</span>
-      </div>
+      <main className="browse-page">
+        <style jsx>{styles}</style>
+        <div className="loading-state">
+          <span />
+          Loading Browse...
+        </div>
+      </main>
     )
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
   return (
-    <main style={{ backgroundColor: '#0D0D0D', minHeight: '100vh', paddingBottom: 40 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '16px 20px 0' }}>
-
-        {/* ── A: Bike selector / context banner ────────────────────────── */}
-        {selectedBike && !showingSelector ? (
-
-          /* Compact bike context card */
-          <div style={{
-            backgroundColor: '#141414',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 12, padding: '11px 13px',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-          }}>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{
-                margin: 0, fontSize: 13, fontWeight: 600, color: '#F5F3EE',
-                lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>
-                {bikeDisplayName(selectedBike)}
-              </p>
-              <p style={{ margin: '3px 0 0', fontSize: 10, color: '#6A6860' }}>
-                Guaranteed fit · {demoGarageProducts.length} accessories
-              </p>
+    <main className="browse-page">
+      <style jsx>{styles}</style>
+      <div className="browse-shell">
+        <section className="bike-card">
+          <div className="bike-card-header">
+            <div>
+              <h1>Choose your bike</h1>
+              <p>Select your bike&apos;s make, model, variant, and year to browse compatible accessories.</p>
             </div>
-            <button
-              onClick={handleChange}
-              style={{
-                flexShrink: 0, background: 'none', border: 'none', padding: 0,
-                fontSize: 11, fontWeight: 500, color: '#E8841A', cursor: 'pointer',
-              }}
-            >
-              Change
-            </button>
+            {selectedBike ? <button type="button" className="change-bike" onClick={clearBike}>Clear</button> : null}
           </div>
 
-        ) : (
-
-          /* Cascading selector panel */
-          <div style={{
-            backgroundColor: '#141414',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 12, padding: 13,
-            display: 'flex', flexDirection: 'column', gap: 10,
-          }}>
-            {/* Title */}
-            <div style={{ marginBottom: 2 }}>
-              <p style={{
-                margin: 0,
-                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-                fontWeight: 900, fontSize: 13, color: '#F5F3EE',
-                textTransform: 'uppercase', letterSpacing: '0.05em',
-              }}>
-                Choose your bike
-              </p>
-              <p style={{ margin: '4px 0 0', fontSize: 11, color: '#6A6860' }}>
-                Get guaranteed-fit accessories
-              </p>
-            </div>
-
-            {/* Garage bikes quick-select (logged-in users with existing bikes) */}
-            {garageBikes.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: '#44423E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  From your garage
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {garageBikes.map(b => (
-                    <button
-                      key={b.id}
-                      onClick={() => handleGarageBikeSelect(b.id)}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '9px 12px',
-                        backgroundColor: '#1A1814',
-                        border: '1px solid rgba(232,132,26,0.18)',
-                        borderRadius: 8,
-                        cursor: 'pointer', textAlign: 'left',
-                      }}
-                    >
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#F5F3EE' }}>
-                        {b.nickname ?? bikeDisplayName(b)}
-                      </span>
-                      <span style={{ fontSize: 10, color: '#E8841A', fontWeight: 500 }}>Select →</span>
-                    </button>
-                  ))}
-                </div>
-                <p style={{ margin: '4px 0 0', fontSize: 10, color: '#44423E', fontWeight: 500 }}>
-                  Or search manually
-                </p>
-              </div>
-            )}
-
-            {/* Make */}
-            <div style={{ position: 'relative' }}>
-              <select
-                value={selectedMakeId}
-                onChange={e => {
-                  const opt = e.target.options[e.target.selectedIndex]
-                  setSelectedMakeId(e.target.value)
-                  setSelectedMakeName(opt.text)
-                }}
-                style={selectStyle(true)}
-              >
-                <option value="">Make</option>
-                {makes.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+          {garageBikes.length > 0 ? (
+            <label className="field garage-field">
+              <span>Garage</span>
+              <select defaultValue="" onChange={event => handleGarageBikeSelect(event.target.value)}>
+                <option value="">Select from Garage</option>
+                {garageBikes.map(bike => (
+                  <option key={bike.id} value={bike.id}>
+                    {bike.nickname ? `${bike.nickname} - ${bikeDisplayName(bike)}` : bikeDisplayName(bike)}
+                  </option>
+                ))}
               </select>
-              <DropdownChevron />
-            </div>
+            </label>
+          ) : null}
 
-            {/* Model */}
-            <div style={{ position: 'relative' }}>
-              <select
-                value={selectedModelId}
-                disabled={!selectedMakeId || loadingModels}
-                onChange={e => {
-                  const opt = e.target.options[e.target.selectedIndex]
-                  setSelectedModelId(e.target.value)
-                  setSelectedModelName(opt.text)
-                }}
-                style={selectStyle(!!selectedMakeId && !loadingModels)}
-              >
-                <option value="">{loadingModels ? 'Loading…' : 'Model'}</option>
-                {models.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-              <DropdownChevron disabled={!selectedMakeId || loadingModels} />
-            </div>
+          <div className="selector-grid">
+            <SelectField label="Make" value={selectedMakeId} onChange={handleMakeChange}>
+              <option value="">Make</option>
+              {makes.map(make => <option key={make.id} value={make.id}>{make.name}</option>)}
+            </SelectField>
 
-            {/* Variant — only shown when multiple variants exist */}
-            {selectedModelId && !loadingVariants && needsVariant && (
-              <div style={{ position: 'relative' }}>
-                <select
-                  value={selectedVariant}
-                  onChange={e => setSelectedVariant(e.target.value)}
-                  style={selectStyle(true)}
-                >
-                  <option value="">Variant</option>
-                  {variants.map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-                <DropdownChevron />
-              </div>
-            )}
+            <SelectField label="Model" value={selectedModelId} disabled={!selectedMakeId || loadingModels} onChange={handleModelChange}>
+              <option value="">{loadingModels ? 'Loading...' : 'Model'}</option>
+              {models.map(model => <option key={model.id} value={model.id}>{model.name}</option>)}
+            </SelectField>
 
-            {/* Year */}
-            <div style={{ position: 'relative' }}>
-              <select
-                value={selectedYear}
-                disabled={!selectedModelId || loadingYears || (needsVariant && !selectedVariant)}
-                onChange={e => setSelectedYear(e.target.value)}
-                style={selectStyle(!!selectedModelId && !loadingYears && (!needsVariant || !!selectedVariant))}
-              >
-                <option value="">{loadingYears ? 'Loading…' : 'Year'}</option>
-                {years.map(y => <option key={y} value={String(y)}>{y}</option>)}
-              </select>
-              <DropdownChevron disabled={!selectedModelId || loadingYears || (needsVariant && !selectedVariant)} />
-            </div>
+            <SelectField label="Variant" value={selectedVariant} disabled={!selectedModelId || loadingVariants || variants.length === 0} onChange={value => { setSelectedVariant(value); setSelectedYear(''); setSelectedBike(null) }}>
+              <option value="">{loadingVariants ? 'Loading...' : variants.length === 0 ? 'Base' : 'Variant'}</option>
+              {variants.map(variant => <option key={variant} value={variant}>{variant}</option>)}
+            </SelectField>
 
-            {/* CTA */}
-            <button
-              onClick={handleFindAccessories}
-              disabled={!canActivate}
-              style={{
-                backgroundColor: canActivate ? '#E8841A' : 'rgba(232,132,26,0.25)',
-                color: canActivate ? '#0D0D0D' : 'rgba(255,255,255,0.25)',
-                border: 'none', borderRadius: 8, padding: '12px 20px',
-                fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-                fontWeight: 900, fontSize: 12,
-                textTransform: 'uppercase', letterSpacing: '0.06em',
-                cursor: canActivate ? 'pointer' : 'not-allowed',
-                transition: 'background-color 0.15s',
-              }}
-            >
-              Find accessories →
-            </button>
+            <SelectField label="Year" value={selectedYear} disabled={!selectedModelId || loadingYears || (variants.length > 0 && !selectedVariant)} onChange={value => setSelectedYear(value)}>
+              <option value="">{loadingYears ? 'Loading...' : 'Year'}</option>
+              {years.map(year => <option key={year} value={String(year)}>{year}</option>)}
+            </SelectField>
           </div>
-        )}
 
-        {selectedBike && (
-          <>
-            {/* ── B: Search bar ─────────────────────────────────────────── */}
-            <div style={{ position: 'relative' }}>
-              <svg
-                width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="#44423E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
-              >
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          <div className={selectedBike ? 'bike-status active' : 'bike-status'}>
+            <div className="bike-status-icon" />
+            <div>
+              <strong>{selectedBike ? selectedBikeLabel : 'No bike selected yet'}</strong>
+              <span>{selectedBike ? 'Ready to browse. Search or choose a category to view compatible accessories.' : 'Choose your bike, then browse compatible accessories.'}</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="search-section" aria-label="Accessory search and filters">
+          <div className="search-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <input
+              type="search"
+              value={searchQuery}
+              disabled={!selectedBike}
+              onChange={event => setSearchQuery(event.target.value)}
+              placeholder="Search accessories for your selected bike"
+            />
+          </div>
+
+          <div className="control-row">
+            <label>
+              <select value={activeCategory} disabled={!selectedBike} onChange={event => setActiveCategory(event.target.value)}>
+                <option value="">Choose category</option>
+                {categoryOptions.map(category => <option key={category.id} value={category.id}>{category.label}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <select value={sortMode} disabled={!selectedBike} onChange={event => setSortMode(event.target.value as SortMode)}>
+                <option value="default">Sort</option>
+                <option value="price-asc">Price low to high</option>
+                <option value="price-desc">Price high to low</option>
+                <option value="brand-az">Brand A-Z</option>
+                <option value="brand-za">Brand Z-A</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        {!selectedBike ? (
+          <section className="landing-empty">
+            <div className="empty-illustration">
+              <svg width="74" height="74" viewBox="0 0 74 74" fill="none" aria-hidden="true">
+                <circle cx="37" cy="37" r="35" stroke="#E8841A" strokeOpacity="0.28" strokeWidth="2" />
+                <path d="M21 43h8l6-12h11l7 12h3" stroke="#E8841A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="24" cy="48" r="5" stroke="#F5F3EE" strokeOpacity="0.82" strokeWidth="3" />
+                <circle cx="52" cy="48" r="5" stroke="#F5F3EE" strokeOpacity="0.82" strokeWidth="3" />
               </svg>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder={`Search accessories for ${bikeNameForPlaceholder}...`}
-                style={{
-                  width: '100%', boxSizing: 'border-box',
-                  padding: '10px 12px 10px 34px',
-                  backgroundColor: '#141414',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: 10, color: '#F5F3EE', fontSize: 13,
-                  outline: 'none',
-                }}
-              />
+            </div>
+            <h2>Choose your bike first</h2>
+            <p>Select a make, model, variant, and year above. We&apos;ll keep the accessory list quiet until you search or choose a category.</p>
+          </section>
+        ) : !hasActiveResults ? (
+          <section className="guided-empty">
+            <div className="empty-illustration">
+              <svg width="74" height="74" viewBox="0 0 74 74" fill="none" aria-hidden="true">
+                <rect x="18" y="20" width="38" height="34" rx="10" stroke="#E8841A" strokeOpacity="0.38" strokeWidth="2" />
+                <path d="M28 34h18M28 42h12" stroke="#F5F3EE" strokeOpacity="0.78" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="52" cy="24" r="8" fill="#E8841A" fillOpacity="0.16" />
+                <path d="m49 24 2 2 4-5" stroke="#E8841A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <h2>No accessories shown yet</h2>
+            <p>Search by name or choose a category to see compatible products for your bike.</p>
+            <div className="quick-chips">
+              {quickCategories.map(category => (
+                <button key={category.id} type="button" onClick={() => setActiveCategory(category.id)}>
+                  {category.label}
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <section className="results-section">
+            <div className="results-header">
+              <div>
+                <strong>{filteredProducts.length} compatible accessories</strong>
+                <span>{selectedBikeLabel}</span>
+              </div>
+              <button type="button" onClick={() => { setSearchQuery(''); setActiveCategory('') }}>Clear</button>
             </div>
 
-            {/* ── C: Controls row (category + sort dropdowns) ────────────── */}
-            <div style={{ display: 'flex', gap: 8 }}>
-              {/* Category dropdown */}
-              <div style={{ position: 'relative', flex: 1 }}>
-                <select
-                  value={activeCategory}
-                  onChange={e => setActiveCategory(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 32px 8px 12px',
-                    backgroundColor: activeCategory ? 'rgba(232,132,26,0.1)' : '#141414',
-                    border: activeCategory
-                      ? '1px solid rgba(232,132,26,0.22)'
-                      : '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 20,
-                    color: activeCategory ? '#E8841A' : '#B8AFA6',
-                    fontSize: 11, fontWeight: 500,
-                    outline: 'none', cursor: 'pointer',
-                    appearance: 'none',
-                  }}
-                >
-                  <option value="">All categories</option>
-                  {categoryOptions.map(c => (
-                    <option key={c.id} value={c.id}>{c.label}</option>
-                  ))}
-                </select>
-                <svg
-                  width="10" height="10" viewBox="0 0 24 24" fill="none"
-                  stroke={activeCategory ? '#E8841A' : '#6A6860'}
-                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
-                >
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
+            {filteredProducts.length === 0 ? (
+              <div className="no-results">
+                <h2>No matching accessories</h2>
+                <p>Try a different search or choose another category.</p>
               </div>
-
-              {/* Sort dropdown */}
-              <div style={{ position: 'relative', flex: 1 }}>
-                <select
-                  value={sortMode}
-                  onChange={e => setSortMode(e.target.value as SortMode)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 32px 8px 12px',
-                    backgroundColor: sortMode !== 'default' ? 'rgba(232,132,26,0.1)' : '#141414',
-                    border: sortMode !== 'default'
-                      ? '1px solid rgba(232,132,26,0.22)'
-                      : '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 20,
-                    color: sortMode !== 'default' ? '#E8841A' : '#B8AFA6',
-                    fontSize: 11, fontWeight: 500,
-                    outline: 'none', cursor: 'pointer',
-                    appearance: 'none',
-                  }}
-                >
-                  <option value="default">Sort</option>
-                  <option value="price-asc">Price: low to high</option>
-                  <option value="price-desc">Price: high to low</option>
-                  <option value="brand-az">Brand: A–Z</option>
-                  <option value="brand-za">Brand: Z–A</option>
-                </select>
-                <svg
-                  width="10" height="10" viewBox="0 0 24 24" fill="none"
-                  stroke={sortMode !== 'default' ? '#E8841A' : '#6A6860'}
-                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
-                >
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </div>
-            </div>
-
-            {/* ── D: Empty state (no filter active) ─────────────────────── */}
-            {!hasFilter && (
-              <div style={{
-                backgroundColor: '#141414',
-                border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: 12, padding: '16px 14px',
-                display: 'flex', flexDirection: 'column', gap: 14,
-              }}>
-                <div>
-                  <p style={{
-                    margin: 0,
-                    fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
-                    fontWeight: 900, fontSize: 12, color: '#F5F3EE',
-                    textTransform: 'uppercase', letterSpacing: '0.05em',
-                  }}>
-                    Browse by category
-                  </p>
-                  <p style={{ margin: '4px 0 0', fontSize: 11, color: '#6A6860' }}>
-                    All accessories guaranteed to fit your bike
-                  </p>
-                </div>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-                  {categoryOptions.map(({ id, label }) => {
-                    const accent = getCategoryAccent(id)
-                    return (
-                      <button
-                        key={id}
-                        onClick={() => setActiveCategory(id)}
-                        style={{
-                          borderRadius: 20, padding: '6px 13px',
-                          fontSize: 11, fontWeight: 500, cursor: 'pointer',
-                          backgroundColor: `rgba(${hexToRgb(accent)},0.08)`,
-                          border: `1px solid rgba(${hexToRgb(accent)},0.22)`,
-                          color: accent,
-                        }}
-                      >
-                        {label}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                <p style={{ margin: 0, fontSize: 11, color: '#44423E', textAlign: 'center' }}>
-                  Or search above to find a specific accessory
-                </p>
+            ) : (
+              <div className="product-grid">
+                {filteredProducts.map(product => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onDetails={() => router.push(`/shop/${product.id}?from=browse`)}
+                    onShop={() => router.push(`/shop?productId=${product.id}&from=browse`)}
+                  />
+                ))}
               </div>
             )}
-
-            {/* ── E: Results header + grid ───────────────────────────────── */}
-            {hasFilter && (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 11, color: '#6A6860' }}>
-                    {filteredProducts.length} accessories · all guaranteed fit
-                  </span>
-                  {(activeCategory || sortMode !== 'default') && (
-                    <button
-                      onClick={() => { setActiveCategory(''); setSortMode('default') }}
-                      style={{
-                        background: 'none', border: 'none', padding: 0,
-                        fontSize: 11, fontWeight: 500, color: '#6A6860', cursor: 'pointer',
-                      }}
-                    >
-                      Clear filters
-                    </button>
-                  )}
-                </div>
-
-                {filteredProducts.length === 0 ? (
-                  <div style={{ padding: '40px 0', textAlign: 'center', color: '#6A6860', fontSize: 13 }}>
-                    No accessories match your search.
-                  </div>
-                ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    {filteredProducts.map(product => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        onDetails={() => router.push(`/shop/${product.id}?from=browse`)}
-                        onShop={() => router.push(`/shop?productId=${product.id}`)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </>
+          </section>
         )}
-
       </div>
     </main>
   )
 }
+
+const styles = `
+  .browse-page {
+    min-height: 100vh;
+    background: #0D0D0D;
+    color: #F5F3EE;
+    padding-bottom: 44px;
+  }
+
+  .browse-shell {
+    width: min(100%, 1040px);
+    margin: 0 auto;
+    padding: 16px 20px 0;
+    display: grid;
+    gap: 14px;
+  }
+
+  .bike-card, .guided-empty, .landing-empty, .product-card, .no-results {
+    background: #141414;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px;
+    box-shadow: 0 16px 42px rgba(0,0,0,0.2);
+  }
+
+  .bike-card {
+    padding: 16px;
+    display: grid;
+    gap: 14px;
+  }
+
+  .bike-card-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  h1, h2, h3, p {
+    margin: 0;
+  }
+
+  .bike-card h1 {
+    font-size: 28px;
+    line-height: 1;
+    letter-spacing: 0;
+    font-weight: 850;
+    color: #F5F3EE;
+  }
+
+  .bike-card p {
+    margin-top: 7px;
+    max-width: 620px;
+    color: #B8AFA6;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .change-bike {
+    border: 1px solid rgba(232,132,26,0.28);
+    color: #E8841A;
+    background: rgba(232,132,26,0.08);
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .selector-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .field {
+    display: grid;
+    gap: 6px;
+  }
+
+  .field span {
+    color: #8F887F;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  select, input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: #1A1A1A;
+    color: #F5F3EE;
+    border-radius: 12px;
+    min-height: 46px;
+    padding: 0 13px;
+    font-size: 14px;
+    outline: none;
+  }
+
+  select:disabled, input:disabled {
+    color: #54504A;
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+
+  .garage-field {
+    padding: 12px;
+    border-radius: 14px;
+    background: #1A1814;
+    border: 1px solid rgba(232,132,26,0.16);
+  }
+
+  .bike-status {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 12px;
+    border-radius: 14px;
+    background: #101010;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .bike-status.active {
+    border-color: rgba(232,132,26,0.24);
+    background: rgba(232,132,26,0.06);
+  }
+
+  .bike-status-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, rgba(232,132,26,0.28), rgba(232,132,26,0.06));
+    border: 1px solid rgba(232,132,26,0.22);
+  }
+
+  .bike-status strong {
+    display: block;
+    color: #F5F3EE;
+    font-size: 13px;
+    line-height: 1.25;
+  }
+
+  .bike-status span {
+    display: block;
+    margin-top: 3px;
+    color: #8F887F;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .search-section {
+    display: grid;
+    gap: 10px;
+  }
+
+  .search-box {
+    position: relative;
+  }
+
+  .search-box svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6A6860;
+    pointer-events: none;
+  }
+
+  .search-box input {
+    padding-left: 42px;
+    background: #141414;
+  }
+
+  .control-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .guided-empty, .landing-empty {
+    min-height: 270px;
+    padding: 24px 18px;
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .empty-illustration {
+    width: 92px;
+    height: 92px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(232,132,26,0.13), rgba(232,132,26,0.02));
+  }
+
+  .guided-empty h2, .landing-empty h2, .no-results h2 {
+    font-size: 22px;
+    font-weight: 850;
+    letter-spacing: 0;
+    color: #F5F3EE;
+  }
+
+  .guided-empty p, .landing-empty p, .no-results p {
+    max-width: 420px;
+    color: #B8AFA6;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .quick-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .quick-chips button {
+    border: 1px solid rgba(232,132,26,0.28);
+    background: rgba(232,132,26,0.08);
+    color: #E8841A;
+    border-radius: 999px;
+    min-height: 34px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 750;
+    cursor: pointer;
+  }
+
+  .results-section {
+    display: grid;
+    gap: 12px;
+  }
+
+  .results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .results-header strong {
+    display: block;
+    font-size: 14px;
+    color: #F5F3EE;
+  }
+
+  .results-header span {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    color: #8F887F;
+  }
+
+  .results-header button {
+    border: none;
+    background: none;
+    color: #E8841A;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .product-card {
+    overflow: hidden;
+    display: grid;
+  }
+
+  .product-image {
+    position: relative;
+    height: 118px;
+    background: #1A1814;
+  }
+
+  .product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .category-pill {
+    position: absolute;
+    top: 9px;
+    left: 9px;
+    max-width: calc(100% - 18px);
+    border-radius: 999px;
+    padding: 4px 8px;
+    background: rgba(var(--accent-rgb),0.13);
+    border: 1px solid rgba(var(--accent-rgb),0.3);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 750;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .product-body {
+    padding: 11px;
+    display: grid;
+    gap: 5px;
+  }
+
+  .product-body h3 {
+    font-size: 13px;
+    font-weight: 760;
+    line-height: 1.25;
+    min-height: 32px;
+    color: #F5F3EE;
+  }
+
+  .product-body p {
+    color: #8F887F;
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .product-body strong {
+    color: #F5F3EE;
+    font-size: 14px;
+  }
+
+  .fit-badge {
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(29,158,117,0.09);
+    color: #1D9E75;
+    font-size: 10px;
+    font-weight: 750;
+  }
+
+  .product-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .primary-action, .secondary-action {
+    border-radius: 10px;
+    min-height: 38px;
+    padding: 0 8px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .primary-action {
+    border: none;
+    background: #E8841A;
+    color: #0D0D0D;
+    text-transform: uppercase;
+  }
+
+  .secondary-action {
+    border: 1px solid rgba(255,255,255,0.11);
+    background: transparent;
+    color: #F5F3EE;
+  }
+
+  .no-results {
+    padding: 32px 18px;
+    text-align: center;
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+  }
+
+  .loading-state {
+    min-height: 48vh;
+    display: grid;
+    gap: 12px;
+    place-items: center;
+    align-content: center;
+    color: #8F887F;
+    font-size: 13px;
+  }
+
+  .loading-state span {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #E8841A;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(0.82); }
+  }
+
+  @media (min-width: 720px) {
+    .browse-shell {
+      padding-top: 24px;
+      gap: 18px;
+    }
+
+    .bike-card {
+      padding: 22px;
+    }
+
+    .selector-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .product-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .product-image {
+      height: 150px;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .browse-shell {
+      padding-left: 14px;
+      padding-right: 14px;
+    }
+
+    .selector-grid, .product-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+`
