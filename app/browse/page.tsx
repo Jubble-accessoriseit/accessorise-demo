@@ -196,20 +196,6 @@ export default function BrowsePage() {
 
     async function init() {
       try {
-        const raw = sessionStorage.getItem(BROWSE_BIKE_KEY)
-        const parsed = raw ? JSON.parse(raw) as PersistedBrowseBike : null
-        if (parsed?.userSelected && parsed.id && parsed.make && parsed.model && parsed.year && !cancelled) {
-          setSelectedBike(parsed)
-          setSelectedMakeId(parsed.make)
-          setSelectedMakeName(parsed.make)
-          setSelectedModelId(parsed.model)
-          setSelectedModelName(parsed.model)
-          setSelectedVariant(parsed.variant ?? '')
-          setSelectedYear(String(parsed.year))
-        }
-      } catch { /* ignore stale local state */ }
-
-      try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session && !cancelled) {
           const snapshot = await loadGarageFromSupabase(demoGarageBikes)
