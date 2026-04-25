@@ -1,732 +1,25 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import type { GarageBikeRecord, GarageBuildItem, GarageBuildRecord } from '@/types/garage'
 import { garageCategories } from '@/types/garage'
 import { formatGaragePriceDisplay } from '@/lib/garage/price-display'
-import { AddAccessoryModal } from './AddAccessoryModal'
-import { ReturnPrompt } from './ReturnPrompt'
 
-type ItemState = 'fitted' | 'wishlist' | 'moved_on'
-type Filter = 'all' | 'fitted' | 'wishlist' | 'history'
-type MenuMode = 'root' | 'edit-state' | 'confirm-remove'
+type GarageItemStatus = 'wishlist' | 'bought' | 'removed'
+type GarageItemCondition = 'New' | 'Used'
 
-// GarageBuildItem.state is in the DB schema but not yet in the TypeScript type.
-// This derives a demo state from productId so all three variants are visible.
-// Replace with `item.state` once the type is extended.
-function getDemoItemState(item: GarageBuildItem): ItemState {
-  const n = item.productId % 3
-  if (n === 0) return 'moved_on'
-  if (n === 1) return 'wishlist'
-  return 'fitted'
+type GarageItemRecord = {
+  status: GarageItemStatus
+  currentlyOnBike: boolean
+  purchasePrice: string
+  purchaseDate: string
+  supplier: string
+  installedDate: string
+  removedDate: string
+  condition: GarageItemCondition
+  notes: string
 }
-
-function getCategoryLabel(categoryId: string): string {
-  return garageCategories.find((c) => c.id === categoryId)?.label ?? categoryId
-}
-
-// ── Dots ────────────────────────────────────────────────────────────────────
-
-function StateDot({ state, size = 8 }: { state: ItemState; size?: number }) {
-  if (state === 'fitted') {
-    return (
-      <span style={{ display: 'inline-block', width: size, height: size, borderRadius: '50%', backgroundColor: '#1D9E75', flexShrink: 0 }} />
-    )
-  }
-  if (state === 'wishlist') {
-    return (
-      <span style={{ display: 'inline-block', width: size, height: size, borderRadius: '50%', border: '1.5px solid #888780', backgroundColor: 'transparent', flexShrink: 0 }} />
-    )
-  }
-  return (
-    <span style={{ display: 'inline-block', width: size, height: size, borderRadius: '50%', backgroundColor: '#5DCAA5', flexShrink: 0 }} />
-  )
-}
-
-const STATE_META: Record<ItemState, { label: string; color: string }> = {
-  fitted:   { label: 'Fitted',    color: '#1D9E75' },
-  wishlist: { label: 'Wish list', color: '#888780' },
-  moved_on: { label: 'History',   color: '#5DCAA5' },
-}
-
-const STATE_ORDER: ItemState[] = ['fitted', 'wishlist', 'moved_on']
-
-// ── Bike header card ─────────────────────────────────────────────────────────
-
-function BikeHeaderCard({
-  bike, build, bikes, onSwitchBike, onDeleteBike, onDeleteBuild, onSwitchBikeTo,
-}: {
-  bike: GarageBikeRecord
-  build: GarageBuildRecord | null
-  bikes: GarageBikeRecord[]
-  onSwitchBike: () => void
-  onDeleteBike?: () => void
-  onDeleteBuild?: () => void
-  onSwitchBikeTo?: (bike: GarageBikeRecord) => void
-}) {
-  const [showDeleteBikeConfirm, setShowDeleteBikeConfirm] = useState(false)
-  const [buildMenuOpen, setBuildMenuOpen] = useState(false)
-  const [buildMenuMode, setBuildMenuMode] = useState<'root' | 'rename' | 'delete'>('root')
-  const [buildNameOverride, setBuildNameOverride] = useState<string | null>(null)
-  const [renameInput, setRenameInput] = useState('')
-  const [showBikePicker, setShowBikePicker] = useState(false)
-
-  const bikeName = [bike.year, bike.make, bike.model, bike.variant].filter(Boolean).join(' ')
-  const reg = bike.nickname ?? '—'
-  const buildName = buildNameOverride ?? build?.name ?? 'My Build'
-  const otherBikes = bikes.filter(b => b.id !== bike.id)
-
-  const baseSheetStyle: React.CSSProperties = {
-    position: 'fixed', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#141414',
-    borderTop: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '12px 12px 0 0',
-    zIndex: 200,
-    paddingBottom: 'env(safe-area-inset-bottom, 16px)',
-  }
-
-  const DragHandle = () => (
-    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 6 }}>
-      <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.12)' }} />
-    </div>
-  )
-
-  const rowStyle: React.CSSProperties = {
-    display: 'flex', alignItems: 'center', gap: 12,
-    width: '100%', padding: '14px 20px',
-    fontSize: 13, fontWeight: 500, color: '#F5F3EE',
-    background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer',
-  }
-
-  return (
-    <>
-      <div className="flex gap-3 items-start rounded-[12px] p-[13px]" style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}>
-        {(() => {
-          const photoUrl = bike.image ?? bike.photos?.[0]?.imageUrl ?? null
-          return photoUrl ? (
-            <img src={photoUrl} alt={bike.model} className="flex-shrink-0" style={{ width: 62, height: 62, borderRadius: 10, objectFit: 'cover', objectPosition: 'center' }} />
-          ) : (
-            <div className="flex flex-col items-center justify-center gap-1 flex-shrink-0" style={{ width: 62, height: 62, border: '1.5px dashed rgba(232,132,26,0.25)', borderRadius: 10 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(232,132,26,0.4)" strokeWidth="1.5">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-              <span style={{ fontSize: 9, color: 'rgba(232,132,26,0.4)', fontWeight: 500 }}>Add photo</span>
-            </div>
-          )
-        })()}
-        <div className="flex-1 flex flex-col gap-0.5 min-w-0">
-          <p className="text-[#F5F3EE] font-semibold leading-tight truncate" style={{ fontSize: 13 }}>{bikeName}</p>
-          <p style={{ fontSize: 11, color: '#6A6860' }}>{reg}</p>
-          {/* Build name + options button */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 1 }}>
-            <p style={{ fontSize: 11, color: '#6A6860', margin: 0 }}>{buildName}</p>
-            <button
-              onClick={() => { setBuildMenuMode('root'); setBuildMenuOpen(true) }}
-              style={{ fontSize: 18, color: '#B8B6B0', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', lineHeight: 1, marginLeft: 8, flexShrink: 0 }}
-              aria-label="Build options"
-            >
-              ⋮
-            </button>
-          </div>
-          <button
-            onClick={otherBikes.length > 0 ? () => setShowBikePicker(true) : onSwitchBike}
-            className="text-left mt-1"
-            style={{ fontSize: 11, color: '#E8841A', fontWeight: 500, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-          >
-            Switch bike
-          </button>
-          <button
-            onClick={() => setShowDeleteBikeConfirm(true)}
-            className="text-left mt-0.5"
-            style={{ fontSize: 11, color: '#DC3535', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-          >
-            Delete bike
-          </button>
-        </div>
-      </div>
-
-      {/* Build options sheet */}
-      {buildMenuOpen && (
-        <>
-          <div onClick={() => setBuildMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 199, backgroundColor: 'rgba(0,0,0,0.55)' }} />
-          <div style={baseSheetStyle}>
-            <DragHandle />
-            {buildMenuMode === 'root' && (
-              <>
-                <div style={{ padding: '4px 20px 10px', fontSize: 11, color: '#6A6860', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                  {buildName}
-                </div>
-                <button
-                  onClick={() => { setRenameInput(buildName); setBuildMenuMode('rename') }}
-                  className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
-                  style={rowStyle}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888780" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                  </svg>
-                  Rename build
-                </button>
-                <div style={{ height: 1, margin: '0 20px', backgroundColor: 'rgba(255,255,255,0.06)' }} />
-                <button
-                  onClick={() => setBuildMenuMode('delete')}
-                  className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
-                  style={{ ...rowStyle, color: '#DC3535' }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC3535" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                    <path d="M10 11v6M14 11v6" />
-                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                  </svg>
-                  Delete build
-                </button>
-                <div style={{ height: 8 }} />
-              </>
-            )}
-
-            {buildMenuMode === 'rename' && (
-              <>
-                <div style={{ padding: '12px 20px 16px' }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: '#F5F3EE', margin: '0 0 12px' }}>Rename build</p>
-                  <input
-                    type="text"
-                    value={renameInput}
-                    onChange={e => setRenameInput(e.target.value)}
-                    autoFocus
-                    style={{
-                      width: '100%', boxSizing: 'border-box',
-                      padding: '10px 12px',
-                      backgroundColor: '#1A1814',
-                      border: '1px solid rgba(255,255,255,0.12)',
-                      borderRadius: 8,
-                      color: '#F5F3EE', fontSize: 13, outline: 'none',
-                    }}
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: 10, padding: '0 20px 12px' }}>
-                  <button
-                    onClick={() => setBuildMenuMode('root')}
-                    style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.12)', fontSize: 12, fontWeight: 500, color: '#F5F3EE', cursor: 'pointer' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => { if (renameInput.trim()) setBuildNameOverride(renameInput.trim()); setBuildMenuOpen(false) }}
-                    style={{ flex: 2, padding: 13, borderRadius: 8, backgroundColor: '#E8841A', border: 'none', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}
-                  >
-                    Save
-                  </button>
-                </div>
-              </>
-            )}
-
-            {buildMenuMode === 'delete' && (
-              <>
-                <div style={{ padding: '8px 20px 16px' }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: '#F5F3EE', margin: '0 0 8px' }}>Delete this build?</p>
-                  <p style={{ fontSize: 12, color: '#6A6860', lineHeight: 1.55, margin: 0 }}>
-                    {buildName} will be permanently deleted. This cannot be undone.
-                  </p>
-                </div>
-                <div style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', margin: '0 20px' }} />
-                <div style={{ display: 'flex', gap: 10, padding: '14px 20px 8px' }}>
-                  <button
-                    onClick={() => setBuildMenuMode('root')}
-                    style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.12)', fontSize: 12, fontWeight: 500, color: '#F5F3EE', cursor: 'pointer' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => { setBuildMenuOpen(false); onDeleteBuild?.() }}
-                    style={{ flex: 2, padding: 13, borderRadius: 8, backgroundColor: '#DC3535', border: 'none', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}
-                  >
-                    Delete build
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* Bike picker sheet */}
-      {showBikePicker && (
-        <>
-          <div onClick={() => setShowBikePicker(false)} style={{ position: 'fixed', inset: 0, zIndex: 199, backgroundColor: 'rgba(0,0,0,0.55)' }} />
-          <div style={baseSheetStyle}>
-            <DragHandle />
-            <div style={{ padding: '4px 20px 10px', fontSize: 11, color: '#6A6860', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              Switch to...
-            </div>
-            {otherBikes.map(b => {
-              const bName = [b.year, b.make, b.model, b.variant].filter(Boolean).join(' ')
-              const bPhoto = b.image ?? b.photos?.[0]?.imageUrl ?? null
-              return (
-                <button
-                  key={b.id}
-                  onClick={() => { setShowBikePicker(false); onSwitchBikeTo?.(b) }}
-                  className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
-                  style={rowStyle}
-                >
-                  <div style={{ width: 36, height: 36, borderRadius: 7, flexShrink: 0, overflow: 'hidden', backgroundColor: '#1A1814' }}>
-                    {bPhoto && <img src={bPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                  </div>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bName}</span>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#44423E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </button>
-              )
-            })}
-            <div style={{ height: 1, margin: '0 20px', backgroundColor: 'rgba(255,255,255,0.06)' }} />
-            <button
-              onClick={() => { setShowBikePicker(false); onSwitchBike() }}
-              style={{ display: 'block', width: '100%', padding: '12px 20px', fontSize: 12, fontWeight: 500, color: '#E8841A', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' }}
-            >
-              View all bikes →
-            </button>
-            <div style={{ height: 8 }} />
-          </div>
-        </>
-      )}
-
-      {/* Delete bike confirmation sheet */}
-      {showDeleteBikeConfirm && (
-        <>
-          <div onClick={() => setShowDeleteBikeConfirm(false)} style={{ position: 'fixed', inset: 0, zIndex: 199, backgroundColor: 'rgba(0,0,0,0.55)' }} />
-          <div style={baseSheetStyle}>
-            <DragHandle />
-            <div style={{ padding: '8px 20px 16px' }}>
-              <p style={{ fontSize: 14, fontWeight: 600, color: '#F5F3EE', margin: '0 0 8px' }}>Delete this bike?</p>
-              <p style={{ fontSize: 12, color: '#6A6860', lineHeight: 1.55, margin: 0 }}>
-                This will permanently delete {bikeName} and all associated accessories and photos. This cannot be undone.
-              </p>
-            </div>
-            <div style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', margin: '0 20px' }} />
-            <div style={{ display: 'flex', gap: 10, padding: '14px 20px 8px' }}>
-              <button
-                onClick={() => setShowDeleteBikeConfirm(false)}
-                style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.12)', fontSize: 12, fontWeight: 500, color: '#F5F3EE', cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => { setShowDeleteBikeConfirm(false); onDeleteBike?.() }}
-                style={{ flex: 2, padding: 13, borderRadius: 8, backgroundColor: '#DC3535', border: 'none', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}
-              >
-                Delete bike
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </>
-  )
-}
-
-// ── Stat cards ───────────────────────────────────────────────────────────────
-
-function StatCard({ count, label, borderColor }: { count: number; label: string; borderColor: string }) {
-  return (
-    <div className="flex-1 flex flex-col items-start rounded-[11px] p-[11px]" style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderLeft: `3px solid ${borderColor}` }}>
-      <span className="text-[#F5F3EE] leading-none" style={{ fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif", fontWeight: 900, fontSize: 22 }}>
-        {count}
-      </span>
-      <span style={{ fontSize: 10, color: '#6A6860', marginTop: 4 }}>{label}</span>
-    </div>
-  )
-}
-
-// ── Filter pills ─────────────────────────────────────────────────────────────
-
-const FILTER_CONFIG: Array<{ filter: Filter; label: string; dot?: ItemState }> = [
-  { filter: 'all',      label: 'All' },
-  { filter: 'fitted',   label: 'Fitted',    dot: 'fitted' },
-  { filter: 'wishlist', label: 'Wish list', dot: 'wishlist' },
-  { filter: 'history',  label: 'History',   dot: 'moved_on' },
-]
-
-function FilterPills({ active, onChange }: { active: Filter; onChange: (f: Filter) => void }) {
-  return (
-    <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
-      {FILTER_CONFIG.map(({ filter, label, dot }) => {
-        const isActive = active === filter
-        return (
-          <button
-            key={filter}
-            onClick={() => onChange(filter)}
-            className="flex items-center gap-1.5 whitespace-nowrap rounded-full px-[13px] py-[6px] flex-shrink-0"
-            style={{
-              fontSize: 11, fontWeight: 500, cursor: 'pointer',
-              border: isActive ? '1px solid rgba(232,132,26,0.22)' : '1px solid rgba(255,255,255,0.07)',
-              backgroundColor: isActive ? 'rgba(232,132,26,0.1)' : '#141414',
-              color: isActive ? '#E8841A' : '#B8AFA6',
-            }}
-          >
-            {dot && <StateDot state={dot} size={8} />}
-            {label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-// ── Accessory menu sheet ──────────────────────────────────────────────────────
-
-function AccessoryMenuSheet({
-  item,
-  currentState,
-  mode,
-  onSetMode,
-  onStateChange,
-  onRemove,
-  onViewDetails,
-  onClose,
-}: {
-  item: GarageBuildItem
-  currentState: ItemState
-  mode: MenuMode
-  onSetMode: (m: MenuMode) => void
-  onStateChange: (s: ItemState) => void
-  onRemove: () => void
-  onViewDetails: () => void
-  onClose: () => void
-}) {
-  const sheetStyle: React.CSSProperties = {
-    position: 'fixed', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#141414',
-    borderTop: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '12px 12px 0 0',
-    zIndex: 200,
-    paddingBottom: 'env(safe-area-inset-bottom, 16px)',
-  }
-
-  const rowStyle: React.CSSProperties = {
-    display: 'flex', alignItems: 'center', gap: 12,
-    width: '100%', padding: '14px 20px',
-    fontSize: 13, fontWeight: 500, color: '#F5F3EE',
-    background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer',
-  }
-
-  const dividerStyle: React.CSSProperties = {
-    height: 1, margin: '0 20px', backgroundColor: 'rgba(255,255,255,0.06)',
-  }
-
-  return (
-    <>
-      {/* Backdrop */}
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 199, backgroundColor: 'rgba(0,0,0,0.55)' }} />
-
-      {/* Sheet */}
-      <div style={sheetStyle}>
-        {/* Drag handle */}
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 6 }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.12)' }} />
-        </div>
-
-        {mode === 'root' && (
-          <>
-            {/* Item name label */}
-            <div style={{ padding: '4px 20px 10px', fontSize: 11, color: '#6A6860', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              {item.product.name}
-            </div>
-
-            <button
-              className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
-              style={rowStyle}
-              onClick={() => onSetMode('edit-state')}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-                <StateDot state={currentState} size={10} />
-                Edit state
-              </span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#44423E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-
-            <div style={dividerStyle} />
-
-            <button
-              className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
-              style={rowStyle}
-              onClick={() => onSetMode('confirm-remove')}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888780" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                <path d="M10 11v6M14 11v6" />
-                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-              </svg>
-              Remove from build
-            </button>
-
-            <div style={dividerStyle} />
-
-            <button
-              className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
-              style={rowStyle}
-              onClick={() => { onViewDetails(); onClose() }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888780" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              View details
-            </button>
-
-            <div style={{ height: 8 }} />
-          </>
-        )}
-
-        {mode === 'edit-state' && (
-          <>
-            <div style={{ padding: '4px 20px 10px', fontSize: 11, color: '#6A6860', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              Change state for {item.product.name}
-            </div>
-
-            {STATE_ORDER.map((s) => {
-              const meta = STATE_META[s]
-              const isCurrent = s === currentState
-              return (
-                <button
-                  key={s}
-                  className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
-                  style={{ ...rowStyle, color: isCurrent ? meta.color : '#F5F3EE' }}
-                  onClick={() => { onStateChange(s); onClose() }}
-                >
-                  <StateDot state={s} size={10} />
-                  <span style={{ flex: 1 }}>{meta.label}</span>
-                  {isCurrent && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={meta.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </button>
-              )
-            })}
-
-            <div style={dividerStyle} />
-            <button
-              className="hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors"
-              style={{ ...rowStyle, color: '#6A6860' }}
-              onClick={() => onSetMode('root')}
-            >
-              ← Back
-            </button>
-            <div style={{ height: 8 }} />
-          </>
-        )}
-
-        {mode === 'confirm-remove' && (
-          <>
-            <div style={{ padding: '12px 20px 16px' }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#F5F3EE', margin: '0 0 4px' }}>
-                Remove from build?
-              </p>
-              <p style={{ fontSize: 12, color: '#6A6860', margin: 0, lineHeight: 1.5 }}>
-                {item.product.name} will be removed from your current build.
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: 10, padding: '0 20px 16px' }}>
-              <button
-                onClick={onClose}
-                style={{
-                  flex: 1, padding: '12px', fontSize: 12, fontWeight: 500,
-                  color: '#F5F3EE', backgroundColor: 'transparent',
-                  border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => { onRemove(); onClose() }}
-                style={{
-                  flex: 1, padding: '12px', fontSize: 12, fontWeight: 600,
-                  color: '#fff', backgroundColor: 'rgba(220,53,53,0.85)',
-                  border: '1px solid rgba(220,53,53,0.5)', borderRadius: 8, cursor: 'pointer',
-                }}
-              >
-                Remove
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </>
-  )
-}
-
-// ── Accessory item card ───────────────────────────────────────────────────────
-
-function AccessoryCard({
-  item,
-  state,
-  onShopNow,
-  onStateChange,
-  onRemove,
-}: {
-  item: GarageBuildItem
-  state: ItemState
-  onShopNow?: () => void
-  onStateChange: (newState: ItemState) => void
-  onRemove: () => void
-}) {
-  const { product } = item
-  const meta = STATE_META[state]
-  const isHistory = state === 'moved_on'
-  const isWishlist = state === 'wishlist'
-  const priceLabel = formatGaragePriceDisplay(product.price)
-
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [menuMode, setMenuMode] = useState<MenuMode>('root')
-  const [expanded, setExpanded] = useState(false)
-
-  function openMenu() {
-    setMenuMode('root')
-    setMenuOpen(true)
-  }
-
-  return (
-    <>
-      <div
-        className="rounded-[12px] p-[13px]"
-        style={
-          isHistory
-            ? { backgroundColor: '#111008', border: '1px solid rgba(255,255,255,0.04)', borderRadius: 11, opacity: 0.75 }
-            : { backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }
-        }
-      >
-        <div className="flex gap-3 items-start">
-          {/* Product image */}
-          <div className="flex-shrink-0 rounded-[8px] overflow-hidden" style={{ width: 52, height: 52, backgroundColor: '#1A1814' }}>
-            {product.image ? (
-              <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-            ) : null}
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <p className="text-[#F5F3EE] font-semibold leading-tight truncate" style={{ fontSize: 12 }}>
-              {product.name}
-            </p>
-            <p style={{ fontSize: 10, color: '#6A6860', marginTop: 1 }}>{product.brand}</p>
-
-            {/* State + price row */}
-            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-              <StateDot state={state} size={8} />
-              <span style={{ fontSize: 10, fontWeight: 500, color: meta.color }}>{meta.label}</span>
-              <span style={{ fontSize: 10, color: '#44423E' }}>·</span>
-              <span style={{ fontSize: 11, color: '#6A6860' }}>{priceLabel}</span>
-            </div>
-
-            {/* Shop now — wish list only */}
-            {isWishlist && (
-              <button
-                onClick={onShopNow}
-                className="mt-2 rounded-full px-3 py-1 flex-shrink-0"
-                style={{ fontSize: 11, fontWeight: 500, color: '#E8841A', border: '1px solid rgba(232,132,26,0.35)', backgroundColor: 'transparent', cursor: 'pointer' }}
-              >
-                Shop now →
-              </button>
-            )}
-          </div>
-
-          {/* Three-dot / close button */}
-          <button
-            onClick={expanded ? () => setExpanded(false) : openMenu}
-            className="flex-shrink-0 flex items-center justify-center"
-            style={{ width: 28, height: 28, fontSize: expanded ? 16 : 18, color: expanded ? '#6A6860' : '#B8B6B0', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}
-            aria-label={expanded ? 'Collapse details' : 'More options'}
-          >
-            {expanded ? '✕' : '⋮'}
-          </button>
-        </div>
-
-        {/* Expanded details */}
-        {expanded && (
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <div className="flex flex-col gap-2">
-              {/* Detail rows */}
-              {[
-                { label: 'Supplier', value: product.affiliateLinks?.[0]?.vendorName ?? product.brand },
-                { label: 'Listed price', value: priceLabel },
-                { label: 'Price paid', value: '—' },
-                { label: 'Date fitted', value: '—' },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex justify-between items-baseline">
-                  <span style={{ fontSize: 11, color: '#6A6860' }}>{label}</span>
-                  <span style={{ fontSize: 11, color: '#F5F3EE', fontWeight: 500 }}>{value}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Shop now */}
-            <Link
-              href={`/shop/${item.productId}`}
-              className="mt-3 flex items-center justify-center gap-1 rounded-full"
-              style={{
-                padding: '7px 16px',
-                fontSize: 11, fontWeight: 500, color: '#E8841A',
-                border: '1px solid rgba(232,132,26,0.35)',
-                backgroundColor: 'transparent',
-                textDecoration: 'none',
-              }}
-            >
-              Shop now ↗
-              <span style={{ fontSize: 10, color: '#44423E', marginLeft: 2 }}>opens retailer site</span>
-            </Link>
-          </div>
-        )}
-      </div>
-
-      {/* Menu sheet — rendered outside card flow via fixed positioning */}
-      {menuOpen && (
-        <AccessoryMenuSheet
-          item={item}
-          currentState={state}
-          mode={menuMode}
-          onSetMode={setMenuMode}
-          onStateChange={onStateChange}
-          onRemove={onRemove}
-          onViewDetails={() => setExpanded(true)}
-          onClose={() => setMenuOpen(false)}
-        />
-      )}
-    </>
-  )
-}
-
-// ── Section header ────────────────────────────────────────────────────────────
-
-function SectionHeader({ label, count }: { label: string; count: number }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span style={{ display: 'inline-block', width: 3, height: 14, backgroundColor: '#E8841A', borderRadius: 2, flexShrink: 0 }} />
-      <span className="uppercase tracking-[0.05em] text-[#F5F3EE]" style={{ fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif", fontWeight: 900, fontSize: 12 }}>
-        {label}
-      </span>
-      <span style={{ fontSize: 11, color: '#44423E' }}>{count}</span>
-    </div>
-  )
-}
-
-// ── Empty state ───────────────────────────────────────────────────────────────
-
-function EmptyPrompt({ message }: { message: string }) {
-  return (
-    <div className="flex items-center justify-center rounded-[12px] py-10 px-5 text-center" style={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}>
-      <p style={{ fontSize: 13, color: '#6A6860' }}>{message}</p>
-    </div>
-  )
-}
-
-// ── Main component ────────────────────────────────────────────────────────────
 
 type GarageScreenProps = {
   bikes: GarageBikeRecord[]
@@ -738,171 +31,902 @@ type GarageScreenProps = {
   onSwitchBikeTo?: (bike: GarageBikeRecord) => void
 }
 
-type ReturnPromptState = {
-  productName: string
-  retailerName: string
-  price: number | null
-  productId: number
+const BROWSE_BIKE_KEY = 'browse_bike_selection_v2'
+const EXPERT_BIKE_CONTEXT_KEY = 'expert_bike_context_v1'
+const GARAGE_RETURN_KEY = 'garage_return_context_v1'
+const GARAGE_ITEM_RECORD_KEY = 'garage_item_records_v1'
+
+function getBikeTitle(bike: GarageBikeRecord) {
+  return [bike.year, bike.make, bike.model, bike.variant].filter(Boolean).join(' ')
 }
 
-export function GarageScreen({ bikes: _bikes, selectedBike, selectedBuild, onSwitchBike, onDeleteBike, onDeleteBuild, onSwitchBikeTo }: GarageScreenProps) {
-  const router = useRouter()
-  const [activeFilter, setActiveFilter] = useState<Filter>('all')
-  const [showModal, setShowModal] = useState(false)
-  const [modalKey, setModalKey] = useState(0)
-  const [returnPrompt, setReturnPrompt] = useState<ReturnPromptState | null>(null)
+function getBikeName(bike: GarageBikeRecord) {
+  return bike.nickname ?? bike.garageBikeName ?? getBikeTitle(bike)
+}
 
-  // Local-only overrides — persisted to Supabase in a future pass
-  const [stateOverrides, setStateOverrides] = useState<Record<string, ItemState>>({})
-  const [removedItemIds, setRemovedItemIds] = useState<Set<string>>(new Set())
+function getCategoryLabel(categoryId: string) {
+  return garageCategories.find((category) => category.id === categoryId)?.label ?? categoryId
+}
 
-  const allItems = useMemo(() => selectedBuild?.buildItems ?? [], [selectedBuild])
+function getDefaultStatus(item: GarageBuildItem): GarageItemStatus {
+  const n = item.productId % 3
+  if (n === 1) return 'wishlist'
+  if (n === 0) return 'removed'
+  return 'bought'
+}
 
-  // Apply state overrides and filter removed items
-  const itemsWithState = useMemo(
-    () =>
-      allItems
-        .filter((item) => !removedItemIds.has(item.id))
-        .map((item) => ({ item, state: stateOverrides[item.id] ?? getDemoItemState(item) })),
-    [allItems, stateOverrides, removedItemIds]
-  )
+function getDefaultRecord(item: GarageBuildItem): GarageItemRecord {
+  const status = getDefaultStatus(item)
+  return {
+    status,
+    currentlyOnBike: status === 'bought',
+    purchasePrice: item.product.price > 0 ? String(item.product.price) : '',
+    purchaseDate: status === 'wishlist' ? '' : '2025-04-12',
+    supplier: item.product.affiliateLinks?.[0]?.vendorName ?? item.product.brand,
+    installedDate: status === 'bought' ? '2025-04-18' : '',
+    removedDate: status === 'removed' ? '2026-02-05' : '',
+    condition: 'New',
+    notes: '',
+  }
+}
 
-  const counts = useMemo(
-    () => ({
-      fitted:   itemsWithState.filter((x) => x.state === 'fitted').length,
-      wishlist: itemsWithState.filter((x) => x.state === 'wishlist').length,
-      history:  itemsWithState.filter((x) => x.state === 'moved_on').length,
+function statusLabel(status: GarageItemStatus, currentlyOnBike: boolean) {
+  if (status === 'removed') return 'Previously fitted'
+  if (currentlyOnBike) return 'Currently fitted'
+  if (status === 'bought') return 'Bought'
+  return 'Wish list'
+}
+
+function tyreFitmentForBike(bike: GarageBikeRecord) {
+  const model = `${bike.make} ${bike.model}`.toLowerCase()
+  if (model.includes('r1300gs') || model.includes('r1300gsa')) {
+    return { front: '120/70 R19', rear: '170/60 R17' }
+  }
+  if (model.includes('tenere')) {
+    return { front: '90/90 R21', rear: '150/70 R18' }
+  }
+  return { front: 'Front size not saved', rear: 'Rear size not saved' }
+}
+
+function getPhotos(bike: GarageBikeRecord) {
+  const photos = bike.photos?.map((photo) => photo.imageUrl) ?? []
+  const hero = bike.heroImageUrl ?? bike.image ?? null
+  return Array.from(new Set([hero, ...photos].filter((value): value is string => Boolean(value))))
+}
+
+function writeGarageReturnContext(input: {
+  bike: GarageBikeRecord
+  build: GarageBuildRecord | null
+  itemId?: string | null
+  photoIndex?: number
+}) {
+  sessionStorage.setItem(
+    GARAGE_RETURN_KEY,
+    JSON.stringify({
+      bikeId: input.bike.id,
+      buildId: input.build?.id ?? null,
+      selectedItemId: input.itemId ?? null,
+      selectedPhotoIndex: input.photoIndex ?? 0,
+      scrollY: window.scrollY,
     }),
-    [itemsWithState]
   )
+}
 
-  const visibleItems = useMemo(() => {
-    if (activeFilter === 'all')      return itemsWithState
-    if (activeFilter === 'fitted')   return itemsWithState.filter((x) => x.state === 'fitted')
-    if (activeFilter === 'wishlist') return itemsWithState.filter((x) => x.state === 'wishlist')
-    return itemsWithState.filter((x) => x.state === 'moved_on')
-  }, [itemsWithState, activeFilter])
+function writeBikeContexts(bike: GarageBikeRecord) {
+  const browseBike = {
+    id: bike.sourceBikeId ?? bike.id,
+    make: bike.make,
+    model: bike.model,
+    variant: bike.variant ?? null,
+    year: bike.year,
+    source: 'garage',
+    userSelected: true,
+  }
 
-  const categoryGroups = useMemo(() => {
-    const order: string[] = []
-    const map = new Map<string, Array<{ item: GarageBuildItem; state: ItemState }>>()
-    for (const entry of visibleItems) {
-      const catId = entry.item.product.categoryId
-      if (!map.has(catId)) { order.push(catId); map.set(catId, []) }
-      map.get(catId)!.push(entry)
+  sessionStorage.setItem(BROWSE_BIKE_KEY, JSON.stringify(browseBike))
+  sessionStorage.setItem(
+    EXPERT_BIKE_CONTEXT_KEY,
+    JSON.stringify({
+      make: bike.make,
+      model: bike.model,
+      variant: bike.variant ?? undefined,
+      year: String(bike.year),
+      image: bike.heroImageUrl ?? bike.image ?? undefined,
+    }),
+  )
+}
+
+function loadItemRecords() {
+  try {
+    const raw = sessionStorage.getItem(GARAGE_ITEM_RECORD_KEY)
+    return raw ? (JSON.parse(raw) as Record<string, GarageItemRecord>) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveItemRecords(records: Record<string, GarageItemRecord>) {
+  sessionStorage.setItem(GARAGE_ITEM_RECORD_KEY, JSON.stringify(records))
+}
+
+function formatStoredPrice(value: string, fallback: number) {
+  const numeric = Number(String(value || fallback).replace(/[^0-9.]/g, ''))
+  return formatGaragePriceDisplay(Number.isFinite(numeric) ? numeric : fallback)
+}
+
+export function GarageScreen({ bikes, selectedBike, selectedBuild, onSwitchBike }: GarageScreenProps) {
+  const router = useRouter()
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
+  const [records, setRecords] = useState<Record<string, GarageItemRecord>>({})
+  const [draftRecord, setDraftRecord] = useState<GarageItemRecord | null>(null)
+  const [saveMessage, setSaveMessage] = useState('')
+
+  useEffect(() => {
+    setRecords(loadItemRecords())
+  }, [])
+
+  useEffect(() => {
+    if (!selectedBike) return
+    try {
+      const raw = sessionStorage.getItem(GARAGE_RETURN_KEY)
+      const context = raw ? JSON.parse(raw) as {
+        bikeId?: string
+        selectedItemId?: string | null
+        selectedPhotoIndex?: number
+        scrollY?: number
+      } : null
+      if (!context || context.bikeId !== selectedBike.id) return
+      setSelectedPhotoIndex(context.selectedPhotoIndex ?? 0)
+      setSelectedItemId(context.selectedItemId ?? null)
+      if (!context.selectedItemId) {
+        window.setTimeout(() => window.scrollTo({ top: context.scrollY ?? 0 }), 80)
+      }
+    } catch {
+      /* ignore invalid return context */
     }
-    return order.map((catId) => ({ catId, label: getCategoryLabel(catId), entries: map.get(catId)! }))
-  }, [visibleItems])
+  }, [selectedBike])
 
-  function handleStateChange(itemId: string, newState: ItemState) {
-    setStateOverrides((prev) => ({ ...prev, [itemId]: newState }))
-  }
+  const photos = useMemo(() => (selectedBike ? getPhotos(selectedBike) : []), [selectedBike])
+  const heroPhoto = photos[selectedPhotoIndex] ?? null
+  const items = selectedBuild?.buildItems ?? []
+  const selectedItem = items.find((item) => item.id === selectedItemId) ?? null
+  const selectedRecord = selectedItem
+    ? records[selectedItem.id] ?? getDefaultRecord(selectedItem)
+    : null
 
-  function handleRemove(itemId: string) {
-    setRemovedItemIds((prev) => new Set([...prev, itemId]))
-  }
+  useEffect(() => {
+    if (!selectedItem) {
+      setDraftRecord(null)
+      return
+    }
+    setDraftRecord(records[selectedItem.id] ?? getDefaultRecord(selectedItem))
+    setSaveMessage('')
+  }, [records, selectedItem])
+
+  const counts = useMemo(() => {
+    return items.reduce(
+      (acc, item) => {
+        const record = records[item.id] ?? getDefaultRecord(item)
+        if (record.currentlyOnBike && record.status !== 'removed') acc.current++
+        if (record.status === 'bought') acc.bought++
+        if (record.status === 'wishlist') acc.wishlist++
+        if (record.status === 'removed') acc.removed++
+        return acc
+      },
+      { current: 0, bought: 0, wishlist: 0, removed: 0 },
+    )
+  }, [items, records])
 
   if (!selectedBike) {
     return (
-      <div className="px-5 pt-4">
-        <EmptyPrompt message="No bike selected — choose a bike in the Bike tab to see your garage." />
-      </div>
+      <main className="garage-detail">
+        <section className="empty-card">No bike selected.</section>
+        <style jsx>{styles}</style>
+      </main>
+    )
+  }
+
+  const currentBike = selectedBike
+  const isPrimaryBike = bikes.find((bike) => bike.builds.some((build) => build.isPrimary))?.id === currentBike.id
+  const tyreFitment = tyreFitmentForBike(currentBike)
+
+  function openBrowse() {
+    writeBikeContexts(currentBike)
+    writeGarageReturnContext({ bike: currentBike, build: selectedBuild, photoIndex: selectedPhotoIndex })
+    router.push('/browse?fromGarage=1')
+  }
+
+  function openCompare() {
+    writeBikeContexts(currentBike)
+    writeGarageReturnContext({ bike: currentBike, build: selectedBuild, photoIndex: selectedPhotoIndex })
+    router.push('/expert?fromGarage=1')
+  }
+
+  function openItemDetail(item: GarageBuildItem) {
+    writeGarageReturnContext({ bike: currentBike, build: selectedBuild, itemId: item.id, photoIndex: selectedPhotoIndex })
+    setSelectedItemId(item.id)
+  }
+
+  function saveDetails() {
+    if (!selectedItem || !draftRecord) return
+    const next = { ...records, [selectedItem.id]: draftRecord }
+    setRecords(next)
+    saveItemRecords(next)
+    setSaveMessage('Saved locally for this session. Persistent item fields need a database update.')
+  }
+
+  if (selectedItem && draftRecord && selectedRecord) {
+    return (
+      <main className="garage-detail item-detail">
+        <button className="back-link" type="button" onClick={() => setSelectedItemId(null)}>Back to Garage build</button>
+
+        <section className="item-hero card">
+          <img src={selectedItem.product.image} alt="" />
+          <div>
+            <span className="category-pill">{getCategoryLabel(selectedItem.product.categoryId)}</span>
+            <h1>{selectedItem.product.name}</h1>
+            <p>{selectedItem.product.brand}</p>
+            <strong>Fits {getBikeTitle(selectedBike)}</strong>
+            {selectedItem.product.categoryId === 'tyres' ? (
+              <small>Tyre reference: front {tyreFitment.front}, rear {tyreFitment.rear}</small>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="action-row">
+          <button
+            type="button"
+            onClick={() => {
+              writeBikeContexts(currentBike)
+              writeGarageReturnContext({
+                bike: currentBike,
+                build: selectedBuild,
+                itemId: selectedItem.id,
+                photoIndex: selectedPhotoIndex,
+              })
+              router.push('/browse?fromGarage=1')
+            }}
+          >
+            View in Browse
+          </button>
+          <button type="button" className="secondary" onClick={openCompare}>Compare</button>
+        </section>
+
+        <section className="card form-card">
+          <h2>Ownership details</h2>
+          <div className="segmented">
+            {(['wishlist', 'bought', 'removed'] as GarageItemStatus[]).map((status) => (
+              <button
+                key={status}
+                type="button"
+                className={draftRecord.status === status ? 'active' : ''}
+                onClick={() =>
+                  setDraftRecord({
+                    ...draftRecord,
+                    status,
+                    currentlyOnBike: status === 'removed' || status === 'wishlist' ? false : draftRecord.currentlyOnBike,
+                  })
+                }
+              >
+                {status === 'wishlist' ? 'Wish list' : status === 'bought' ? 'Bought' : 'Removed'}
+              </button>
+            ))}
+          </div>
+
+          <label className="toggle-row">
+            <span>Currently on bike</span>
+            <input
+              type="checkbox"
+              checked={draftRecord.currentlyOnBike}
+              disabled={draftRecord.status !== 'bought'}
+              onChange={(event) => setDraftRecord({ ...draftRecord, currentlyOnBike: event.target.checked })}
+            />
+          </label>
+
+          <div className="field-grid">
+            <label>Purchase price<input value={draftRecord.purchasePrice} onChange={(e) => setDraftRecord({ ...draftRecord, purchasePrice: e.target.value })} placeholder="A$1,689.00" /></label>
+            <label>Purchase date<input type="date" value={draftRecord.purchaseDate} onChange={(e) => setDraftRecord({ ...draftRecord, purchaseDate: e.target.value })} /></label>
+            <label>Supplier/store<input value={draftRecord.supplier} onChange={(e) => setDraftRecord({ ...draftRecord, supplier: e.target.value })} placeholder="Touratech Australia" /></label>
+            <label>Installed date<input type="date" value={draftRecord.installedDate} onChange={(e) => setDraftRecord({ ...draftRecord, installedDate: e.target.value })} /></label>
+            {draftRecord.status === 'removed' ? (
+              <label>Removed date<input type="date" value={draftRecord.removedDate} onChange={(e) => setDraftRecord({ ...draftRecord, removedDate: e.target.value })} /></label>
+            ) : null}
+            <label>Condition<select value={draftRecord.condition} onChange={(e) => setDraftRecord({ ...draftRecord, condition: e.target.value as GarageItemCondition })}><option>New</option><option>Used</option></select></label>
+          </div>
+
+          <label>Notes<textarea maxLength={250} value={draftRecord.notes} onChange={(e) => setDraftRecord({ ...draftRecord, notes: e.target.value })} placeholder="Installation notes, fitment quirks, or supplier details." /></label>
+
+          <div className="linked-status">
+            <strong>Linked build status</strong>
+            <span>{draftRecord.status === 'removed' ? 'Previously used' : draftRecord.currentlyOnBike ? 'Active in current build' : 'Not currently fitted'}</span>
+          </div>
+        </section>
+
+        <section className="card lifecycle">
+          <h2>Lifecycle history</h2>
+          {[
+            ['Wish list', selectedItem.createdAt?.slice(0, 10) ?? '-'],
+            ['Bought', draftRecord.purchaseDate || '-'],
+            ['Installed', draftRecord.installedDate || '-'],
+            ['Removed', draftRecord.removedDate || '-'],
+          ].map(([label, date]) => (
+            <div key={label} className={date === '-' ? 'inactive' : ''}>
+              <span />
+              <strong>{label}</strong>
+              <em>{date}</em>
+            </div>
+          ))}
+        </section>
+
+        <section className="action-row">
+          <button type="button" onClick={saveDetails}>Save details</button>
+          <button type="button" className="secondary" onClick={() => setSelectedItemId(null)}>Return to Garage</button>
+        </section>
+        {saveMessage ? <p className="save-message">{saveMessage}</p> : null}
+
+        <style jsx>{styles}</style>
+      </main>
     )
   }
 
   return (
-    <div className="flex flex-col gap-4 px-5 pt-4 pb-8">
-      {returnPrompt && (
-        <ReturnPrompt
-          productName={returnPrompt.productName}
-          retailerName={returnPrompt.retailerName}
-          price={returnPrompt.price}
-          onBought={() => setReturnPrompt(null)}
-          onNotYet={() => setReturnPrompt(null)}
-          onRemove={() => setReturnPrompt(null)}
-        />
-      )}
+    <main className="garage-detail">
+      <button className="back-link" type="button" onClick={onSwitchBike}>Back to Garage</button>
 
-      <BikeHeaderCard
-        bike={selectedBike}
-        build={selectedBuild}
-        bikes={_bikes}
-        onSwitchBike={onSwitchBike}
-        onDeleteBike={onDeleteBike}
-        onDeleteBuild={onDeleteBuild}
-        onSwitchBikeTo={onSwitchBikeTo}
-      />
-
-      <div className="flex gap-2">
-        <StatCard count={counts.fitted}   label="Fitted"    borderColor="#1D9E75" />
-        <StatCard count={counts.wishlist} label="Wish list" borderColor="#888780" />
-        <StatCard count={counts.history}  label="History"   borderColor="#5DCAA5" />
-      </div>
-
-      <FilterPills active={activeFilter} onChange={setActiveFilter} />
-
-      {categoryGroups.length === 0 ? (
-        <EmptyPrompt
-          message={
-            activeFilter === 'all'
-              ? 'No accessories in this build yet.'
-              : `No ${activeFilter === 'history' ? 'history' : activeFilter} items.`
-          }
-        />
-      ) : (
-        <div className="flex flex-col gap-5">
-          {categoryGroups.map(({ catId, label, entries }) => (
-            <div key={catId} className="flex flex-col gap-2">
-              <SectionHeader label={label} count={entries.length} />
-              {entries.map(({ item, state }) => (
-                <AccessoryCard
-                  key={item.id}
-                  item={item}
-                  state={state}
-                  onStateChange={(newState) => handleStateChange(item.id, newState)}
-                  onRemove={() => handleRemove(item.id)}
-                  onShopNow={
-                    state === 'wishlist'
-                      ? () => {
-                          const basePrice = 140 + ((item.productId * 7) % 180)
-                          setReturnPrompt({
-                            productName: item.product.name,
-                            retailerName: item.product.affiliateLinks?.[0]?.vendorName ?? item.product.brand,
-                            price: basePrice,
-                            productId: item.productId,
-                          })
-                          router.push(`/shop/${item.productId}`)
-                        }
-                      : undefined
-                  }
-                />
-              ))}
-            </div>
-          ))}
+      <section className="photo-card card">
+        <div className="hero-photo">
+          {heroPhoto ? <img src={heroPhoto} alt="" /> : <span>No bike photo yet</span>}
         </div>
-      )}
+        <div className="thumb-row">
+          {photos.length > 0 ? photos.map((photo, index) => (
+            <button key={photo} type="button" className={index === selectedPhotoIndex ? 'active' : ''} onClick={() => setSelectedPhotoIndex(index)}>
+              <img src={photo} alt="" />
+            </button>
+          )) : <button type="button" className="placeholder-thumb">+</button>}
+        </div>
+      </section>
 
-      <button
-        className="w-full text-center"
-        onClick={() => { setModalKey(k => k + 1); setShowModal(true) }}
-        style={{
-          border: '1.5px dashed rgba(232,132,26,0.25)', borderRadius: 10,
-          padding: '13px 14px', fontSize: 12, fontWeight: 500,
-          color: 'rgba(232,132,26,0.5)', backgroundColor: 'transparent', cursor: 'pointer',
-        }}
-      >
-        + Add accessory
-      </button>
+      <section className="identity-card card">
+        <div>
+          <p className="eyebrow">Garage bike</p>
+          <h1>{getBikeName(selectedBike)}</h1>
+          <span>{getBikeTitle(selectedBike)}</span>
+        </div>
+        {isPrimaryBike ? <span className="primary-badge">Primary bike</span> : null}
+        <button type="button" className="icon-action">Edit bike info</button>
+      </section>
 
-      {showModal && (
-        <AddAccessoryModal
-          key={modalKey}
-          bikeName={[selectedBike?.year, selectedBike?.make, selectedBike?.model].filter(Boolean).join(' ')}
-          bikeId={selectedBike?.id ?? null}
-          onClose={() => setShowModal(false)}
-          onViewBuild={() => setShowModal(false)}
-        />
-      )}
-    </div>
+      <section className="action-row">
+        <button type="button" onClick={openBrowse}>Browse accessories</button>
+        <button type="button" className="secondary" onClick={openCompare}>Compare builds</button>
+      </section>
+
+      <section className="card info-card">
+        <h2>Bike information & fitment</h2>
+        <div className="info-grid">
+          <span><strong>Make</strong>{selectedBike.make}</span>
+          <span><strong>Model</strong>{selectedBike.model}</span>
+          <span><strong>Variant</strong>{selectedBike.variant ?? 'Base'}</span>
+          <span><strong>Year</strong>{selectedBike.year}</span>
+          <span><strong>Saved build</strong>{selectedBuild?.name ?? 'No active build'}</span>
+        </div>
+        <div className="tyre-card">
+          <div>
+            <strong>Tyre fitment reference</strong>
+            <p>Confirmed sizes for exact tyre fitment.</p>
+          </div>
+          <span>Front tyre size: {tyreFitment.front}</span>
+          <span>Rear tyre size: {tyreFitment.rear}</span>
+          <button type="button">Edit tyre fitment</button>
+        </div>
+      </section>
+
+      <section className="status-grid">
+        <article className="current"><strong>{counts.current}</strong><span>Currently fitted</span></article>
+        <article className="bought"><strong>{counts.bought}</strong><span>Bought</span></article>
+        <article className="wishlist"><strong>{counts.wishlist}</strong><span>Wish list</span></article>
+        <article className="removed"><strong>{counts.removed}</strong><span>Previously fitted</span></article>
+      </section>
+
+      <section className="card build-card">
+        <div className="section-heading">
+          <h2>Build items</h2>
+          <span>{items.length} items</span>
+        </div>
+        {items.length === 0 ? (
+          <p className="empty-copy">No accessories in this build yet.</p>
+        ) : (
+          <div className="item-list">
+            {items.map((item) => {
+              const record = records[item.id] ?? getDefaultRecord(item)
+              const label = statusLabel(record.status, record.currentlyOnBike)
+              return (
+                <article key={item.id} id={`garage-item-${item.id}`} className="item-row">
+                  <img src={item.product.image} alt="" />
+                  <div>
+                    <h3>{item.product.name}</h3>
+                    <p>{item.product.brand}</p>
+                    <small>{record.purchaseDate ? `${record.purchaseDate} · ${formatStoredPrice(record.purchasePrice, item.product.price || 0)}` : record.status === 'removed' ? `Removed ${record.removedDate || '-'}` : 'Purchase details not saved'}</small>
+                  </div>
+                  <span className={`status-pill ${record.status} ${record.currentlyOnBike ? 'current' : ''}`}>{label}</span>
+                  <button type="button" onClick={() => openItemDetail(item)}>View details</button>
+                </article>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      <style jsx>{styles}</style>
+    </main>
   )
 }
+
+const styles = `
+  .garage-detail {
+    min-height: 100vh;
+    background: #0d0d0d;
+    color: #f5f3ee;
+    padding: 16px 16px 42px;
+    display: grid;
+    gap: 14px;
+  }
+
+  .card {
+    background: #141414;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    box-shadow: 0 18px 46px rgba(0,0,0,0.25);
+  }
+
+  .back-link {
+    justify-self: start;
+    border: 0;
+    background: transparent;
+    color: #e8841a;
+    font-weight: 900;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+
+  h1, h2, h3, p {
+    margin: 0;
+  }
+
+  .photo-card {
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+  }
+
+  .hero-photo {
+    min-height: 270px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #1a1a1a;
+    border: 1px solid rgba(255,255,255,0.07);
+    display: grid;
+    place-items: center;
+    color: #7a7268;
+  }
+
+  .hero-photo img,
+  .thumb-row img,
+  .item-row img,
+  .item-hero img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .thumb-row {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+  }
+
+  .thumb-row button {
+    width: 62px;
+    height: 48px;
+    border-radius: 12px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: #1a1a1a;
+    flex: 0 0 auto;
+    cursor: pointer;
+  }
+
+  .thumb-row button.active {
+    border-color: #e8841a;
+  }
+
+  .identity-card {
+    padding: 16px;
+    display: grid;
+    gap: 12px;
+  }
+
+  .eyebrow {
+    color: #e8841a;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .identity-card h1 {
+    margin-top: 4px;
+    font-size: 1.65rem;
+    line-height: 1;
+  }
+
+  .identity-card span,
+  .empty-copy {
+    color: #b8afa6;
+  }
+
+  .primary-badge,
+  .category-pill {
+    width: fit-content;
+    border-radius: 999px;
+    padding: 6px 9px;
+    background: rgba(232,132,26,0.15);
+    border: 1px solid rgba(232,132,26,0.32);
+    color: #e8841a;
+    font-size: 0.7rem;
+    font-weight: 900;
+  }
+
+  .icon-action {
+    width: fit-content;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: #1a1a1a;
+    color: #f5f3ee;
+  }
+
+  .action-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  button {
+    min-height: 46px;
+    border-radius: 14px;
+    border: 0;
+    background: #e8841a;
+    color: #17110b;
+    font-weight: 950;
+    cursor: pointer;
+  }
+
+  button.secondary,
+  .action-row .secondary {
+    background: #1a1a1a;
+    color: #f5f3ee;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+
+  .info-card,
+  .build-card,
+  .form-card,
+  .lifecycle {
+    padding: 16px;
+    display: grid;
+    gap: 14px;
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .info-grid span,
+  .tyre-card,
+  .linked-status {
+    background: #1a1a1a;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 11px;
+    color: #b8afa6;
+    display: grid;
+    gap: 4px;
+  }
+
+  .info-grid strong,
+  .tyre-card strong,
+  .linked-status strong {
+    color: #f5f3ee;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .tyre-card p {
+    color: #7a7268;
+    font-size: 0.82rem;
+  }
+
+  .tyre-card button {
+    margin-top: 6px;
+    background: transparent;
+    border: 1px solid rgba(232,132,26,0.34);
+    color: #e8841a;
+  }
+
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .status-grid article {
+    background: #141414;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 13px;
+    display: grid;
+    gap: 4px;
+  }
+
+  .status-grid strong {
+    font-size: 1.45rem;
+  }
+
+  .status-grid span {
+    color: #b8afa6;
+    font-size: 0.78rem;
+    font-weight: 800;
+  }
+
+  .current strong { color: #72d69a; }
+  .bought strong, .wishlist strong { color: #e8841a; }
+  .removed strong { color: #8f887f; }
+
+  .section-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: baseline;
+  }
+
+  .section-heading span {
+    color: #7a7268;
+    font-size: 0.8rem;
+  }
+
+  .item-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .item-row {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    border-radius: 16px;
+    background: #1a1a1a;
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+
+  .item-row img {
+    width: 54px;
+    height: 54px;
+    border-radius: 13px;
+  }
+
+  .item-row h3 {
+    font-size: 0.95rem;
+    line-height: 1.2;
+  }
+
+  .item-row p,
+  .item-row small {
+    display: block;
+    margin-top: 3px;
+    color: #8f887f;
+    font-size: 0.76rem;
+  }
+
+  .item-row button {
+    grid-column: 1 / -1;
+    background: transparent;
+    color: #e8841a;
+    border: 1px solid rgba(232,132,26,0.28);
+  }
+
+  .status-pill {
+    width: fit-content;
+    border-radius: 999px;
+    padding: 6px 9px;
+    font-size: 0.72rem;
+    font-weight: 900;
+    color: #f5f3ee;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .status-pill.current { color: #72d69a; background: rgba(114,214,154,0.13); }
+  .status-pill.bought { color: #e8841a; background: rgba(232,132,26,0.13); }
+  .status-pill.wishlist { color: #e8841a; background: rgba(232,132,26,0.08); }
+  .status-pill.removed { color: #b8afa6; background: rgba(255,255,255,0.06); }
+
+  .item-hero {
+    padding: 14px;
+    display: grid;
+    gap: 14px;
+  }
+
+  .item-hero img {
+    height: 220px;
+    border-radius: 16px;
+    background: #1a1a1a;
+  }
+
+  .item-hero h1 {
+    margin-top: 10px;
+    font-size: 1.55rem;
+    line-height: 1.05;
+  }
+
+  .item-hero p,
+  .item-hero small,
+  .item-hero strong {
+    display: block;
+    margin-top: 5px;
+    color: #b8afa6;
+  }
+
+  .segmented {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+    padding: 5px;
+    border-radius: 15px;
+    background: #1a1a1a;
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+
+  .segmented button {
+    min-height: 40px;
+    background: transparent;
+    border: 0;
+    color: #b8afa6;
+  }
+
+  .segmented button.active {
+    background: #e8841a;
+    color: #17110b;
+  }
+
+  .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    border-radius: 14px;
+    background: #1a1a1a;
+  }
+
+  .toggle-row input {
+    width: 22px;
+    height: 22px;
+  }
+
+  .field-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  label {
+    display: grid;
+    gap: 7px;
+    color: #b8afa6;
+    font-size: 0.78rem;
+    font-weight: 800;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border-radius: 13px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: #1a1a1a;
+    color: #f5f3ee;
+    padding: 11px;
+    font: inherit;
+  }
+
+  textarea {
+    min-height: 96px;
+    resize: vertical;
+  }
+
+  .lifecycle div {
+    display: grid;
+    grid-template-columns: 18px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    color: #f5f3ee;
+  }
+
+  .lifecycle div span {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: #e8841a;
+  }
+
+  .lifecycle div.inactive {
+    color: #6a6860;
+  }
+
+  .lifecycle div.inactive span {
+    background: #3a3830;
+  }
+
+  .lifecycle em {
+    color: #8f887f;
+    font-style: normal;
+    font-size: 0.78rem;
+  }
+
+  .save-message {
+    text-align: center;
+    color: #72d69a;
+    font-size: 0.82rem;
+  }
+
+  @media (min-width: 760px) {
+    .garage-detail {
+      width: min(1040px, 100%);
+      margin: 0 auto;
+      padding: 28px 24px 54px;
+    }
+
+    .item-row {
+      grid-template-columns: 64px minmax(0, 1fr) auto auto;
+    }
+
+    .item-row button {
+      grid-column: auto;
+      min-width: 120px;
+    }
+
+    .item-row img {
+      width: 64px;
+      height: 64px;
+    }
+
+    .item-hero {
+      grid-template-columns: 280px 1fr;
+      align-items: center;
+    }
+
+    .item-hero img {
+      height: 260px;
+    }
+
+    .identity-card {
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+    }
+  }
+
+  @media (max-width: 430px) {
+    .field-grid,
+    .info-grid,
+    .action-row {
+      grid-template-columns: 1fr;
+    }
+  }
+`

@@ -41,6 +41,7 @@ type CompareReturnContext = {
   collapsedCategoryIds: string[];
   selectedItemId: string;
   scrollY: number;
+  fromGarage?: boolean;
 };
 
 const BROWSE_BIKE_KEY = 'browse_bike_selection_v2';
@@ -99,8 +100,11 @@ export default function ExpertBuildComparePage() {
   const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<string[]>([]);
   const [pendingScrollTarget, setPendingScrollTarget] = useState<string | null>(null);
   const [pendingScrollY, setPendingScrollY] = useState<number | null>(null);
+  const [enteredFromGarage, setEnteredFromGarage] = useState(false);
 
   useEffect(() => {
+    setEnteredFromGarage(searchParams.get('fromGarage') === '1');
+
     const rawBike = sessionStorage.getItem(EXPERT_BIKE_CONTEXT_KEY) ?? sessionStorage.getItem(BROWSE_BIKE_KEY);
     if (rawBike) {
       try {
@@ -147,6 +151,7 @@ export default function ExpertBuildComparePage() {
       setCollapsedCategoryIds(context.collapsedCategoryIds);
       setPendingScrollTarget(context.selectedItemId);
       setPendingScrollY(context.scrollY);
+      setEnteredFromGarage(Boolean(context.fromGarage));
       router.replace(`/expert/${expertBuild.id}`, { scroll: false });
     } catch {
       sessionStorage.removeItem(COMPARE_RETURN_KEY);
@@ -251,6 +256,7 @@ export default function ExpertBuildComparePage() {
       collapsedCategoryIds,
       selectedItemId: row.key,
       scrollY: window.scrollY,
+      fromGarage: enteredFromGarage,
     };
 
     sessionStorage.setItem(COMPARE_RETURN_KEY, JSON.stringify(context));
@@ -300,8 +306,8 @@ export default function ExpertBuildComparePage() {
       <main className="compare-page">
         <section className="not-found">
           <h1>Expert build not found</h1>
-          <button type="button" onClick={() => router.push('/expert')}>
-            Back to builds
+          <button type="button" onClick={() => router.push(enteredFromGarage ? '/garage?restoreGarage=1' : '/expert')}>
+            {enteredFromGarage ? 'Back to Garage' : 'Back to builds'}
           </button>
         </section>
         <style jsx>{`
@@ -323,8 +329,8 @@ export default function ExpertBuildComparePage() {
   return (
     <main className="compare-page">
       <section className="compare-shell">
-        <button type="button" className="back-button" onClick={() => router.push('/expert')}>
-          Back to builds
+        <button type="button" className="back-button" onClick={() => router.push(enteredFromGarage ? '/garage?restoreGarage=1' : '/expert')}>
+          {enteredFromGarage ? 'Back to Garage' : 'Back to builds'}
         </button>
 
         <section className="compare-header">

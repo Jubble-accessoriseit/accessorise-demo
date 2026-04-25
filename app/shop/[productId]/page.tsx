@@ -69,7 +69,7 @@ export default function ProductDetailPage() {
   const params = useParams()
   const router = useRouter()
 
-  const [fromSource, setFromSource]   = useState<'browse' | 'shop' | 'compare' | null>(null)
+  const [fromSource, setFromSource]   = useState<'browse' | 'shop' | 'compare' | 'garage' | null>(null)
   const [compareBuildId, setCompareBuildId] = useState<string | null>(null)
   const [inBuild,    setInBuild]      = useState(false)
   const [buildAdded, setBuildAdded]   = useState(false)
@@ -87,7 +87,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const from = params.get('from')
-    setFromSource(from === 'browse' ? 'browse' : from === 'shop' ? 'shop' : from === 'compare' ? 'compare' : null)
+    setFromSource(from === 'browse' ? 'browse' : from === 'shop' ? 'shop' : from === 'compare' ? 'compare' : from === 'garage' ? 'garage' : null)
     setCompareBuildId(params.get('buildId'))
 
     try {
@@ -146,12 +146,17 @@ export default function ProductDetailPage() {
       router.push(`/expert/${compareBuildId}?restoreCompare=1`)
       return
     }
+    if (fromSource === 'garage') {
+      router.push('/garage?restoreGarage=1')
+      return
+    }
     router.back()
   }
 
   const backLabel = fromSource === 'browse' ? 'Back to Browse'
                   : fromSource === 'shop'   ? 'Back to Shop'
                   : fromSource === 'compare' ? 'Back to comparison'
+                  : fromSource === 'garage' ? 'Back to Garage'
                   : 'Back'
 
   const accent    = CATEGORY_ACCENT[product.categoryId] ?? '#E8841A'

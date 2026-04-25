@@ -12,6 +12,12 @@ import type { GarageBikeRecord, GarageBuildRecord } from '@/types/garage'
 
 type View = 'overview' | 'detail'
 const EXPERT_BIKE_CONTEXT_KEY = 'expert_bike_context_v1'
+const GARAGE_RETURN_KEY = 'garage_return_context_v1'
+
+type GarageReturnContext = {
+  bikeId?: string
+  buildId?: string | null
+}
 
 type GarageState =
   | { status: 'loading' }
@@ -47,7 +53,36 @@ export default function GaragePage() {
       try {
         const snapshot = await loadGarageFromSupabase(demoGarageBikes)
         const bikes = snapshot?.bikes ?? []
-        setState({ status: 'loaded', bikes, selectedBike: null, selectedBuild: null })
+        const params = new URLSearchParams(window.location.search)
+        const shouldRestoreGarage = params.get('restoreGarage') === '1'
+        let restoredBike: GarageBikeRecord | null = null
+        let restoredBuild: GarageBuildRecord | null = null
+
+        if (shouldRestoreGarage) {
+          try {
+            const rawContext = sessionStorage.getItem(GARAGE_RETURN_KEY)
+            const context = rawContext ? JSON.parse(rawContext) as GarageReturnContext : null
+            restoredBike = bikes.find((bike) => bike.id === context?.bikeId) ?? null
+            restoredBuild =
+              restoredBike?.builds.find((build) => build.id === context?.buildId) ??
+              (restoredBike
+                ? getPreferredGarageBuildForBike({ garageBikes: bikes, selectedBikeId: restoredBike.id }) ??
+                  restoredBike.builds[0] ??
+                  null
+                : null)
+          } catch {
+            sessionStorage.removeItem(GARAGE_RETURN_KEY)
+          }
+        }
+
+        if (restoredBike) {
+          writeExpertBikeContext(restoredBike)
+          setState({ status: 'loaded', bikes, selectedBike: restoredBike, selectedBuild: restoredBuild })
+          setView('detail')
+          router.replace('/garage', { scroll: false })
+        } else {
+          setState({ status: 'loaded', bikes, selectedBike: null, selectedBuild: null })
+        }
       } catch {
         setState({ status: 'loaded', bikes: [], selectedBike: null, selectedBuild: null })
       }

@@ -106,8 +106,12 @@ export default function ExpertPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [likedBuildIds, setLikedBuildIds] = useState<string[]>([]);
   const [loginPromptBuild, setLoginPromptBuild] = useState<ExpertBuild | null>(null);
+  const [enteredFromGarage, setEnteredFromGarage] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setEnteredFromGarage(params.get('fromGarage') === '1');
+
     const rawBike = sessionStorage.getItem(EXPERT_BIKE_CONTEXT_KEY) ?? sessionStorage.getItem(BROWSE_BIKE_KEY);
     if (rawBike) {
       try {
@@ -193,6 +197,12 @@ export default function ExpertPage() {
   return (
     <main className="expert-page">
       <section className="expert-shell">
+        {enteredFromGarage ? (
+          <button type="button" className="garage-return" onClick={() => router.push('/garage?restoreGarage=1')}>
+            Back to Garage
+          </button>
+        ) : null}
+
         <section className={`bike-context ${selectedBike ? 'selected' : 'empty'}`}>
           <div className="bike-thumb" aria-hidden="true">
             {selectedBike?.image ? <img src={selectedBike.image} alt="" /> : <span>EX</span>}
@@ -294,7 +304,7 @@ export default function ExpertPage() {
                     <span>{formatLikes(likeCount)} likes</span>
                   </div>
 
-                  <button type="button" className="compare-button" onClick={() => router.push(`/expert/${build.id}`)}>
+                  <button type="button" className="compare-button" onClick={() => router.push(`/expert/${build.id}${enteredFromGarage ? '?fromGarage=1' : ''}`)}>
                     Compare build
                   </button>
                 </div>
@@ -371,6 +381,16 @@ export default function ExpertPage() {
           padding: 18px 16px 32px;
           display: grid;
           gap: 16px;
+        }
+
+        .garage-return {
+          justify-self: start;
+          border: 0;
+          background: transparent;
+          color: #e8841a;
+          font-weight: 900;
+          cursor: pointer;
+          padding: 4px 0;
         }
 
         .bike-context,

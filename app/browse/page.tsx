@@ -201,6 +201,7 @@ export default function BrowsePage() {
   const [sortMode, setSortMode] = useState<SortMode>('default')
   const [pendingScrollProductId, setPendingScrollProductId] = useState<number | null>(null)
   const [pendingScrollY, setPendingScrollY] = useState<number | null>(null)
+  const [enteredFromGarage, setEnteredFromGarage] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -208,7 +209,24 @@ export default function BrowsePage() {
     async function init() {
       try {
         const params = new URLSearchParams(window.location.search)
-        if (params.get('restoreBrowse') === '1') {
+        const fromGarage = params.get('fromGarage') === '1'
+        setEnteredFromGarage(fromGarage)
+
+        if (fromGarage) {
+          const rawBike = sessionStorage.getItem(BROWSE_BIKE_KEY)
+          const bike = rawBike ? JSON.parse(rawBike) as PersistedBrowseBike : null
+
+          if (bike?.userSelected && bike.id && bike.make && bike.model && bike.year && !cancelled) {
+            setSelectedBike(bike)
+            setSelectedMakeId(bike.make)
+            setSelectedMakeName(bike.make)
+            setSelectedModelId(bike.model)
+            setSelectedModelName(bike.model)
+            setSelectedVariant(bike.variant ?? '')
+            setSelectedYear(String(bike.year))
+            router.replace('/browse?fromGarage=1', { scroll: false })
+          }
+        } else if (params.get('restoreBrowse') === '1') {
           const raw = sessionStorage.getItem(BROWSE_RETURN_KEY)
           const context = raw ? JSON.parse(raw) as BrowseReturnContext : null
           const bike = context?.selectedBike
@@ -356,8 +374,8 @@ export default function BrowsePage() {
       } catch { /* ignore */ }
     }
 
-    router.push(`/shop/${productId}?from=browse`)
-  }, [activeCategory, router, searchQuery, selectedBike, sortMode])
+    router.push(`/shop/${productId}?from=${enteredFromGarage ? 'garage' : 'browse'}`)
+  }, [activeCategory, enteredFromGarage, router, searchQuery, selectedBike, sortMode])
 
   useEffect(() => {
     if (selectedBike) return
@@ -491,6 +509,12 @@ export default function BrowsePage() {
     <main className="browse-page">
       <style jsx>{styles}</style>
       <div className="browse-shell">
+        {enteredFromGarage ? (
+          <button type="button" className="garage-return" onClick={() => router.push('/garage?restoreGarage=1')}>
+            Back to Garage
+          </button>
+        ) : null}
+
         <section className="bike-card">
           <div className="bike-card-header">
             <div>
@@ -635,7 +659,7 @@ export default function BrowsePage() {
                     key={product.id}
                     product={product}
                     onDetails={() => openProductDetails(product.id)}
-                    onShop={() => router.push(`/shop?productId=${product.id}&from=browse`)}
+                    onShop={() => router.push(`/shop?productId=${product.id}&from=${enteredFromGarage ? 'garage' : 'browse'}`)}
                   />
                 ))}
               </div>
@@ -661,6 +685,16 @@ const styles = `
     padding: 16px 20px 0;
     display: grid;
     gap: 14px;
+  }
+
+  .garage-return {
+    justify-self: start;
+    border: 0;
+    background: transparent;
+    color: #E8841A;
+    font-weight: 900;
+    cursor: pointer;
+    padding: 4px 0;
   }
 
   .bike-card, .guided-empty, .landing-empty, .product-card, .no-results {
