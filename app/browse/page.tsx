@@ -42,6 +42,8 @@ type BrowseReturnContext = {
   searchQuery: string
   activeCategory: string
   sortMode: SortMode
+  selectedProductId: number
+  scrollY: number
 }
 type GarageBike = SelectedBike & { nickname: string | null }
 type ApiMake = { id: string; name: string; slug: string }
@@ -150,7 +152,7 @@ function ProductCard({ product, onDetails, onShop }: { product: Product; onDetai
   const price = product.price > 0 ? product.price : demoPrice(product.id)
 
   return (
-    <article className="product-card">
+    <article id={`browse-product-${product.id}`} className="product-card">
       <div className="product-image">
         {product.image ? <img src={product.image} alt={product.name} /> : null}
         <span className="category-pill" style={{ '--accent': accent, '--accent-rgb': hexToRgb(accent) } as CSSProperties}>
@@ -197,6 +199,8 @@ export default function BrowsePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState('')
   const [sortMode, setSortMode] = useState<SortMode>('default')
+  const [pendingScrollProductId, setPendingScrollProductId] = useState<number | null>(null)
+  const [pendingScrollY, setPendingScrollY] = useState<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -220,6 +224,8 @@ export default function BrowsePage() {
             setSearchQuery(context?.searchQuery ?? '')
             setActiveCategory(context?.activeCategory ?? '')
             setSortMode(context?.sortMode ?? 'default')
+            setPendingScrollProductId(context?.selectedProductId ?? null)
+            setPendingScrollY(context?.scrollY ?? null)
             router.replace('/browse', { scroll: false })
           }
         }
@@ -343,6 +349,8 @@ export default function BrowsePage() {
           searchQuery,
           activeCategory,
           sortMode,
+          selectedProductId: productId,
+          scrollY: window.scrollY,
         }
         sessionStorage.setItem(BROWSE_RETURN_KEY, JSON.stringify(context))
       } catch { /* ignore */ }
@@ -352,6 +360,7 @@ export default function BrowsePage() {
   }, [activeCategory, router, searchQuery, selectedBike, sortMode])
 
   useEffect(() => {
+    if (selectedBike) return
     if (!selectedMakeId || !selectedModelId || !selectedYear) return
     if (variants.length > 0 && !selectedVariant) return
 
@@ -364,7 +373,7 @@ export default function BrowsePage() {
       year: Number(selectedYear),
       source: 'manual',
     })
-  }, [commitBikeSelection, selectedMakeId, selectedMakeName, selectedModelId, selectedModelName, selectedVariant, selectedYear, variants])
+  }, [commitBikeSelection, selectedBike, selectedMakeId, selectedMakeName, selectedModelId, selectedModelName, selectedVariant, selectedYear, variants])
 
   function handleMakeChange(value: string) {
     const make = makes.find(item => item.id === value)
@@ -444,6 +453,25 @@ export default function BrowsePage() {
 
     return products
   }, [activeCategory, hasActiveResults, searchQuery, selectedBike, sortMode])
+
+  useEffect(() => {
+    if (!pendingScrollProductId || filteredProducts.length === 0) return
+    if (!filteredProducts.some(product => product.id === pendingScrollProductId)) return
+
+    const timeout = window.setTimeout(() => {
+      const productElement = document.getElementById(`browse-product-${pendingScrollProductId}`)
+      if (productElement) {
+        productElement.scrollIntoView({ block: 'center' })
+      } else if (pendingScrollY !== null) {
+        window.scrollTo({ top: pendingScrollY })
+      }
+
+      setPendingScrollProductId(null)
+      setPendingScrollY(null)
+    }, 80)
+
+    return () => window.clearTimeout(timeout)
+  }, [filteredProducts, pendingScrollProductId, pendingScrollY])
 
   const selectedBikeLabel = selectedBike ? bikeDisplayName(selectedBike) : ''
 
