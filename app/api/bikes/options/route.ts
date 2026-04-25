@@ -1,6 +1,50 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+function compactModelKey(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function acronymModelKey(value: string) {
+  const tokens = value.match(/[a-z]+|\d+/gi) ?? [];
+
+  return tokens
+    .map((token) => {
+      if (/^\d+$/.test(token)) return token;
+      if (token === token.toUpperCase() && token.length <= 3) return token;
+      return token[0] ?? "";
+    })
+    .join("")
+    .toLowerCase();
+}
+
+function getModelMatchKeys(value: string) {
+  return new Set([compactModelKey(value), acronymModelKey(value)].filter(Boolean));
+}
+
+function preferDisplayModelName(left: string, right: string) {
+  const leftHasSpaces = /\s/.test(left);
+  const rightHasSpaces = /\s/.test(right);
+
+  if (leftHasSpaces !== rightHasSpaces) return leftHasSpaces ? left : right;
+  if (left.length !== right.length) return left.length > right.length ? left : right;
+  return left.localeCompare(right) <= 0 ? left : right;
+}
+
+function getCanonicalModelNames(models: string[]) {
+  const modelByKey = new Map<string, string>();
+
+  models.forEach((model) => {
+    const keys = getModelMatchKeys(model);
+    const existing = [...keys].map((key) => modelByKey.get(key)).find(Boolean);
+    const canonical = existing ? preferDisplayModelName(existing, model) : model;
+
+    keys.forEach((key) => modelByKey.set(key, canonical));
+  });
+
+  return [...new Set([...modelByKey.values()])].sort();
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const make    = searchParams.get("make");
@@ -34,7 +78,7 @@ export async function GET(request: Request) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const unique = [...new Set((data ?? []).map((r) => r.model as string))].sort();
+    const unique = getCanonicalModelNames([...new Set((data ?? []).map((r) => r.model as string))]);
     return NextResponse.json({
       models: unique.map((name) => ({
         id: name,

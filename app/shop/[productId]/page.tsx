@@ -133,7 +133,7 @@ export default function ProductDetailPage() {
 
   function handleBack() {
     if (fromSource === 'browse') {
-      router.push('/browse')
+      router.push('/browse?restoreBrowse=1')
       return
     }
     if (fromSource === 'shop') {

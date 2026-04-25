@@ -11,6 +11,7 @@ import { garageCategories } from '@/types/garage'
 import type { Product } from '@/types/garage'
 
 const BROWSE_BIKE_KEY = 'browse_bike_selection_v2'
+const BROWSE_RETURN_KEY = 'browse_return_context_v1'
 
 const CATEGORY_ACCENT: Record<string, string> = {
   luggage: '#E8841A',
@@ -36,6 +37,12 @@ type SelectedBike = {
 }
 
 type PersistedBrowseBike = SelectedBike & { userSelected: true }
+type BrowseReturnContext = {
+  selectedBike: PersistedBrowseBike
+  searchQuery: string
+  activeCategory: string
+  sortMode: SortMode
+}
 type GarageBike = SelectedBike & { nickname: string | null }
 type ApiMake = { id: string; name: string; slug: string }
 type ApiModel = { id: string; name: string; slug: string; category: string }
@@ -196,6 +203,29 @@ export default function BrowsePage() {
 
     async function init() {
       try {
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('restoreBrowse') === '1') {
+          const raw = sessionStorage.getItem(BROWSE_RETURN_KEY)
+          const context = raw ? JSON.parse(raw) as BrowseReturnContext : null
+          const bike = context?.selectedBike
+
+          if (bike?.userSelected && bike.id && bike.make && bike.model && bike.year && !cancelled) {
+            setSelectedBike(bike)
+            setSelectedMakeId(bike.make)
+            setSelectedMakeName(bike.make)
+            setSelectedModelId(bike.model)
+            setSelectedModelName(bike.model)
+            setSelectedVariant(bike.variant ?? '')
+            setSelectedYear(String(bike.year))
+            setSearchQuery(context?.searchQuery ?? '')
+            setActiveCategory(context?.activeCategory ?? '')
+            setSortMode(context?.sortMode ?? 'default')
+            router.replace('/browse', { scroll: false })
+          }
+        }
+      } catch { /* ignore invalid return context */ }
+
+      try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session && !cancelled) {
           const snapshot = await loadGarageFromSupabase(demoGarageBikes)
@@ -220,7 +250,7 @@ export default function BrowsePage() {
 
     init()
     return () => { cancelled = true }
-  }, [])
+  }, [router])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -304,6 +334,22 @@ export default function BrowsePage() {
       sessionStorage.setItem(BROWSE_BIKE_KEY, JSON.stringify(persisted))
     } catch { /* ignore */ }
   }, [])
+
+  const openProductDetails = useCallback((productId: number) => {
+    if (selectedBike) {
+      try {
+        const context: BrowseReturnContext = {
+          selectedBike: { ...selectedBike, userSelected: true },
+          searchQuery,
+          activeCategory,
+          sortMode,
+        }
+        sessionStorage.setItem(BROWSE_RETURN_KEY, JSON.stringify(context))
+      } catch { /* ignore */ }
+    }
+
+    router.push(`/shop/${productId}?from=browse`)
+  }, [activeCategory, router, searchQuery, selectedBike, sortMode])
 
   useEffect(() => {
     if (!selectedMakeId || !selectedModelId || !selectedYear) return
@@ -560,7 +606,7 @@ export default function BrowsePage() {
                   <ProductCard
                     key={product.id}
                     product={product}
-                    onDetails={() => router.push(`/shop/${product.id}?from=browse`)}
+                    onDetails={() => openProductDetails(product.id)}
                     onShop={() => router.push(`/shop?productId=${product.id}&from=browse`)}
                   />
                 ))}
