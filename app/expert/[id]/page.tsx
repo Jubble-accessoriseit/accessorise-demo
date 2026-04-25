@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import GlobalNav from '@/components/GlobalNav';
 import { demoExpertBuildCatalog } from '@/lib/demo-content/expert-builds';
 import { demoGarageProducts } from '@/lib/demo-content/products';
 import { demoGarageBikes } from '@/lib/demo-content/bikes';
@@ -305,7 +304,6 @@ export default function ExpertBuildComparePage() {
   if (!expertBuild) {
     return (
       <main className="compare-page">
-        <GlobalNav />
         <section className="not-found">
           <h1>Expert build not found</h1>
           <button type="button" onClick={() => router.push('/expert')}>
@@ -330,8 +328,6 @@ export default function ExpertBuildComparePage() {
 
   return (
     <main className="compare-page">
-      <GlobalNav />
-
       <section className="compare-shell">
         <button type="button" className="back-button" onClick={() => router.push('/expert')}>
           Back to builds

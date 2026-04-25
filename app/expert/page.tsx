@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import GlobalNav from '@/components/GlobalNav';
 import { demoExpertBuildCatalog } from '@/lib/demo-content/expert-builds';
 import { supabase } from '@/lib/supabase';
 import type { ExpertBuild } from '@/lib/expert-builds/types';
@@ -198,8 +197,6 @@ export default function ExpertPage() {
 
   return (
     <main className="expert-page">
-      <GlobalNav />
-
       <section className="expert-shell">
         <section className={`bike-context ${selectedBike ? 'selected' : 'empty'}`}>
           <div className="bike-thumb" aria-hidden="true">
