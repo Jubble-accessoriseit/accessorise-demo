@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { demoExpertBuildCatalog } from '@/lib/demo-content/expert-builds';
+import { buildLoginHref } from '@/lib/auth/redirect';
 import { expertBuildMatchesBikeMakeModel } from '@/lib/expert-builds/helpers';
 import { supabase } from '@/lib/supabase';
 import type { ExpertBuild } from '@/lib/expert-builds/types';
@@ -356,7 +357,7 @@ export default function ExpertPage() {
             <h2 id="signin-title">Sign in to like expert builds.</h2>
             <p>{loginPromptBuild.title} will be waiting when you return.</p>
             <div>
-              <button type="button" onClick={() => router.push('/login?returnTo=/expert')}>
+              <button type="button" onClick={() => router.push(buildLoginHref({ next: '/expert' }))}>
                 Sign in
               </button>
               <button type="button" onClick={() => setLoginPromptBuild(null)}>

@@ -105,7 +105,7 @@ export function ProductPurchaseOptions({
                 <a
                   href={link.url}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   onClick={() => onTrackOutbound(link.vendorName, link.url, sourceContext)}
                   style={ctaStyle}
                 >

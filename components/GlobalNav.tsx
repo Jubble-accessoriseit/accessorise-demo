@@ -132,17 +132,6 @@ export default function GlobalNav() {
                 boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                 zIndex: 100,
               }}>
-                <Link
-                  href="/account"
-                  onClick={() => setMenuOpen(false)}
-                  className="block px-3.5 py-2.5 text-[#F5F3EE] no-underline hover:bg-white/[0.05] active:bg-white/[0.08] transition-colors"
-                  style={{
-                    fontSize: 12, fontWeight: 500,
-                    borderBottom: '1px solid rgba(255,255,255,0.06)',
-                  }}
-                >
-                  My account
-                </Link>
                 <button
                   onClick={handleSignOut}
                   disabled={signingOut}

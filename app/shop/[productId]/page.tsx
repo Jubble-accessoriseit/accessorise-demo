@@ -77,11 +77,11 @@ export default function ProductDetailPage() {
 
   const productId = parseInt(params?.productId as string, 10)
   const product   = useMemo(
-    () => demoGarageProducts.find(p => p.id === productId) ?? demoGarageProducts[0],
+    () => demoGarageProducts.find(p => p.id === productId) ?? null,
     [productId]
   )
 
-  const basePrice = demoPrice(product.id)
+  const basePrice = product ? demoPrice(product.id) : 0
 
   // Read `?from` param and current build state
   useEffect(() => {
@@ -93,7 +93,7 @@ export default function ProductDetailPage() {
     try {
       const stored = sessionStorage.getItem(BUILD_KEY)
       const list: number[] = stored ? JSON.parse(stored) : []
-      setInBuild(list.includes(product.id))
+      if (product) setInBuild(list.includes(product.id))
     } catch { /* ignore */ }
 
     try {
@@ -111,17 +111,19 @@ export default function ProductDetailPage() {
         setSelectedBikeLabel(null)
       }
     } catch { /* ignore */ }
-  }, [product.id])
+  }, [product])
 
   // Expert build count
   const expertBuildCount = useMemo(
     () => demoExpertBuildCatalog.filter(
-      b => b.accessories.some(a => a.productId === product.id)
+      b => product ? b.accessories.some(a => a.productId === product.id) : false
     ).length,
-    [product.id]
+    [product]
   )
 
   function toggleBuild() {
+    if (!product) return
+
     try {
       const stored = sessionStorage.getItem(BUILD_KEY)
       const list: number[] = stored ? JSON.parse(stored) : []
@@ -139,7 +141,7 @@ export default function ProductDetailPage() {
       return
     }
     if (fromSource === 'shop') {
-      router.push(`/shop?productId=${product.id}`)
+      router.push(product ? `/shop?productId=${product.id}` : '/shop')
       return
     }
     if (fromSource === 'compare' && compareBuildId) {
@@ -159,36 +161,83 @@ export default function ProductDetailPage() {
                   : fromSource === 'garage' ? 'Back to Garage'
                   : 'Back'
 
-  const accent    = CATEGORY_ACCENT[product.categoryId] ?? '#E8841A'
-  const catLabel  = getCategoryLabel(product.categoryId)
+  const accent    = product ? CATEGORY_ACCENT[product.categoryId] ?? '#E8841A' : '#E8841A'
+  const catLabel  = product ? getCategoryLabel(product.categoryId) : ''
 
   // Demo suppliers (3 per product)
   const suppliers = useMemo(() => {
+    if (!product) return []
+
     const realLink = product.affiliateLinks?.[0]
     return [
       {
         name: realLink?.vendorName ?? product.brand,
-        url:  realLink?.url ?? product.supplierUrl ?? '#',
+        url:  realLink?.url ?? product.supplierUrl ?? null,
         price: basePrice,
         status: product.availabilityStatus ?? 'available',
         delivery: '2–3 days',
       },
       {
         name: 'Wunderlich',
-        url: '#',
+        url: null,
         price: basePrice + 17,
         status: 'available' as ProductAvailabilityStatus,
         delivery: '3–5 days',
       },
       {
         name: 'Nippy Normans',
-        url: '#',
+        url: null,
         price: basePrice + 34,
         status: 'limited' as ProductAvailabilityStatus,
         delivery: '5–7 days',
       },
     ]
   }, [product, basePrice])
+
+  if (!product) {
+    return (
+      <main style={{ backgroundColor: '#0D0D0D', color: '#F5F3EE', minHeight: '100vh', padding: 20 }}>
+        <button
+          type="button"
+          onClick={handleBack}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#E8841A',
+            cursor: 'pointer',
+            fontSize: 12,
+            fontWeight: 600,
+            padding: 0,
+          }}
+        >
+          {backLabel}
+        </button>
+        <section style={{ marginTop: 28, display: 'grid', gap: 10 }}>
+          <h1 style={{ margin: 0, fontSize: 24 }}>Product not found</h1>
+          <p style={{ margin: 0, color: '#B8AFA6', lineHeight: 1.5 }}>
+            This product link does not match an accessory in the current catalogue.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push('/shop')}
+            style={{
+              marginTop: 10,
+              width: 'fit-content',
+              backgroundColor: '#E8841A',
+              border: 'none',
+              borderRadius: 8,
+              color: '#0D0D0D',
+              cursor: 'pointer',
+              fontWeight: 900,
+              padding: '11px 14px',
+            }}
+          >
+            View supplier options
+          </button>
+        </section>
+      </main>
+    )
+  }
 
   return (
     <div style={{ backgroundColor: '#0D0D0D', minHeight: '100vh', paddingBottom: 48 }}>
@@ -544,14 +593,14 @@ export default function ProductDetailPage() {
               textAlign: 'center',
             }}
           >
-            Compare all suppliers
+            Compare supplier options
             <span style={{
               display: 'block', fontSize: 10, fontWeight: 400,
               fontFamily: 'system-ui, -apple-system, sans-serif',
               textTransform: 'none', letterSpacing: 'normal',
               color: 'rgba(0,0,0,0.5)', marginTop: 2,
             }}>
-              opens retailer site ↗
+              opens supplier options in Accessorise It
             </span>
           </button>
         </div>

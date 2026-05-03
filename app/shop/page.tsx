@@ -11,7 +11,7 @@ type SortMode = 'best-price' | 'in-stock' | 'fastest'
 
 type SupplierRow = {
   vendorName: string
-  url: string
+  url: string | null
   price: number
   stockStatus: ProductAvailabilityStatus
   deliveryLabel: string
@@ -45,14 +45,14 @@ function buildDemoSuppliers(product: Product): SupplierRow[] {
   const rows: SupplierRow[] = [
     {
       vendorName: realLink?.vendorName ?? product.brand,
-      url: realLink?.url ?? product.supplierUrl ?? '#',
+      url: realLink?.url ?? product.supplierUrl ?? null,
       price: basePrice,
       stockStatus: getStockStatus(product.availabilityStatus, 0),
       deliveryLabel: DELIVERY_LABELS[0],
     },
     ...SYNTHETIC_VENDORS.map((v, i) => ({
       vendorName: v.name,
-      url: '#',
+      url: null,
       price: basePrice + (i === 0 ? 17 : 34),
       stockStatus: getStockStatus(product.availabilityStatus, v.stockOffset + 1),
       deliveryLabel: DELIVERY_LABELS[i + 1],
@@ -121,6 +121,83 @@ function VendorLogo({ name }: { name: string }) {
 
 // ── Supplier cards ────────────────────────────────────────────────────────────
 
+function SupplierAction({ supplier, primary = false }: { supplier: SupplierRow; primary?: boolean }) {
+  const actionStyle = {
+    display: 'block',
+    marginTop: 12,
+    width: '100%',
+    backgroundColor: primary ? '#E8841A' : 'transparent',
+    border: primary ? 'none' : '1px solid rgba(255,255,255,0.1)',
+    color: primary ? '#0D0D0D' : '#F5F3EE',
+    borderRadius: 8,
+    padding: '10px 0',
+    fontFamily: "'Helvetica Neue', 'Arial Black', Arial, sans-serif",
+    fontWeight: 900,
+    fontSize: 12,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.06em',
+    textAlign: 'center' as const,
+    textDecoration: 'none',
+    boxSizing: 'border-box' as const,
+  }
+
+  if (!supplier.url) {
+    return (
+      <div
+        aria-disabled="true"
+        style={{
+          ...actionStyle,
+          backgroundColor: primary ? 'rgba(232,132,26,0.18)' : 'transparent',
+          border: primary ? '1px solid rgba(232,132,26,0.16)' : '1px solid rgba(255,255,255,0.08)',
+          color: primary ? 'rgba(245,243,238,0.58)' : '#6A6860',
+          cursor: 'not-allowed',
+        }}
+      >
+        Link unavailable
+        <span
+          style={{
+            display: 'block',
+            fontSize: 10,
+            fontWeight: 400,
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            textTransform: 'none',
+            letterSpacing: 'normal',
+            color: primary ? 'rgba(245,243,238,0.44)' : '#44423E',
+            marginTop: 2,
+          }}
+        >
+          supplier link not available
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <a
+      href={supplier.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ ...actionStyle, cursor: 'pointer' }}
+    >
+      Buy now
+      <span
+        style={{
+          display: 'block',
+          fontSize: 10,
+          fontWeight: 400,
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          textTransform: 'none',
+          letterSpacing: 'normal',
+          color: primary ? 'rgba(0,0,0,0.5)' : '#44423E',
+          marginTop: 2,
+        }}
+      >
+        opens retailer site â†—
+      </span>
+    </a>
+  )
+}
+
 function BestPriceCard({ supplier, savings }: { supplier: SupplierRow; savings: number }) {
   return (
     <div
@@ -176,7 +253,7 @@ function BestPriceCard({ supplier, savings }: { supplier: SupplierRow; savings: 
         </span>
       </div>
 
-      {/* Buy now button */}
+      {supplier.url ? (
       <a
         href={supplier.url}
         target="_blank"
@@ -206,6 +283,9 @@ function BestPriceCard({ supplier, savings }: { supplier: SupplierRow; savings: 
           opens retailer site ↗
         </span>
       </a>
+      ) : (
+        <SupplierAction supplier={supplier} primary />
+      )}
     </div>
   )
 }
@@ -244,7 +324,7 @@ function StandardSupplierCard({ supplier }: { supplier: SupplierRow }) {
         </span>
       </div>
 
-      {/* Buy now button */}
+      {supplier.url ? (
       <a
         href={supplier.url}
         target="_blank"
@@ -275,6 +355,9 @@ function StandardSupplierCard({ supplier }: { supplier: SupplierRow }) {
           opens retailer site ↗
         </span>
       </a>
+      ) : (
+        <SupplierAction supplier={supplier} />
+      )}
     </div>
   )
 }

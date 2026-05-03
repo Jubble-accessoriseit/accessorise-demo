@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { demoExpertBuildCatalog } from '@/lib/demo-content/expert-builds';
 import { demoGarageProducts } from '@/lib/demo-content/products';
 import { demoGarageBikes } from '@/lib/demo-content/bikes';
+import { buildLoginHref } from '@/lib/auth/redirect';
 import { expertBikeMakeModelMatches } from '@/lib/expert-builds/helpers';
 import { loadGarageFromSupabase, replaceGarageBuildItems } from '@/lib/garage/persistence';
 import { supabase } from '@/lib/supabase';
@@ -392,7 +393,7 @@ export default function ExpertBuildComparePage() {
           <section className="message-card">
             <p>{message}</p>
             {message.includes('Sign in') ? (
-              <button type="button" onClick={() => router.push(`/login?returnTo=/expert/${expertBuild.id}`)}>
+              <button type="button" onClick={() => router.push(buildLoginHref({ next: `/expert/${expertBuild.id}` }))}>
                 Sign in
               </button>
             ) : null}

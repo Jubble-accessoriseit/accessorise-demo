@@ -15,7 +15,7 @@ type HomeAuthCtasProps = {
   showPrimary?: boolean;
 };
 
-const START_BUILDING_HREF = "/garage?step=Bike";
+const START_BUILDING_HREF = "/garage/build?step=Bike";
 const HOME_RETURN_HREF = "/";
 
 export function HomeAuthCtas({

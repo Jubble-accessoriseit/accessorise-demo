@@ -537,7 +537,7 @@ export function GarageShopStep({
                       key={`${link.url}-${link.vendorName}`}
                       href={link.url}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", textDecoration: "none", padding: "11px 12px", borderRadius: 14, border: "1px solid #dbe3ee", color: "#0f172a", background: "#f8fafc", fontSize: 13 }}
                     >
                       <span style={{ fontWeight: 700 }}>{link.vendorName}</span>
