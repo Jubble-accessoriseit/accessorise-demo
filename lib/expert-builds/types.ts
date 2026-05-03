@@ -46,6 +46,18 @@ export type ExpertBuildStrengthCategory =
 
 export type ExpertBuildStrengthLevel = 1 | 2 | 3 | 4 | 5;
 
+export type ExpertBuildVerificationStatus =
+  | "verified"
+  | "researched"
+  | "draft"
+  | "needs-verification";
+
+export type ExpertBuildImagePermissionStatus =
+  | "permissioned"
+  | "owner-supplied"
+  | "external-source-thumbnail-needs-permission"
+  | "unknown";
+
 export type ExpertBuildPhoto = {
   id: string;
   imageUrl: string;
@@ -63,6 +75,7 @@ export type ExpertBuildAccessory = {
   title: string;
   brand: string;
   categoryId: string;
+  confidence?: "high" | "medium-high" | "medium" | "low";
   subcategory?: string | null;
   buyUrl?: string | null;
   sourceLabel?: string | null;
@@ -120,6 +133,12 @@ export type ExpertBuild = {
   bikeFitment: ExpertBuildBikeFitment;
   summary: string;
   description?: string | null;
+  sourceUrl?: string | null;
+  sourceLabel?: string | null;
+  sourceVideoId?: string | null;
+  verificationStatus?: ExpertBuildVerificationStatus;
+  imagePermissionStatus?: ExpertBuildImagePermissionStatus;
+  internalNotes?: string | null;
   primaryPhoto: ExpertBuildPhoto;
   galleryPhotos: ExpertBuildPhoto[];
   accessories: ExpertBuildAccessory[];

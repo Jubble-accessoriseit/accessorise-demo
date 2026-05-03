@@ -31,6 +31,12 @@ export const demoBikeImages = {
     sourceUrl: "https://www.ktm.com/en-us/models/travel/2025-ktm-890-adventure-r.html",
     alt: "KTM 890 Adventure demo bike image",
   },
+  suzukiVStrom800DE: {
+    path: "https://img.youtube.com/vi/felXZX8_8Wo/maxresdefault.jpg",
+    sourceLabel: "Temporary Outback Motortek YouTube thumbnail",
+    sourceUrl: "https://www.youtube.com/watch?v=felXZX8_8Wo",
+    alt: "Outback Motortek Suzuki V-Strom 800DE adventure build thumbnail",
+  },
 } satisfies Record<string, DemoImageReference>;
 
 export const demoAccessoryImages = {

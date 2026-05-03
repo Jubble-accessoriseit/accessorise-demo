@@ -56,6 +56,14 @@ export const bikes: Bike[] = [
     year: 2024,
     displayName: "Suzuki DR DR650 2024",
   },
+  {
+    id: "suzuki-v-strom-v-strom-800de-2023",
+    make: "Suzuki",
+    series: "V-Strom",
+    model: "V-Strom 800DE",
+    year: 2023,
+    displayName: "Suzuki V-Strom V-Strom 800DE 2023",
+  },
 ];
 
 export function getMakes(): string[] {

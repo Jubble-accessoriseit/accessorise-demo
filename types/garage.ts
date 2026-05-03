@@ -132,6 +132,7 @@ export const garageCategories: GarageCategory[] = [
   { id: "ergonomics", label: "Ergonomics" },
   { id: "security", label: "Security" },
   { id: "tyres", label: "Tyres" },
+  { id: "styling", label: "Styling" },
   { id: "safety-visibility", label: "Safety & Visibility" },
   { id: "rider-tech-recording", label: "Rider Tech & Recording" },
   { id: "connectivity-navigation", label: "Connectivity & Navigation" },

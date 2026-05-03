@@ -84,4 +84,17 @@ export const demoGarageBikes: SupabaseBike[] = [
     sourceUrl:
       "https://www.ktm.com/en-us/models/travel/2025-ktm-890-adventure-r.html",
   },
+  {
+    id: "suzuki-v-strom-800de-2023",
+    make: "Suzuki",
+    model: "V-Strom 800DE",
+    variant: null,
+    year: 2023,
+    category: "Adventure",
+    engine_cc: 776,
+    image: demoBikeImages.suzukiVStrom800DE.path,
+    heroImageUrl: demoBikeImages.suzukiVStrom800DE.path,
+    sourceLabel: "Temporary Outback Motortek YouTube thumbnail",
+    sourceUrl: "https://www.youtube.com/watch?v=felXZX8_8Wo",
+  },
 ];

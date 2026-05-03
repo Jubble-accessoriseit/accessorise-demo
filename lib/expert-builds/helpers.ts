@@ -274,6 +274,14 @@ function capitalize(value: string) {
 export function getExpertBuildCredibilityBadges(build: ExpertBuild) {
   const badges: string[] = [];
 
+  if (build.verificationStatus === "researched") {
+    badges.push("Researched build");
+  } else if (build.verificationStatus === "needs-verification") {
+    badges.push("Needs verification");
+  } else if (build.verificationStatus === "draft") {
+    badges.push("Draft build");
+  }
+
   if (build.credibility?.featuredBuild || build.featured) {
     badges.push("Featured build");
   }

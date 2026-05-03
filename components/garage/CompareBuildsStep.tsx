@@ -57,7 +57,8 @@ const compareFilterOptions: Array<{ id: CompareFilter; label: string }> = [
 ];
 
 function buildCompareTableRows(
-  filteredCompareCategorySections: CompareCategorySection[]
+  filteredCompareCategorySections: CompareCategorySection[],
+  sourceBuildLabel = "expert build"
 ): CompareTableRow[] {
   return filteredCompareCategorySections.flatMap((section) =>
     section.rows.map((row) => ({
@@ -69,7 +70,7 @@ function buildCompareTableRows(
       status: row.status,
       summary:
         row.status === "Missing from your build"
-          ? "Expert build includes this and your current build does not."
+          ? `${sourceBuildLabel} includes this and your current build does not.`
           : row.status === "Different item"
           ? "Both builds cover this accessory type with different products."
           : row.status === "Only in your build"
@@ -166,7 +167,12 @@ export function CompareBuildsStep({
   selectedExpertBuild,
   selectedProducts,
 }: CompareBuildsStepProps) {
-  const compareTableRows = buildCompareTableRows(filteredCompareCategorySections);
+  const isSourceResearched = selectedExpertBuild?.verificationStatus === "researched";
+  const sourceBuildLabel = isSourceResearched ? "Source build" : "Expert build";
+  const compareTableRows = buildCompareTableRows(
+    filteredCompareCategorySections,
+    sourceBuildLabel
+  );
   const visibleRowCount = compareTableRows.length;
 
   return (
@@ -216,7 +222,9 @@ export function CompareBuildsStep({
               </h2>
               <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.45, maxWidth: 760 }}>
                 {selectedExpertBuild
-                  ? "Compare your current build against the selected expert build in one continuous table."
+                  ? isSourceResearched
+                    ? "Compare your current build against this researched source build in one continuous table."
+                    : "Compare your current build against the selected expert build in one continuous table."
                   : "Choose an expert build first, then compare the two setups here."}
               </div>
             </div>
@@ -278,7 +286,7 @@ export function CompareBuildsStep({
               value={`${selectedProducts.length} accessory${selectedProducts.length === 1 ? "" : "ies"}`}
             />
             <ContextPill
-              label="Expert build"
+              label={sourceBuildLabel}
               value={selectedExpertBuild ? selectedExpertBuild.name : "Not selected yet"}
             />
           </div>
@@ -418,7 +426,7 @@ export function CompareBuildsStep({
                     subtitle={`${selectedProducts.length} selected item${selectedProducts.length === 1 ? "" : "s"}`}
                   />
                   <TableHeaderCell
-                    title="Expert Build"
+                    title={sourceBuildLabel}
                     subtitle={selectedExpertBuild.name}
                   />
                   <TableHeaderCell
@@ -443,6 +451,7 @@ export function CompareBuildsStep({
                       onOpenProductPurchase={onOpenProductPurchase}
                       row={row}
                       selectedProducts={selectedProducts}
+                      sourceBuildLabel={sourceBuildLabel}
                     />
                   ))}
                 </div>
@@ -464,6 +473,7 @@ function CompareTableDataRow({
   onOpenProductPurchase,
   row,
   selectedProducts,
+  sourceBuildLabel,
 }: {
   addToBuild: (product: Product) => void;
   formatCurrency: (value: number) => string;
@@ -476,6 +486,7 @@ function CompareTableDataRow({
   }) => void;
   row: CompareTableRow;
   selectedProducts: Product[];
+  sourceBuildLabel: string;
 }) {
   const tone = getCompareStatusTone(row.status);
   const statusCopy = getCompactCompareStatusCopy(row.status);
@@ -519,7 +530,7 @@ function CompareTableDataRow({
       />
 
       <CompareProductCell
-        emptyLabel="Not in expert build"
+        emptyLabel={`Not in ${sourceBuildLabel.toLowerCase()}`}
         formatCurrency={formatCurrency}
         getProductSupplierName={getProductSupplierName}
         onOpenProductDetail={onOpenProductDetail}
@@ -567,7 +578,11 @@ function CompareTableDataRow({
               fontSize: 11,
             }}
           >
-            {row.status === "Different item" ? "Replace with expert item" : "Add to my build"}
+            {row.status === "Different item"
+              ? sourceBuildLabel === "Source build"
+                ? "Review source item"
+                : "Replace with expert item"
+              : "Add to my build"}
           </button>
         ) : row.actionProduct ? (
           <div style={{ fontSize: 10, color: "#166534", fontWeight: 700 }}>
@@ -584,7 +599,7 @@ function CompareTableDataRow({
               onClick={() => onOpenProductDetail(row.expertProduct!)}
               style={tableLinkButtonStyle}
             >
-              View expert item
+              {sourceBuildLabel === "Source build" ? "View source item" : "View expert item"}
             </button>
           ) : null}
 
