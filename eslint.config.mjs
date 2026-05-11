@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Nested project copy — ignore entirely
+    "accessorise-demo/**",
   ]),
 ]);
 

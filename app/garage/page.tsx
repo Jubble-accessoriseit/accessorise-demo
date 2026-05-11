@@ -8,6 +8,9 @@ import { getPreferredGarageBuildForBike } from '@/lib/garage/working-context'
 import { demoGarageBikes } from '@/lib/demo-content/bikes'
 import { GarageScreen } from '@/components/garage/GarageScreen'
 import { MyBikesOverview } from '@/components/garage/MyBikesOverview'
+import { GarageTyreSelector } from '@/components/garage/GarageTyreSelector'
+import { fetchMotorcycleTyreSizes } from '@/lib/garage/tyres'
+import type { MotorcycleTyreSize } from '@/lib/garage/tyres'
 import type { GarageBikeRecord, GarageBuildRecord } from '@/types/garage'
 
 type View = 'overview' | 'detail'
@@ -27,6 +30,9 @@ export default function GaragePage() {
   const router = useRouter()
   const [state, setState] = useState<GarageState>({ status: 'loading' })
   const [view, setView] = useState<View>('overview')
+  const [tyreSizes, setTyreSizes] = useState<MotorcycleTyreSize[]>([])
+  const [selectedFrontTyreSizeId, setSelectedFrontTyreSizeId] = useState<string | null>(null)
+  const [selectedRearTyreSizeId, setSelectedRearTyreSizeId] = useState<string | null>(null)
 
   function writeExpertBikeContext(bike: GarageBikeRecord) {
     sessionStorage.setItem(
@@ -40,6 +46,10 @@ export default function GaragePage() {
       }),
     )
   }
+
+  useEffect(() => {
+    fetchMotorcycleTyreSizes().then(setTyreSizes)
+  }, [])
 
   useEffect(() => {
     async function load() {
@@ -164,25 +174,43 @@ export default function GaragePage() {
     setView('detail')
   }
 
+  const tyreSelectorSection = (
+    <section style={{ maxWidth: 1360, margin: '0 auto', padding: '0 14px 28px' }}>
+      <GarageTyreSelector
+        tyreSizes={tyreSizes}
+        selectedFrontTyreSizeId={selectedFrontTyreSizeId}
+        selectedRearTyreSizeId={selectedRearTyreSizeId}
+        onSelectFrontTyreSize={setSelectedFrontTyreSizeId}
+        onSelectRearTyreSize={setSelectedRearTyreSizeId}
+      />
+    </section>
+  )
+
   if (view === 'detail' && state.selectedBike) {
     return (
-      <GarageScreen
-        bikes={state.bikes}
-        selectedBike={state.selectedBike}
-        selectedBuild={state.selectedBuild}
-        onSwitchBike={() => setView('overview')}
-        onDeleteBike={handleDeleteBike}
-        onDeleteBuild={handleDeleteBuild}
-        onSwitchBikeTo={handleSwitchBikeTo}
-      />
+      <>
+        <GarageScreen
+          bikes={state.bikes}
+          selectedBike={state.selectedBike}
+          selectedBuild={state.selectedBuild}
+          onSwitchBike={() => setView('overview')}
+          onDeleteBike={handleDeleteBike}
+          onDeleteBuild={handleDeleteBuild}
+          onSwitchBikeTo={handleSwitchBikeTo}
+        />
+        {tyreSelectorSection}
+      </>
     )
   }
 
   return (
-    <MyBikesOverview
-      bikes={state.bikes}
-      onSelectBike={handleSelectBike}
-      activeBikeId={state.selectedBike?.id ?? null}
-    />
+    <>
+      <MyBikesOverview
+        bikes={state.bikes}
+        onSelectBike={handleSelectBike}
+        activeBikeId={state.selectedBike?.id ?? null}
+      />
+      {tyreSelectorSection}
+    </>
   )
 }
